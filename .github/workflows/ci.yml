@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Typecheck (mypy --strict)
+        run: uv run mypy --strict pipelines
+      - name: Tests (offline, fixture-based, no credentials)
+        run: uv run python -m pytest tests/
+
+      # Guard: no secret, key, or token anywhere in the repo.
+      - name: No-credentials guard
+        run: |
+          ! grep -rInE '(api[_-]?key|secret|token|password)\s*[:=]\s*["'"'"'][^"'"'"']{8,}' \
+            pipelines config .github app/src e2e || \
+            (echo "::error::possible credential literal found" && exit 1)
+
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run
+      - name: Build site
+        run: |
+          # Emit pipeline artifacts so the build bundles real data.
+          mkdir -p data/out/light_pollution data/out/padus data/out/darksky_places
+          uvx --python 3.12 pip >/dev/null 2>&1 || true
+          npx vite build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [node]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Playwright + axe (WCAG 2.1 AA)
+        run: npx playwright test

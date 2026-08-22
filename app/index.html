@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Is this spot dark, legal, and clear tonight? Darkness, land access, and sky conditions for Milky Way photography in the Mountain West." />
+    <title>Dark-Sky Shot Planner</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-theme="dark">
+    <a class="skip-link" href="#answer">Skip to the answer</a>
+    <header>
+      <h1>Dark-Sky Shot Planner</h1>
+      <p class="tagline">Is this spot dark, legal, and clear tonight?</p>
+      <div class="controls-row">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="field">Field mode (red)</option>
+        </select>
+      </div>
+    </header>
+
+    <main id="main">
+      <section aria-labelledby="entry-heading" class="panel">
+        <h2 id="entry-heading">Location &amp; night</h2>
+
+        <fieldset>
+          <legend>Location</legend>
+          <p class="hint">Search a place, click the map, or paste coordinates (lat, lon).</p>
+          <label for="coord-input">Coordinates</label>
+          <input
+            id="coord-input"
+            type="text"
+            inputmode="decimal"
+            placeholder="38.53, -109.90"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="coord-apply" type="button">Use coordinates</button>
+          <p id="location-status" role="status" aria-live="polite"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Night</legend>
+          <label for="date-input">Date of the evening</label>
+          <input id="date-input" type="date" />
+        </fieldset>
+
+        <fieldset>
+          <legend>Map layers</legend>
+          <label><input type="checkbox" id="layer-lp" value="lp" /> Light pollution</label>
+          <label><input type="checkbox" id="layer-land" value="land" /> Land ownership</label>
+          <label><input type="checkbox" id="layer-places" value="places" /> Dark-sky places</label>
+        </fieldset>
+      </section>
+
+      <section aria-labelledby="answer-heading" class="panel" id="answer-panel">
+        <h2 id="answer-heading" tabindex="-1">The answer</h2>
+        <div id="answer" aria-live="polite">
+          <p class="placeholder">Enter a location to see moon-free darkness, land manager, Galactic Center visibility, and clouds.</p>
+        </div>
+      </section>
+
+      <details class="panel" id="provenance-panel">
+        <summary>Data provenance &amp; freshness</summary>
+        <div id="provenance"><p class="placeholder">Loading source manifests…</p></div>
+        <p class="disclaimer">
+          Land ownership is a boundary dataset, not a permission system. We tell you who manages
+          the land and link to the agency — we never say you may camp there. Verify access rules
+          with the managing agency before you go.
+        </p>
+      </details>
+
+      <section aria-labelledby="map-heading" class="panel map-panel">
+        <h2 id="map-heading">Map <span class="hint">(optional — everything above works without it)</span></h2>
+        <div id="map" role="application" aria-label="Map of light pollution and land ownership. Use the coordinate fields above instead if you do not use a mouse."></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Light pollution: VIIRS VNP46A4 (CC0). Land managers: USGS PAD-US (public domain).
+        Forecasts: Open-Meteo. See <a href="#provenance-panel">provenance details</a>.
+      </p>
+    </footer>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

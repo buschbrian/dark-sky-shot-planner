@@ -17,6 +17,7 @@ from pathlib import Path
 import click
 from pmtiles.tile import TileType
 
+from pipelines.light_pollution.downsample import downsample_grid
 from pipelines.light_pollution.radiance import legend_stops
 from pipelines.light_pollution.rasterize import Grid, render_tile, tiles_for_bbox
 from pipelines.shared.config import load_config
@@ -67,6 +68,13 @@ def build(
     legend_path = out_dir / "legend.json"
     legend_path.write_text(json.dumps(legend, indent=2))
 
+    # Downsampled radiance grid for client-side point lookups ("how dark is
+    # this spot?"). Small enough to ship as JSON; carries the same source
+    # year so the UI labels staleness honestly.
+    grid_out_path = out_dir / "radiance-grid-lowres.json"
+    lowres = downsample_grid(grid, step_deg=0.25)
+    grid_out_path.write_text(json.dumps(lowres))
+
     manifest = build_manifest(
         layer_id="light_pollution",
         source_name="VIIRS VNP46A4 Black Marble annual composite",
@@ -84,6 +92,11 @@ def build(
                 path=legend_path.name,
                 sha256=sha256_file(legend_path),
                 bytes=legend_path.stat().st_size,
+            ),
+            Artifact(
+                path=grid_out_path.name,
+                sha256=sha256_file(grid_out_path),
+                bytes=grid_out_path.stat().st_size,
             ),
         ],
         counts={"tiles": len(tiles), "breakpoints": len(legend)},

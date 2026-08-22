@@ -1,0 +1,64 @@
+name: Data refresh
+
+on:
+  schedule:
+    # Monthly on the 4th at 07:17 UTC — annual composites change slowly.
+    - cron: "17 7 4 * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install fetch extras (heavy geo deps)
+        run: uv sync --extra fetch
+
+      # NOTE: VNP46A4 requires NASA Earthdata credentials stored as
+      # EARTHDATA_USER / EARTHDATA_PASS secrets. This is the ONLY place any
+      # credential exists, and only as an Actions secret — never in the repo.
+      - name: Fetch and build light pollution
+        id: lp
+        continue-on-error: true
+        env:
+          EARTHDATA_USER: ${{ secrets.EARTHDATA_USER }}
+          EARTHDATA_PASS: ${{ secrets.EARTHDATA_PASS }}
+        run: |
+          uv run python -m pipelines.light_pollution.cli fetch-and-build \
+            --year $(date -d "last year" +%Y) --out /tmp/stage/lp
+          uv run python -m pipelines.light_pollution.cli build \
+            --grid /tmp/stage/lp/staged-grid.json \
+            --publication-date $(date -d "last year-12-01" +%F) \
+            --out data/out/light_pollution
+
+      - name: Build dark-sky places (offline)
+        run: |
+          uv run python -m pipelines.darksky_places.cli build \
+            --csv config/darksky-places.csv --out data/out/darksky_places
+
+      - name: Report failures as issues
+        if: steps.lp.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Data refresh failed (${new Date().toISOString().slice(0, 10)})`,
+              body: "A source was unreachable or a checksum changed unexpectedly. Inspect the workflow run: " + context.runUrl,
+            });
+            core.setFailed("data refresh failed; issue opened");
+
+      - name: Commit refreshed artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/out
+          git diff --cached --quiet || git commit -m "chore(data): monthly refresh"
+          git push

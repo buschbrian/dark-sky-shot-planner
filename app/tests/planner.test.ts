@@ -4,7 +4,6 @@ import {
   darknessWindow,
   gcAltitude,
   gcVisibility,
-  moonFreeWindows,
   moonIllumination,
   moonUpIntervals,
   planNight,
