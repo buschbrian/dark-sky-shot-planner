@@ -31,7 +31,7 @@ def stage_grid_from_blackmarble(year: int, bbox: BoundingBox) -> dict[str, Any]:
         aoi,
         product_id=Product.VNP46A4,
         date_range=[dt.date(year, 1, 1)],
-        variable="Gap_Filled_DNB_BRDF-Corrected_NTL",
+        variable="NearNadir_Composite_Snow_Free",
     )
     return _rasters_to_grid(rasters, bbox)
 
