@@ -24,7 +24,7 @@ data built from fixtures). To rebuild them:
 
 ```bash
 uv run python -m pipelines.light_pollution.cli build --grid tests/fixtures/radiance-grid.json --publication-date 2024-12-01 --out data/out/light_pollution
-uv run python -m pipelines.padus.cli build --input tests/fixtures/padus-sample.geojson --publication-date 2024-06-01 --out data/out/padus
+uv run python -m pipelines.padus.cli --input tests/fixtures/padus-sample.geojson --publication-date 2024-06-01 --out data/out/padus
 uv run python -m pipelines.darksky_places.cli build --csv config/darksky-places.csv --out data/out/darksky_places
 ```
 
