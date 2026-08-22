@@ -20,15 +20,14 @@ jobs:
       - name: Install fetch extras (heavy geo deps)
         run: uv sync --extra fetch
 
-      # NOTE: VNP46A4 requires NASA Earthdata credentials stored as
-      # EARTHDATA_USER / EARTHDATA_PASS secrets. This is the ONLY place any
-      # credential exists, and only as an Actions secret — never in the repo.
+      # NOTE: VNP46A4 requires a NASA Earthdata personal access token stored
+      # as the BLACKMARBLE_TOKEN Actions secret. This is the ONLY credential
+      # in the project, and only as an Actions secret — never in the repo.
       - name: Fetch and build light pollution
         id: lp
         continue-on-error: true
         env:
-          EARTHDATA_USER: ${{ secrets.EARTHDATA_USER }}
-          EARTHDATA_PASS: ${{ secrets.EARTHDATA_PASS }}
+          BLACKMARBLE_TOKEN: ${{ secrets.BLACKMARBLE_TOKEN }}
         run: |
           uv run python -m pipelines.light_pollution.cli fetch-and-build \
             --year $(date -d "last year" +%Y) --out /tmp/stage/lp
