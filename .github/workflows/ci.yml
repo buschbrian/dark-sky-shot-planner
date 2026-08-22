@@ -31,6 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -40,12 +43,23 @@ jobs:
         run: npx tsc --noEmit
       - name: Unit tests
         run: npx vitest run
-      - name: Build site
+      - name: Generate data artifacts from fixtures
         run: |
-          # Emit pipeline artifacts so the build bundles real data.
-          mkdir -p data/out/light_pollution data/out/padus data/out/darksky_places
-          uvx --python 3.12 pip >/dev/null 2>&1 || true
-          npx vite build
+          uv run python -m pipelines.light_pollution.cli build \
+            --grid tests/fixtures/radiance-grid.json --publication-date 2024-12-01 \
+            --out data/out/light_pollution
+          uv run python -m pipelines.padus.cli build \
+            --input tests/fixtures/padus-sample.geojson --publication-date 2024-06-01 \
+            --out data/out/padus
+          uv run python -m pipelines.darksky_places.cli build \
+            --csv config/darksky-places.csv --out data/out/darksky_places
+      - name: Build site
+        run: npx vite build
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   e2e:
     runs-on: ubuntu-latest

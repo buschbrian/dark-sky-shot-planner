@@ -44,8 +44,7 @@ def test_no_forbidden_light_pollution_sources() -> None:
                     continue
                 offenders.append(f"{path.name}: contains '{name}'")
     assert not offenders, (
-        "Forbidden data sources referenced (license contamination risk): "
-        + "; ".join(offenders)
+        "Forbidden data sources referenced (license contamination risk): " + "; ".join(offenders)
     )
 
 
