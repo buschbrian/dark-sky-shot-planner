@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "Bureau of Land Management", "Mang_Type": "FED" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-112.1, 39.6], [-111.9, 39.6], [-111.9, 39.8], [-112.1, 39.8], [-112.1, 39.6]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "US Forest Service", "Mang_Type": "FED" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-111.8, 39.7], [-111.5, 39.7], [-111.5, 40.0], [-111.8, 40.0], [-111.8, 39.7]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "National Park Service", "Mang_Type": "FED" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-112.4, 39.9], [-112.2, 39.9], [-112.2, 40.1], [-112.4, 40.1], [-112.4, 39.9]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "Utah Division of Wildlife Resources", "Mang_Type": "STA" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-112.0, 39.9], [-111.85, 39.9], [-111.85, 40.05], [-112.0, 40.05], [-112.0, 39.9]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "Navajo Nation", "Mang_Type": "TRIBAL" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-112.3, 39.55], [-112.15, 39.55], [-112.15, 39.7], [-112.3, 39.7], [-112.3, 39.55]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "Mang_Name": "", "Cat_Describe": "PUBG" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-111.75, 39.55], [-111.6, 39.55], [-111.6, 39.65], [-111.75, 39.65], [-111.75, 39.55]]] }
+    }
+  ]
+}

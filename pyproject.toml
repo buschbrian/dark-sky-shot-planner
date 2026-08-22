@@ -1,0 +1,77 @@
+[project]
+name = "darksky-shot-planner-pipelines"
+version = "0.1.0"
+description = "Data pipelines for the Dark-Sky Shot Planner: fetch, clip, normalize, emit PMTiles/JSON."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1",
+    "pydantic>=2.7",
+    "pmtiles>=3.0",
+]
+
+[project.optional-dependencies]
+fetch = [
+    # Heavy geo/network deps needed only when actually pulling source data.
+    # Golden tests run against committed fixtures and never need these.
+    "blackmarblepy>=2025",
+    "rasterio>=1.3",
+    "geopandas>=1.0",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+    "mercantile>=1.2",
+    "mapbox-vector-tile>=2.0",
+    "numpy>=1.26",
+    "requests>=2.31",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "vt2geojson>=0.2.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pipelines"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "W"]
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+# The pmtiles package ships partial annotations; treat its API as dynamic.
+module = "pmtiles.*"
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Optional heavy geo deps used only by the online fetch paths.
+module = [
+    "blackmarble.*",
+    "geopandas.*",
+    "shapely.*",
+    "rasterio.*",
+    "pyproj.*",
+    "mercantile.*",
+    "numpy",
+    "numpy.*",
+]
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
