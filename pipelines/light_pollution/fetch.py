@@ -40,8 +40,14 @@ def _rasters_to_grid(rasters: Any, bbox: BoundingBox) -> dict[str, Any]:
     """Convert the fetched xarray object into the staged grid JSON shape."""
     import numpy as np
 
-    values_da = rasters if hasattr(rasters, "dims") else rasters[0]
-    arr: Any = np.asarray(values_da.values)
+    # blackmarblepy returns an xr.Dataset (data_vars keyed by variable name);
+    # tolerate a bare DataArray or a sequence of either for version drift.
+    da = rasters
+    if isinstance(da, (list, tuple)):
+        da = da[0]
+    if hasattr(da, "data_vars"):
+        da = next(iter(da.data_vars.values()))
+    arr: Any = np.asarray(da.values)
     if arr.ndim == 3:  # (time, y, x) -> first band
         arr = arr[0]
     step_lon = (bbox.east - bbox.west) / arr.shape[1]
