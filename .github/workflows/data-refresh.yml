@@ -33,7 +33,7 @@ jobs:
             --year $(date -d "last year" +%Y) --out /tmp/stage/lp
           uv run python -m pipelines.light_pollution.cli build \
             --grid /tmp/stage/lp/staged-grid.json \
-            --publication-date $(date -d "last year-12-01" +%F) \
+            --publication-date "$(date -d "last year" +%Y)-12-01" \
             --out data/out/light_pollution
 
       - name: Build dark-sky places (offline)
