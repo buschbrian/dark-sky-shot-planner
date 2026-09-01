@@ -9,6 +9,9 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    # The fetch step hung once and burned the full 6-hour job budget before the
+    # runner killed it (run 32608850045). Fail in minutes instead of hours.
+    timeout-minutes: 60
     permissions:
       contents: write
       issues: write
@@ -41,6 +44,9 @@ jobs:
           uv run python -m pipelines.darksky_places.cli build \
             --csv config/darksky-places.csv --out data/out/darksky_places
 
+      - name: Publish client config (offline)
+        run: uv run python -m pipelines.shared.cli --out data/out
+
       - name: Report failures as issues
         if: steps.lp.outcome == 'failure'
         uses: actions/github-script@v7
@@ -50,7 +56,11 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Data refresh failed (${new Date().toISOString().slice(0, 10)})`,
-              body: "A source was unreachable or a checksum changed unexpectedly. Inspect the workflow run: " + context.runUrl,
+              body: [
+                "A source was unreachable or a checksum changed unexpectedly.",
+                "",
+                `Inspect the workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ].join("\n"),
             });
             core.setFailed("data refresh failed; issue opened");
 
