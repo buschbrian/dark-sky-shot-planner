@@ -19,14 +19,22 @@ npx vitest run                 # client unit tests
 npx playwright install chromium && npm run test:e2e
 ```
 
-The dev server reads pipeline artifacts from `data/out/` (committed sample
-data built from fixtures). To rebuild them:
+The dev server reads pipeline artifacts from `data/out/`. That directory is
+gitignored — it is built, never committed — so build it before `npm run dev`
+or `npm run test:e2e`, or the client boots into an empty page:
 
 ```bash
+uv run python -m pipelines.shared.cli --out data/out
 uv run python -m pipelines.light_pollution.cli build --grid tests/fixtures/radiance-grid.json --publication-date 2024-12-01 --out data/out/light_pollution
 uv run python -m pipelines.padus.cli --input tests/fixtures/padus-sample.geojson --publication-date 2024-06-01 --out data/out/padus
 uv run python -m pipelines.darksky_places.cli build --csv config/darksky-places.csv --out data/out/darksky_places
 ```
+
+The first command is not optional. `config.json` carries the AOI, freshness
+thresholds, radiance breakpoints, and the manager taxonomy, and the client
+fetches it during boot — without it the app runs in a degraded mode where
+sky-brightness classes, land-manager labels, and freshness are all
+unavailable.
 
 ## Extending the area of interest
 

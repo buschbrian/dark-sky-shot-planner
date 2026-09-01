@@ -6,7 +6,7 @@ import {
   averageCloudCover,
   type CloudForecast,
 } from "./weather/openmeteo";
-import { freshnessOf, FRESHNESS_LABEL, type LayerFreshnessConfig } from "./freshness";
+import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
 import { initMap, setLayerVisible, getMap } from "./map/mapview";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
@@ -14,9 +14,10 @@ import { renderAnswer, renderAnswerError } from "./ui/answer";
 import type { AppConfigJson, ManifestJson } from "./config";
 
 interface AppData {
-  config: AppConfigJson;
+  /** null when config.json could not be fetched — the app degrades, it does not die. */
+  config: AppConfigJson | null;
   radianceGrid: LowResGrid | null;
-  lpYear: number;
+  lpYear: number | null;
   manifests: Record<string, ManifestJson>;
 }
 
@@ -33,28 +34,33 @@ const LAYER_VALUES = ["lp", "land", "places"] as const;
 
 let appData: AppData | null = null;
 
+async function fetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 async function loadData(): Promise<AppData> {
-  const config = (await (await fetch("/config.json")).json()) as AppConfigJson;
+  // Every artifact is optional at load time. The astronomy — the headline
+  // number — is computed in the browser and must keep working even when the
+  // published data layers are missing, stale, or half-deployed.
+  const config = await fetchJson<AppConfigJson>("/config.json");
   const manifests: Record<string, ManifestJson> = {};
   for (const dir of ["light_pollution", "padus", "darksky_places"]) {
-    try {
-      manifests[dir] = (await (await fetch(`/${dir}/manifest.json`)).json()) as ManifestJson;
-    } catch {
-      /* manifest missing: provenance panel will say so */
-    }
+    const manifest = await fetchJson<ManifestJson>(`/${dir}/manifest.json`);
+    // manifest missing: the provenance panel will say so
+    if (manifest) manifests[dir] = manifest;
   }
-  let radianceGrid: LowResGrid | null = null;
-  try {
-    radianceGrid = (await (
-      await fetch("/light_pollution/radiance-grid-lowres.json")
-    ).json()) as LowResGrid;
-  } catch {
-    /* brightness row simply won't render */
-  }
+  // brightness row simply won't render when this is absent
+  const radianceGrid = await fetchJson<LowResGrid>("/light_pollution/radiance-grid-lowres.json");
   return {
     config,
     radianceGrid,
-    lpYear: config.radiance_mapping.source_year,
+    lpYear: config?.radiance_mapping.source_year ?? null,
     manifests,
   };
 }
@@ -122,8 +128,10 @@ async function computeAndRender(): Promise<void> {
   }
 
   const landManager = lookupLandManager(state.lat, state.lon);
+  // Without the radiance mapping from config.json a raw radiance number cannot
+  // be labelled honestly, so we withhold the row rather than guess at a class.
   const radiance =
-    appData?.radianceGrid != null
+    appData?.radianceGrid != null && appData.config != null
       ? sampleRadiance(appData.radianceGrid, state.lat, state.lon)
       : null;
 
@@ -131,12 +139,14 @@ async function computeAndRender(): Promise<void> {
     report,
     lat: state.lat,
     lon: state.lon,
-    gcMinAltDeg: appData?.config.gc_min_useful_altitude_deg ?? 12,
+    gcMinAltDeg: appData?.config?.gc_min_useful_altitude_deg ?? 12,
     radianceAtPoint: {
       value: radiance,
       year: appData?.lpYear ?? 0,
       label:
-        radiance !== null && appData ? classifyRadiance(radiance, appData.config) : "unknown",
+        radiance !== null && appData?.config
+          ? classifyRadiance(radiance, appData.config)
+          : "unknown",
     },
     landManager,
     cloudPct: null,
@@ -178,7 +188,7 @@ function lookupLandManager(
   lon: number,
 ): { label: string; agencyUrl: string | null } | null {
   const map = getMap();
-  if (!map || !map.getLayer("land-fill") || !appData) return null;
+  if (!map || !map.getLayer("land-fill") || !appData?.config) return null;
   const pt = map.project([lon, lat]);
   const features = map.queryRenderedFeatures([pt.x, pt.y], { layers: ["land-fill"] });
   const key = features[0]?.properties?.manager as string | undefined;
@@ -205,7 +215,6 @@ function syncLayers(layers: string[]): void {
 
 function renderProvenance(): void {
   const el = $("provenance");
-  if (!appData) return;
   el.replaceChildren();
   const table = document.createElement("table");
   const head = document.createElement("tr");
@@ -221,7 +230,7 @@ function renderProvenance(): void {
     ["darksky_places", "darksky_places"],
   ];
   for (const [layerId, manifestKey] of rowsDef) {
-    const manifest = appData.manifests[manifestKey];
+    const manifest = appData?.manifests[manifestKey];
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
     tdName.textContent = layerId.replace("_", " ");
@@ -237,15 +246,25 @@ function renderProvenance(): void {
     const tdPub = document.createElement("td");
     tdPub.textContent = manifest?.publication_date ?? "—";
     const tdFresh = document.createElement("td");
-    const cfg: LayerFreshnessConfig =
-      appData.config.freshness_days[layerId] ??
-      ({ ...appData.config.freshness_days.land_ownership!, layer_id: layerId } as LayerFreshnessConfig);
-    const fresh = freshnessOf(manifest?.publication_date ?? null, cfg);
+    // Thresholds come from config.json; with no config we cannot judge age, and
+    // saying so beats inventing a threshold the maintainer never chose.
+    const cfg = appData?.config?.freshness_days[layerId] ?? null;
+    const fresh: Freshness = cfg
+      ? freshnessOf(manifest?.publication_date ?? null, { ...cfg, layer_id: layerId })
+      : "unavailable";
     tdFresh.textContent = `${FRESHNESS_LABEL[fresh]}${layerId === "darksky_places" ? "; manually curated, not exhaustive" : ""}`;
     tr.append(tdName, tdSource, tdPub, tdFresh);
     table.append(tr);
   }
   el.append(table);
+
+  if (!appData?.config) {
+    const warn = document.createElement("p");
+    warn.className = "hint";
+    warn.textContent =
+      "config.json could not be loaded, so sky-brightness classes, land-manager labels, and freshness thresholds are unavailable. Darkness and Galactic Center times are computed in your browser and are unaffected.";
+    el.append(warn);
+  }
 }
 
 function applyTheme(theme: string): void {
@@ -260,7 +279,14 @@ async function boot(): Promise<void> {
   savedTheme.value = document.body.dataset.theme ?? "dark";
   savedTheme.addEventListener("change", () => applyTheme(savedTheme.value));
 
-  appData = await loadData();
+  try {
+    appData = await loadData();
+  } catch (err) {
+    // The published artifacts are an enhancement. Losing them must never cost
+    // the user the answer, which is computed client-side.
+    console.error("app data unavailable; continuing in degraded mode", err);
+    appData = null;
+  }
 
   applyState(parseUrlState(location.hash));
   renderProvenance();
