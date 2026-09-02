@@ -8,6 +8,7 @@ import {
 } from "./weather/openmeteo";
 import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
 import { initMap, setLayerVisible, getMap } from "./map/mapview";
+import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
@@ -48,15 +49,17 @@ async function loadData(): Promise<AppData> {
   // Every artifact is optional at load time. The astronomy — the headline
   // number — is computed in the browser and must keep working even when the
   // published data layers are missing, stale, or half-deployed.
-  const config = await fetchJson<AppConfigJson>("/config.json");
+  const config = await fetchJson<AppConfigJson>(dataUrl("config.json"));
   const manifests: Record<string, ManifestJson> = {};
   for (const dir of ["light_pollution", "padus", "darksky_places"]) {
-    const manifest = await fetchJson<ManifestJson>(`/${dir}/manifest.json`);
+    const manifest = await fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`));
     // manifest missing: the provenance panel will say so
     if (manifest) manifests[dir] = manifest;
   }
   // brightness row simply won't render when this is absent
-  const radianceGrid = await fetchJson<LowResGrid>("/light_pollution/radiance-grid-lowres.json");
+  const radianceGrid = await fetchJson<LowResGrid>(
+    dataUrl("light_pollution/radiance-grid-lowres.json"),
+  );
   return {
     config,
     radianceGrid,
@@ -298,9 +301,9 @@ async function boot(): Promise<void> {
 
   const mapContainer = $("map");
   initMap(mapContainer, {
-    lp: "/light_pollution/light-pollution.pmtiles",
-    land: "/padus/padus.pmtiles",
-    places: "/darksky_places/darksky-places.geojson",
+    lp: dataUrl("light_pollution/light-pollution.pmtiles"),
+    land: dataUrl("padus/padus.pmtiles"),
+    places: dataUrl("darksky_places/darksky-places.geojson"),
   });
   getMap()?.on("click", (e) => {
     input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
