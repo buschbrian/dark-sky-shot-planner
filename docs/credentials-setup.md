@@ -45,7 +45,7 @@ uv run python -m pipelines.light_pollution.cli fetch-and-build --year 2025 --out
 | Thing | Why not |
 |---|---|
 | All tests & CI | Golden fixtures committed; no network |
-| GitHub Pages hosting | Uses built-in `GITHUB_TOKEN`, no setup |
+| GitHub Pages hosting | OIDC via the workflow's own `id-token`, no secret — but Settings → Pages → Source must be set to **GitHub Actions** once, by hand |
 | Open-Meteo weather | Keyless public API, called from the user's browser |
 | PAD-US land ownership | Public domain USGS download, no auth |
 | MapLibre GL + PMTiles | Open source; no basemap token (plain background style) |
