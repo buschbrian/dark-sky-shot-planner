@@ -58,3 +58,11 @@ export interface ManifestJson {
   publication_date: string | null;
   counts: Record<string, number>;
 }
+
+/** Written by scripts/build-data.sh: which layers are real vs. offline fixtures. */
+export type ArtifactOrigin = "real" | "fixture";
+
+export interface DataStatusJson {
+  built_utc: string;
+  layers: Record<string, ArtifactOrigin>;
+}

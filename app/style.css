@@ -97,6 +97,12 @@ button {
 }
 
 .hint { color: var(--muted); font-size: 0.85rem; }
+.notice {
+  border-left: 3px solid var(--warn);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background: var(--panel);
+}
 
 .placeholder { color: var(--muted); font-style: italic; }
 
