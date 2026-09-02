@@ -1,0 +1,87 @@
+name: Deploy to GitHub Pages
+
+# Builds the static site and publishes it at
+#   https://<owner>.github.io/<repo>/
+# with the Pages "GitHub Actions" source. That source is a one-time repo
+# setting the maintainer flips by hand (Settings -> Pages -> Source);
+# nothing here can flip it, and the deploy job fails until it is.
+#
+# Data: scripts/build-data.sh keeps any real artifact that data-refresh.yml
+# has committed under data/out/ and builds the rest from offline fixtures,
+# so the first deploy succeeds with no secret set. The site labels fixture
+# layers as such. Enabling real light-pollution data is the one credential
+# in the project — see docs/credentials-setup.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # A refresh commit is pushed with GITHUB_TOKEN, which never fires `push`
+  # for other workflows. Redeploy after a successful refresh explicitly.
+  workflow_run:
+    workflows: ["Data refresh"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let an in-flight one finish rather than cancel it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Build data artifacts (committed real data, else fixtures)
+        run: scripts/build-data.sh
+
+      # A project site is served under /<repo>/; a user site (<owner>.github.io)
+      # is served from the root. vite.config.ts reads BASE_PATH.
+      - name: Resolve the Pages base path
+        run: |
+          repo="${GITHUB_REPOSITORY#*/}"
+          case "$repo" in
+            *.github.io) echo "BASE_PATH=/" >> "$GITHUB_ENV" ;;
+            *)           echo "BASE_PATH=/$repo/" >> "$GITHUB_ENV" ;;
+          esac
+          echo "base path: $(tail -1 "$GITHUB_ENV")"
+
+      - name: Build site
+        run: npm run build
+
+      - name: Check nothing in dist still points at the origin root
+        run: |
+          if grep -rIlE '(src|href)="/(assets|config|light_pollution|padus|darksky_places)' dist; then
+            echo "::error::absolute asset paths would 404 under $BASE_PATH" && exit 1
+          fi
+          test -f dist/index.html && test -f dist/config.json && test -f dist/data-status.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

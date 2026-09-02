@@ -43,6 +43,45 @@ GitHub Pages  <---- static site build (Vite) ---------- +
     client-side weather fetch on demand (Open-Meteo, keyless)
 ```
 
+## Deploying
+
+The site is published to <https://buschbrian.github.io/dark-sky-shot-planner/>
+by `.github/workflows/deploy-pages.yml` on every push to `main` (and on manual
+dispatch, and after a successful data refresh).
+
+**One-time setup, by the repo maintainer:** Settings → Pages → Build and
+deployment → Source = **GitHub Actions**. The workflow cannot flip this and
+its deploy job fails until it is done. No secret is needed to deploy.
+
+**What the site shows** depends on what is committed under `data/out/`
+(force-added there only by `data-refresh.yml`):
+
+| Layer | With nothing committed (first deploy) | After a successful refresh |
+|---|---|---|
+| Moon-free darkness, moon, Galactic Center | real — computed in your browser | real |
+| Cloud forecast | real — Open-Meteo, keyless | real |
+| Dark-sky places | real — `config/darksky-places.csv` | real |
+| Light pollution | **sample fixture**, labelled in the UI | real VIIRS VNP46A4 |
+| Land ownership (PAD-US) | **sample fixture**, labelled in the UI | still a fixture — the refresh has no PAD-US fetch step yet |
+
+A fixture layer shows a notice under the tagline and "SAMPLE FIXTURE" in the
+provenance table; the app withholds sky-brightness and land-manager answers
+rather than derive them from sample tiles.
+
+**Enabling real light-pollution data:** add the `BLACKMARBLE_TOKEN` Actions
+secret (a NASA Earthdata token — steps in
+[`docs/credentials-setup.md`](docs/credentials-setup.md)), then run the
+"Data refresh" workflow. Its commit redeploys the site automatically.
+See [ADR-0007](docs/adr/0007-github-pages-deploy.md) for the reasoning.
+
+To build the production site locally exactly as the workflow does:
+
+```bash
+scripts/build-data.sh                                   # data/out, fixtures where no real data is committed
+BASE_PATH=/dark-sky-shot-planner/ npm run build         # dist/
+npx vite preview                                        # http://localhost:4173/dark-sky-shot-planner/
+```
+
 ## Documentation
 
 - [`docs/data-licensing.md`](docs/data-licensing.md) — every source, its
@@ -50,6 +89,8 @@ GitHub Pages  <---- static site build (Vite) ---------- +
 - [`docs/methods.md`](docs/methods.md) — exactly how each displayed number is
   computed.
 - [`docs/adr/`](docs/adr/) — architecture decision records.
+- [`docs/credentials-setup.md`](docs/credentials-setup.md) — the one secret,
+  and what needs none.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — local pipelines, extending the AOI.
 
 ## License

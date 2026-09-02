@@ -20,8 +20,18 @@ npx playwright install chromium && npm run test:e2e
 ```
 
 The dev server reads pipeline artifacts from `data/out/`. That directory is
-gitignored — it is built, never committed — so build it before `npm run dev`
-or `npm run test:e2e`, or the client boots into an empty page:
+gitignored for local builds (only `data-refresh.yml` commits real artifacts
+there), so build it before `npm run dev` or `npm run test:e2e`, or the client
+boots into an empty page:
+
+```bash
+scripts/build-data.sh
+```
+
+That runs, in order, the four pipeline commands below — keeping any real
+artifact already committed under `data/out/` and using the offline fixtures
+for the rest — and writes `data/out/data-status.json` so the UI can label
+fixture layers. The individual commands, if you need just one:
 
 ```bash
 uv run python -m pipelines.shared.cli --out data/out

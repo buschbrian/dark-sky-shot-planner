@@ -8,10 +8,11 @@ import {
 } from "./weather/openmeteo";
 import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
 import { initMap, setLayerVisible, getMap } from "./map/mapview";
+import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
-import type { AppConfigJson, ManifestJson } from "./config";
+import type { AppConfigJson, DataStatusJson, ManifestJson } from "./config";
 
 interface AppData {
   /** null when config.json could not be fetched — the app degrades, it does not die. */
@@ -19,6 +20,8 @@ interface AppData {
   radianceGrid: LowResGrid | null;
   lpYear: number | null;
   manifests: Record<string, ManifestJson>;
+  /** null when data-status.json is absent (a build that predates it). */
+  dataStatus: DataStatusJson | null;
 }
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -48,21 +51,31 @@ async function loadData(): Promise<AppData> {
   // Every artifact is optional at load time. The astronomy — the headline
   // number — is computed in the browser and must keep working even when the
   // published data layers are missing, stale, or half-deployed.
-  const config = await fetchJson<AppConfigJson>("/config.json");
+  const config = await fetchJson<AppConfigJson>(dataUrl("config.json"));
   const manifests: Record<string, ManifestJson> = {};
   for (const dir of ["light_pollution", "padus", "darksky_places"]) {
-    const manifest = await fetchJson<ManifestJson>(`/${dir}/manifest.json`);
+    const manifest = await fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`));
     // manifest missing: the provenance panel will say so
     if (manifest) manifests[dir] = manifest;
   }
-  // brightness row simply won't render when this is absent
-  const radianceGrid = await fetchJson<LowResGrid>("/light_pollution/radiance-grid-lowres.json");
+  const dataStatus = await fetchJson<DataStatusJson>(dataUrl("data-status.json"));
+  // brightness row simply won't render when this is absent — and it must not
+  // render from a fixture either: a synthetic grid is not a sky-brightness
+  // reading, so a fixture build withholds the number rather than fake one.
+  const radianceGrid = isFixture(dataStatus, "light_pollution")
+    ? null
+    : await fetchJson<LowResGrid>(dataUrl("light_pollution/radiance-grid-lowres.json"));
   return {
     config,
     radianceGrid,
     lpYear: config?.radiance_mapping.source_year ?? null,
     manifests,
+    dataStatus,
   };
+}
+
+function isFixture(status: DataStatusJson | null, layerId: string): boolean {
+  return status?.layers[layerId] === "fixture";
 }
 
 function currentState(): UrlState {
@@ -189,6 +202,8 @@ function lookupLandManager(
 ): { label: string; agencyUrl: string | null } | null {
   const map = getMap();
   if (!map || !map.getLayer("land-fill") || !appData?.config) return null;
+  // Sample PAD-US polygons are not a land manager; never name one from them.
+  if (isFixture(appData.dataStatus, "land_ownership")) return null;
   const pt = map.project([lon, lat]);
   const features = map.queryRenderedFeatures([pt.x, pt.y], { layers: ["land-fill"] });
   const key = features[0]?.properties?.manager as string | undefined;
@@ -252,7 +267,7 @@ function renderProvenance(): void {
     const fresh: Freshness = cfg
       ? freshnessOf(manifest?.publication_date ?? null, { ...cfg, layer_id: layerId })
       : "unavailable";
-    tdFresh.textContent = `${FRESHNESS_LABEL[fresh]}${layerId === "darksky_places" ? "; manually curated, not exhaustive" : ""}`;
+    tdFresh.textContent = `${FRESHNESS_LABEL[fresh]}${layerId === "darksky_places" ? "; manually curated, not exhaustive" : ""}${isFixture(appData?.dataStatus ?? null, layerId) ? "; SAMPLE FIXTURE — not real coverage" : ""}`;
     tr.append(tdName, tdSource, tdPub, tdFresh);
     table.append(tr);
   }
@@ -265,6 +280,26 @@ function renderProvenance(): void {
       "config.json could not be loaded, so sky-brightness classes, land-manager labels, and freshness thresholds are unavailable. Darkness and Galactic Center times are computed in your browser and are unaffected.";
     el.append(warn);
   }
+}
+
+/**
+ * A deploy without the real-data refresh serves offline fixtures for the map
+ * layers. Say so where the user will see it, not only in a collapsed panel.
+ */
+function renderDataNotice(): void {
+  const el = $("data-notice");
+  const fixtures = Object.entries(appData?.dataStatus?.layers ?? {})
+    .filter(([, origin]) => origin === "fixture")
+    .map(([layerId]) => layerId.replace("_", " "));
+  if (fixtures.length === 0) {
+    el.hidden = true;
+    return;
+  }
+  el.textContent =
+    `Sample data: the ${fixtures.join(" and ")} map layer${fixtures.length > 1 ? "s are" : " is"} ` +
+    "an offline fixture, not real coverage. Darkness, moon, and Galactic Center times are computed " +
+    "in your browser and are unaffected. See docs/credentials-setup.md to enable the real layers.";
+  el.hidden = false;
 }
 
 function applyTheme(theme: string): void {
@@ -290,6 +325,7 @@ async function boot(): Promise<void> {
 
   applyState(parseUrlState(location.hash));
   renderProvenance();
+  renderDataNotice();
 
   $("coord-apply").addEventListener("click", computeAndRender);
   $("coord-input").addEventListener("change", computeAndRender);
@@ -298,9 +334,9 @@ async function boot(): Promise<void> {
 
   const mapContainer = $("map");
   initMap(mapContainer, {
-    lp: "/light_pollution/light-pollution.pmtiles",
-    land: "/padus/padus.pmtiles",
-    places: "/darksky_places/darksky-places.geojson",
+    lp: dataUrl("light_pollution/light-pollution.pmtiles"),
+    land: dataUrl("padus/padus.pmtiles"),
+    places: dataUrl("darksky_places/darksky-places.geojson"),
   });
   getMap()?.on("click", (e) => {
     input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
