@@ -13,6 +13,12 @@ answered text-first:
   answer in winter.
 - Land manager from USGS PAD-US — who manages it, never "you may camp here."
 - Cloud-cover forecast over the moon-free window (Open-Meteo, keyless).
+- **Sky events within 30 days** of the chosen night, for the chosen spot: moon
+  phases, oppositions and elongations, Moon–planet pairings (with a
+  topocentric occultation test), zodiacal-light windows, equinoxes and
+  solstices — all computed — plus hand-curated meteor showers and festivals
+  from `config/sky-events.json`, each judged at your location: does the
+  radiant clear 10° in darkness, and is the Moon in the way?
 - Every number carries its source and its age.
 
 Zero server: a static site (MapLibre + PMTiles on GitHub Pages) plus Python
@@ -59,6 +65,7 @@ its deploy job fails until it is done. No secret is needed to deploy.
 | Layer | With nothing committed (first deploy) | After a successful refresh |
 |---|---|---|
 | Moon-free darkness, moon, Galactic Center | real — computed in your browser | real |
+| Sky events (computed + curated file) | real — computed in your browser | real |
 | Cloud forecast | real — Open-Meteo, keyless | real |
 | Dark-sky places | real — `config/darksky-places.csv` | real |
 | Light pollution | **sample fixture**, labelled in the UI | real VIIRS VNP46A4 |
