@@ -247,7 +247,7 @@ export function greatestElongations(window: TimeWindow): PlanetApparition[] {
           body,
           kind: "greatest_elongation",
           elongationDeg: Math.round(evt.elongation * 10) / 10,
-          visibility: evt.visibility,
+          visibility: evt.visibility === "morning" ? "morning" : "evening",
         });
       }
       cursor = new Date(evt.time.date.getTime() + 10 * DAY_MS);
