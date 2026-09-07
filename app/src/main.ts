@@ -12,6 +12,8 @@ import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
+import { buildSkyEvents } from "./events/agenda";
+import { renderSkyEvents, renderSkyEventsMessage } from "./ui/skyevents";
 import type { AppConfigJson, DataStatusJson, ManifestJson } from "./config";
 
 interface AppData {
@@ -122,8 +124,13 @@ async function computeAndRender(): Promise<void> {
   syncLayers(state.layers);
 
   const answerEl = $("answer");
+  const eventsEl = $("sky-events");
   if (state.lat === null || state.lon === null) {
     renderAnswerError(answerEl, "Enter a location to see the answer.");
+    renderSkyEventsMessage(
+      eventsEl,
+      "Enter a location to see what else is happening in the sky within 30 days of this date.",
+    );
     return;
   }
   const dateIso = state.date ?? new Date().toISOString().slice(0, 10);
@@ -165,6 +172,20 @@ async function computeAndRender(): Promise<void> {
     cloudPct: null,
     cloudAttribution: null,
   });
+
+  // A ±30-day sweep is ~0.2 s of ephemeris. It runs after the headline answer
+  // is already on screen so the number the user came for is never held up by it.
+  try {
+    renderSkyEvents(
+      eventsEl,
+      buildSkyEvents(
+        { latitude: state.lat, longitude: state.lon },
+        eveningUtcFor(dateIso),
+      ),
+    );
+  } catch (err) {
+    renderSkyEventsMessage(eventsEl, `Sky events unavailable: ${String(err)}`);
+  }
 
   $("location-status").textContent = `Planning ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)} on ${dateIso}.`;
 
