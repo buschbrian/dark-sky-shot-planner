@@ -45,10 +45,13 @@ Same rules as `config/darksky-places.csv`, for the same reasons:
 - **Every row carries `source_url` and `verified_on`.** A row whose fact could
   not be confirmed carries `verified_on: null` and is rendered
   "curated — unverified", not silently trusted. The 2026 Leonid and Geminid
-  peak dates ship that way.
+  peak dates ship that way, as do festival dates a park describes only
+  loosely ("near the new moon each September").
 - **No scraping.** The cited pages are read by a human and the fact is typed
-  in. In-The-Sky, EarthSky, arXiv and NPS pages are cited, never fetched by
-  the app or by a pipeline.
+  in. IMO, In-The-Sky, EarthSky, arXiv and NPS pages are cited, never fetched
+  by the app or by a pipeline. Where a source gives a shower maximum only as a
+  date and solar longitude (the IMO calendar, J2000), `peak_utc` is the
+  instant the Sun reaches that longitude and the row's notes say so.
 - **Peak times are UTC**, always, with an explicit `Z`. Local time is a
   rendering concern; a stored local time is a bug waiting for a timezone.
 - **Malformed rows are dropped and reported**, never thrown. A typo in a

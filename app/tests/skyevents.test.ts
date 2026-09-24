@@ -61,6 +61,8 @@ describe("curated sky-events file", () => {
     const unverified = CURATED.events.filter((e) => e.verifiedOn === null).map((e) => e.id);
     expect(unverified).toContain("leonids-2026");
     expect(unverified).toContain("geminids-2026");
+    // The park publishes "near the new moon each September", not dates.
+    expect(unverified).toContain("great-basin-astronomy-festival-2026");
     for (const id of unverified) {
       const row = CURATED.events.find((e) => e.id === id)!;
       // An unverified row must say why in its own notes, not only in the label.
@@ -242,7 +244,7 @@ describe("buildSkyEvents", () => {
     const orionids = result.items.find((i) => i.title === "Orionids")!;
     expect(orionids.verdict).toContain("ZHR ~20");
     expect(orionids.verdict).toMatch(/Radiant up \d{2}:\d{2}–\d{2}:\d{2}/);
-    expect(orionids.verdict).toMatch(/9\d% moon in the way/);
+    expect(orionids.verdict).toMatch(/7\d% moon in the way/);
     expect(orionids.verdict).toContain("A better night");
     expect(orionids.verdict).toContain("Active 10-02 – 11-07.");
   });
@@ -274,10 +276,11 @@ describe("buildSkyEvents", () => {
     const orionids = result.items.find((i) => i.title === "Orionids")!;
     expect(orionids.provenance).toEqual({
       kind: "curated",
-      sourceUrl: "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
-      verifiedOn: "2026-09-06",
+      sourceUrl:
+        "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+      verifiedOn: "2026-09-24",
     });
-    expect(provenanceLabel(orionids.provenance)).toBe("curated, verified 2026-09-06");
+    expect(provenanceLabel(orionids.provenance)).toBe("curated, verified 2026-09-24");
   });
 
   it("labels computed items as computed, not as a stale data feed", () => {

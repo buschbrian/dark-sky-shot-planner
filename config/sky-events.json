@@ -23,12 +23,12 @@
       "active_from": "2026-10-06",
       "active_to": "2026-10-10",
       "peak_utc": "2026-10-09T01:00:00Z",
-      "zhr": 10,
-      "radiant_ra_hours": 17.5,
-      "radiant_dec_deg": 54,
-      "notes": "Radiant highest in early evening; no 2026 outburst predicted.",
-      "source_url": "https://earthsky.org/astronomy-essentials/everything-you-need-to-know-draconid-meteor-shower/",
-      "verified_on": "2026-09-06"
+      "zhr": 5,
+      "radiant_ra_hours": 17.53,
+      "radiant_dec_deg": 56,
+      "notes": "Very slow meteors. IMO 2026 calendar: maximum October 9, 01h UT (solar longitude 195.4°, J2000); no enhanced rates predicted for 2026.",
+      "source_url": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+      "verified_on": "2026-09-24"
     },
     {
       "id": "southern-taurids-2026",
@@ -64,13 +64,13 @@
       "kind": "meteor_shower",
       "active_from": "2026-10-02",
       "active_to": "2026-11-07",
-      "peak_utc": "2026-10-23T06:54:00Z",
+      "peak_utc": "2026-10-21T18:28:00Z",
       "zhr": 20,
-      "radiant_ra_hours": 6.3,
+      "radiant_ra_hours": 6.33,
       "radiant_dec_deg": 16,
-      "notes": "Halley's Comet debris; fast meteors, best after local midnight.",
-      "source_url": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
-      "verified_on": "2026-09-06"
+      "notes": "Halley's Comet debris; fast meteors. IMO 2026 calendar gives the maximum as October 21 at solar longitude 208° with no hour, and rates can hold for several nights around it; peak_utc is when the Sun reaches 208.0° (J2000).",
+      "source_url": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+      "verified_on": "2026-09-24"
     },
     {
       "id": "leonis-minorids-2026",
@@ -129,9 +129,9 @@
         "longitude": -114.22,
         "place": "Great Basin National Park, Baker, Nevada"
       },
-      "notes": "Annual festival at Great Basin National Park. Check the park page for the current programme before driving.",
+      "notes": "Dates approximate: inferred, not published. The park page says only that the festival is held near the time of the new moon each September (2026: September 10). Check the park page for the current programme before driving.",
       "source_url": "https://home.nps.gov/grba/planyourvisit/astrovip.htm",
-      "verified_on": "2026-09-06"
+      "verified_on": null
     },
     {
       "id": "cedar-breaks-night-sky-programs-2026",
