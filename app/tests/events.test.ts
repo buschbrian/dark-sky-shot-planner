@@ -309,6 +309,18 @@ describe("zodiacal light", () => {
     expect(ranges.every((r) => r.season === "spring_evening")).toBe(true);
   });
 
+  it("steps past nights with no astronomical dawn instead of giving up", () => {
+    // At 48.9°N the Sun never reaches −18° in late June / early July; the
+    // August mornings later in the same window still qualify.
+    const north: Site = { latitude: 48.9, longitude: -114.0 };
+    const ranges = zodiacalLightRanges(north, windowAround(new Date("2026-07-20T21:00:00-06:00")));
+    expect(ranges.length).toBeGreaterThan(0);
+    for (const r of ranges) {
+      expect(r.season).toBe("autumn_morning");
+      expect(siteCivilDate(r.start, north.longitude).month).toBe(8);
+    }
+  });
+
   it("declines the southern hemisphere rather than inverting the seasons wrongly", () => {
     expect(zodiacalLightRanges({ latitude: -33.9, longitude: 18.4 }, AUTUMN_WINDOW)).toEqual([]);
   });

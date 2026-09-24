@@ -641,7 +641,13 @@ function qualifyingNights(site: Site, window: TimeWindow, season: ZodiacalSeason
   const spanDays = (window.end.getTime() - window.start.getTime()) / DAY_MS;
   for (let guard = 0; guard < spanDays + 4; guard++) {
     const twilight = Astronomy.SearchAltitude(Astronomy.Body.Sun, obs, direction, cursor, 2, -18);
-    if (!twilight) break;
+    if (!twilight) {
+      // No astronomical darkness in the next two days (high-latitude summer).
+      // Later nights in the window can still qualify, so step past it.
+      cursor = new Date(cursor.getTime() + DAY_MS);
+      if (cursor > window.end) break;
+      continue;
+    }
     const edge = twilight.date;
     if (edge > window.end) break;
     cursor = new Date(edge.getTime() + 6 * HOUR_MS);
