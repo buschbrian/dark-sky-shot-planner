@@ -4,9 +4,13 @@
  * from — "computed" for ephemeris, `verified <date>` plus a source link for a
  * curated row (ADR-0006, ADR-0008).
  *
- * A definition list, not a table: it reads correctly linearised on a phone and
+ * A plain list, not a table: it reads correctly linearised on a phone and
  * announces sensibly to a screen reader, and every link is in the normal tab
  * order, so the section is fully usable without the map ever getting focus.
+ *
+ * The list itself is not a live region — re-reading 14–24 items on every
+ * recompute drowns the answer. A separate status element announces a one-line
+ * count instead.
  */
 
 import { provenanceLabel, type SkyEventItem, type SkyEventsResult } from "../events/agenda";
@@ -35,8 +39,16 @@ function whenText(item: SkyEventItem): string {
   return dayTimeFmt.format(item.at);
 }
 
-export function renderSkyEvents(el: HTMLElement, result: SkyEventsResult): void {
+export function renderSkyEvents(
+  el: HTMLElement,
+  result: SkyEventsResult,
+  status?: HTMLElement,
+): void {
   el.replaceChildren();
+  if (status) {
+    const n = result.items.length;
+    status.textContent = `Sky events updated: ${n} event${n === 1 ? "" : "s"} within 30 days.`;
+  }
 
   const intro = document.createElement("p");
   intro.className = "hint";
@@ -91,7 +103,8 @@ function eventRow(item: SkyEventItem): HTMLElement {
   const source = document.createElement("p");
   source.className = "event-source hint";
   source.append(document.createTextNode(provenanceLabel(item.provenance)));
-  if (item.provenance.kind === "curated") {
+  // A curated URL is typed by hand; only an https link becomes a link.
+  if (item.provenance.kind === "curated" && item.provenance.sourceUrl.startsWith("https://")) {
     source.append(document.createTextNode(" — "));
     const a = document.createElement("a");
     a.href = item.provenance.sourceUrl;
@@ -104,9 +117,14 @@ function eventRow(item: SkyEventItem): HTMLElement {
   return li;
 }
 
-export function renderSkyEventsMessage(el: HTMLElement, message: string): void {
+export function renderSkyEventsMessage(
+  el: HTMLElement,
+  message: string,
+  status?: HTMLElement,
+): void {
   const p = document.createElement("p");
   p.className = "placeholder";
   p.textContent = message;
   el.replaceChildren(p);
+  if (status) status.textContent = message;
 }
