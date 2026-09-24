@@ -35,7 +35,6 @@ test.describe("text-first flows", () => {
 
   test("sky events answer 'what else is happening' for this spot and date", async ({ page }) => {
     await page.goto("/#lat=40.687&lon=-111.824&date=2026-09-22");
-    await page.waitForTimeout(1500);
     const events = page.locator("#sky-events");
     await expect(events).toContainText(/Saturn at opposition/);
     await expect(events).toContainText(/Orionids/);
@@ -43,11 +42,14 @@ test.describe("text-first flows", () => {
     await expect(events).toContainText(/computed/);
     await expect(events).toContainText(/curated, verified 2026-09-06/);
     await expect(events.locator("a").first()).toHaveAttribute("href", /^https:\/\//);
+    // The list is not a live region; a one-line count is announced instead.
+    await expect(events).not.toHaveAttribute("aria-live");
+    await expect(page.locator("#sky-events-status")).toHaveText(/^Sky events updated: \d+ events/);
   });
 
   test("sky events are reachable by keyboard with the map never focused", async ({ page }) => {
     await page.goto("/#lat=40.687&lon=-111.824&date=2026-09-22");
-    await page.waitForTimeout(1500);
+    await expect(page.locator("#sky-events a").first()).toBeAttached();
     await page.focus("#date-input");
 
     let reachedSourceLink = false;
