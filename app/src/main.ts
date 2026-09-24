@@ -12,7 +12,7 @@ import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
-import { buildSkyEvents } from "./events/agenda";
+import { buildSkyEvents, type SkyEventsResult } from "./events/agenda";
 import { renderSkyEvents, renderSkyEventsMessage } from "./ui/skyevents";
 import type { AppConfigJson, DataStatusJson, ManifestJson } from "./config";
 
@@ -38,6 +38,18 @@ const LAYER_CHECKBOX_IDS = ["layer-lp", "layer-land", "layer-places"] as const;
 const LAYER_VALUES = ["lp", "land", "places"] as const;
 
 let appData: AppData | null = null;
+
+/**
+ * Sky events depend only on place, date and the reader's timezone (the evening
+ * instant and every printed clock time do). Layer toggles and hash round-trips
+ * re-run computeAndRender with the same inputs, so the sweep is memoised.
+ */
+const SKY_EVENTS_CACHE_SIZE = 8;
+const skyEventsCache = new Map<string, SkyEventsResult>();
+/** Key of the list currently on screen; null when a message is showing. */
+let skyEventsShownKey: string | null = null;
+/** Bumped on every request so a superseded deferred sweep never paints. */
+let skyEventsRequest = 0;
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
@@ -127,6 +139,8 @@ async function computeAndRender(): Promise<void> {
   const eventsEl = $("sky-events");
   if (state.lat === null || state.lon === null) {
     renderAnswerError(answerEl, "Enter a location to see the answer.");
+    skyEventsRequest++;
+    skyEventsShownKey = null;
     renderSkyEventsMessage(
       eventsEl,
       "Enter a location to see what else is happening in the sky within 30 days of this date.",
@@ -173,24 +187,68 @@ async function computeAndRender(): Promise<void> {
     cloudAttribution: null,
   });
 
-  // A ±30-day sweep is ~0.2 s of ephemeris. It runs after the headline answer
-  // is already on screen so the number the user came for is never held up by it.
-  try {
-    renderSkyEvents(
-      eventsEl,
-      buildSkyEvents(
-        { latitude: state.lat, longitude: state.lon },
-        eveningUtcFor(dateIso),
-      ),
-    );
-  } catch (err) {
-    renderSkyEventsMessage(eventsEl, `Sky events unavailable: ${String(err)}`);
-  }
-
   $("location-status").textContent = `Planning ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)} on ${dateIso}.`;
 
   // Weather is fetched on demand and updates the answer when it arrives.
   void fetchWeatherAndUpdate(state.lat, state.lon, report);
+
+  // The ±30-day sweep is 0.1–0.4 s of ephemeris; it is deferred until the
+  // answer above has painted, so the number the user came for never waits.
+  await updateSkyEvents(eventsEl, state.lat, state.lon, dateIso);
+}
+
+async function updateSkyEvents(
+  eventsEl: HTMLElement,
+  lat: number,
+  lon: number,
+  dateIso: string,
+): Promise<void> {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const key = `${lat},${lon},${dateIso},${tz}`;
+  // Same list already showing (a layer toggle): leave it, and do not
+  // re-announce it.
+  if (key === skyEventsShownKey) return;
+
+  const request = ++skyEventsRequest;
+  const status = $("sky-events-status");
+  let result = skyEventsCache.get(key);
+  if (!result) {
+    skyEventsShownKey = null;
+    renderSkyEventsMessage(eventsEl, "Working out what else is in the sky…");
+    await afterPaint();
+    if (request !== skyEventsRequest) return;
+    try {
+      result = buildSkyEvents({ latitude: lat, longitude: lon }, eveningUtcFor(dateIso));
+    } catch (err) {
+      renderSkyEventsMessage(eventsEl, `Sky events unavailable: ${String(err)}`, status);
+      return;
+    }
+    skyEventsCache.set(key, result);
+    if (skyEventsCache.size > SKY_EVENTS_CACHE_SIZE) {
+      skyEventsCache.delete(skyEventsCache.keys().next().value!);
+    }
+  }
+  if (request !== skyEventsRequest) return;
+  renderSkyEvents(eventsEl, result, status);
+  skyEventsShownKey = key;
+}
+
+/**
+ * Resolves once the browser has had a chance to paint. requestAnimationFrame
+ * runs just before a paint, so the timeout after it lands just after; the
+ * plain timeout covers a hidden tab, where animation frames are paused.
+ */
+function afterPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    let done = false;
+    const go = (): void => {
+      if (done) return;
+      done = true;
+      setTimeout(resolve, 0);
+    };
+    requestAnimationFrame(go);
+    setTimeout(go, 100);
+  });
 }
 
 async function fetchWeatherAndUpdate(

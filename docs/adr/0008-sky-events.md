@@ -134,9 +134,10 @@ months on a guess — the AOI is the U.S. Mountain West.
 - The curated file needs re-verification. `verified_on` is the freshness
   signal and it is shown next to every curated line; the 2026 rows are dated
   events and go stale on purpose.
-- The `±30`-day sweep costs roughly 0.2 s of ephemeris per render. It runs
-  after the headline answer is already on screen, so the number the user came
-  for is never held up by it.
+- The `±30`-day sweep costs roughly 0.1–0.4 s of ephemeris. It is deferred
+  until the headline answer has painted, so the number the user came for is
+  never held up by it, and memoised by place, date and timezone, so layer
+  toggles and URL round-trips do not repeat it.
 - Adding a shower means adding a row and a source URL, not writing code.
 - A curated event can peak outside the window while already running inside it
   (the Taurids, most of the autumn). Those are listed, dated by their peak,
