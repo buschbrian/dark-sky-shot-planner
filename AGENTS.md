@@ -1,14 +1,14 @@
 # Dark-Sky Shot Planner — Agent Routing
 
-Shared context for coding agents (Codex reads this directly; CLAUDE.md points
-here). This file ROUTES; the rules live in scoped files. Keep it under 80 lines.
+Shared context for coding agents (Codex reads this; CLAUDE.md points here).
+This file ROUTES; rules live in scoped files. Keep it under 80 lines.
 
 Zero-server static site answering "is this spot dark, legal, and clear
 tonight?" for Milky Way photography in the Mountain West. Python pipelines
 (GitHub Actions) fetch/clip/normalize source data into committed PMTiles/JSON
-under `data/out/`; a Vite + TypeScript + MapLibre client (no framework, see
-ADR-0001) reads those artifacts and computes astronomy client-side. Full scope
-contract and non-negotiables: `autonomous-build-brief.md`. Live status: `README.md`.
+under `data/out/`; a Vite + TypeScript + MapLibre client (no framework,
+ADR-0001) reads those artifacts and computes astronomy client-side. Scope
+contract: `autonomous-build-brief.md`. Live status: `README.md`.
 
 ## Working on X → read Y
 
@@ -20,6 +20,7 @@ contract and non-negotiables: `autonomous-build-brief.md`. Live status: `README.
 | Tiles / pipeline output | ADR-0003, ADR-0005, `pipelines/shared/manifest.py` |
 | Land-manager taxonomy | ADR-0004 |
 | Freshness / provenance labels | ADR-0006, `app/src/freshness.ts` |
+| Sky events (computed or curated) | ADR-0008, `config/sky-events.json` |
 | Deploy / Pages / data-refresh | ADR-0007, `.github/workflows/`, `scripts/build-data.sh` |
 | Allowed data sources | `docs/data-licensing.md` |
 | A decision that felt settled | `docs/adr/` — do not re-litigate |
@@ -40,19 +41,18 @@ npx playwright test                                      # e2e + axe WCAG 2.1 AA
 without it — always run `scripts/build-data.sh` first for `npm run dev` or e2e.
 
 **Never run `npx playwright install`** (standing rule): use system Chrome via
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` instead. CI's own `--with-deps chromium`
-install is CI-only, not a local pattern to copy. Name the target you ran
-before calling work complete; label pre-existing failures as pre-existing.
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. CI's own `--with-deps chromium` install
+is CI-only, not a local pattern to copy. Name the target you ran before calling
+work complete; label pre-existing failures as pre-existing.
 
 ## Data refresh (what it publishes)
 
-`.github/workflows/data-refresh.yml` runs monthly (4th, 07:17 UTC) plus
-manual dispatch: fetches VNP46A4 light pollution via `blackmarblepy` (needs
-the `BLACKMARBLE_TOKEN` Actions secret, the only credential in the repo),
-rebuilds dark-sky places and client config offline, force-commits the result
-to `data/out/`, and opens a GitHub issue on failure. A successful run
-retriggers `deploy-pages.yml`. Until a refresh runs, light-pollution and
-land-ownership layers serve labeled sample fixtures (ADR-0007).
+`.github/workflows/data-refresh.yml` runs monthly (4th, 07:17 UTC) plus manual
+dispatch: fetches VNP46A4 light pollution via `blackmarblepy` (needs the
+`BLACKMARBLE_TOKEN` Actions secret, the only credential in the repo), rebuilds
+dark-sky places and client config offline, force-commits to `data/out/`, and
+opens a GitHub issue on failure. A successful run retriggers `deploy-pages.yml`.
+Until then, light-pollution and land-ownership serve sample fixtures (ADR-0007).
 
 ## Invariants (from tests/ and ADRs)
 
@@ -72,9 +72,8 @@ land-ownership layers serve labeled sample fixtures (ADR-0007).
 
 ## Don't
 
-- Add a UI framework without an ADR (ADR-0001), or ship/derive tiles from
-  Falchi 2016 or Lorenz.
-- Scrape DarkSky International; the places list is hand-curated CSV with
-  `source_url` + `verified_on` per row.
+- Add a UI framework without an ADR (ADR-0001), or ship Falchi 2016 / Lorenz.
+- Scrape DarkSky International or an events calendar; `darksky-places.csv` and
+  `sky-events.json` are curated, `source_url` + `verified_on` per row.
 - Run `npx playwright install`, or hardcode the AOI (`config/app-config.json` → `aoi`).
 - Commit to `data/out/` yourself — only `data-refresh.yml` does.

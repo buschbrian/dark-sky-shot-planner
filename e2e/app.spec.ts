@@ -33,6 +33,41 @@ test.describe("text-first flows", () => {
     await expect(page.locator("#answer")).toContainText(/Galactic Center/);
   });
 
+  test("sky events answer 'what else is happening' for this spot and date", async ({ page }) => {
+    await page.goto("/#lat=40.687&lon=-111.824&date=2026-09-22");
+    const events = page.locator("#sky-events");
+    await expect(events).toContainText(/Saturn at opposition/);
+    await expect(events).toContainText(/Orionids/);
+    // Provenance on every line: computed ephemeris vs. a dated curated row.
+    await expect(events).toContainText(/computed/);
+    await expect(events).toContainText(/curated, verified 2026-09-06/);
+    await expect(events.locator("a").first()).toHaveAttribute("href", /^https:\/\//);
+    // The list is not a live region; a one-line count is announced instead.
+    await expect(events).not.toHaveAttribute("aria-live");
+    await expect(page.locator("#sky-events-status")).toHaveText(/^Sky events updated: \d+ events/);
+  });
+
+  test("sky events are reachable by keyboard with the map never focused", async ({ page }) => {
+    await page.goto("/#lat=40.687&lon=-111.824&date=2026-09-22");
+    await expect(page.locator("#sky-events a").first()).toBeAttached();
+    await page.focus("#date-input");
+
+    let reachedSourceLink = false;
+    for (let i = 0; i < 60 && !reachedSourceLink; i++) {
+      await page.keyboard.press("Tab");
+      const inMap = await page.evaluate(
+        () => document.getElementById("map")?.contains(document.activeElement) ?? false,
+      );
+      expect(inMap).toBe(false);
+      reachedSourceLink = await page.evaluate(
+        () =>
+          document.activeElement?.tagName === "A" &&
+          (document.getElementById("sky-events")?.contains(document.activeElement) ?? false),
+      );
+    }
+    expect(reachedSourceLink).toBe(true);
+  });
+
   test("theme toggle applies field mode without reload", async ({ page }) => {
     await page.goto("/");
     await page.selectOption("#theme-select", "field");
