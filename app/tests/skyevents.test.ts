@@ -205,14 +205,37 @@ describe("buildSkyEvents", () => {
     expect(titles).not.toContain("Leonids");
   });
 
+  const octoberJupiter = () =>
+    result.items.find(
+      (i) => i.title === "Moon and Jupiter" && i.at > new Date("2026-10-01T00:00:00Z"),
+    )!;
+
   it("spells out the Moon–Jupiter occultation with local times", () => {
-    const jupiter = result.items.find((i) => i.title === "Moon and Jupiter")!;
+    const jupiter = octoberJupiter();
     expect(jupiter.category).toBe("conjunction");
     expect(jupiter.verdict).toContain("Occultation from here");
     expect(jupiter.verdict).toContain("0.171°");
     expect(jupiter.verdict).toContain("02:49");
     expect(jupiter.verdict).toContain("03:10");
     expect(jupiter.provenance.kind).toBe("computed");
+  });
+
+  it("prints the separation seen from here at the printed time", () => {
+    // Not the geocentric "0.2° apart at 04:23": from Millcreek at 04:23 the
+    // pair is 0.9° apart. The first observable minute is 03:35, at ~0.5°.
+    const jupiter = octoberJupiter();
+    expect(jupiter.verdict).toMatch(/^0\.5° apart at 03:35, 5° and 6° up/);
+    expect(jupiter.verdict).not.toContain("04:23");
+  });
+
+  it("says when an occultation from here is in daylight", () => {
+    const aug = buildSkyEvents(MILLCREEK, new Date("2027-08-01T21:00:00-06:00"), { formatters: MDT });
+    const mercury = aug.items.find(
+      (i) => i.title === "Moon and Mercury" && i.verdict.includes("Occultation from here"),
+    )!;
+    expect(mercury).toBeDefined();
+    expect(mercury.verdict).toContain("0.034° at 08:27");
+    expect(mercury.verdict).toContain("In daylight here");
   });
 
   it("gives the Orionids a moon-aware verdict and a better night", () => {

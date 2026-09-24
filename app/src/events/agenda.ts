@@ -11,6 +11,8 @@
 
 import {
   DEFAULT_WINDOW_DAYS,
+  OCCULTATION_FLAG_DEG,
+  PAIRING_MAX_SUN_ALTITUDE_DEG,
   greatestElongations,
   moonPhases,
   moonPlanetPairings,
@@ -160,18 +162,23 @@ function pairingItems(site: Site, window: TimeWindow, fmt: Formatters): SkyEvent
   }));
 }
 
+/**
+ * Every separation printed here is topocentric — what is seen from this spot
+ * at the instant printed next to it (ADR-0008 §4). The geocentric minimum only
+ * decides whether an occultation is worth checking.
+ */
 export function pairingVerdict(p: MoonPairing, fmt: Formatters): string {
   const moonPct = Math.round(p.moonIllumFraction * 100);
   const parts: string[] = [];
-  if (p.moonAltitudeDeg > 5 && p.bodyAltitudeDeg > 5) {
+  if (p.observableHere) {
     parts.push(
       `${p.separationDeg.toFixed(1)}° apart at ${fmt.time(p.at)}, ` +
         `${Math.round(p.moonAltitudeDeg)}° and ${Math.round(p.bodyAltitudeDeg)}° up, Moon ${moonPct}% lit.`,
     );
   } else {
     parts.push(
-      `Closest approach ${p.separationDeg.toFixed(1)}° at ${fmt.time(p.geocentricMinAt)}, ` +
-        `but not above 5° in dark sky from here.`,
+      `Closest approach from here ${p.separationDeg.toFixed(1)}° at ${fmt.time(p.at)}, ` +
+        `but not above 5° in dark sky.`,
     );
   }
 
@@ -179,10 +186,14 @@ export function pairingVerdict(p: MoonPairing, fmt: Formatters): string {
   if (!p.possibleOccultation || !occ) return parts.join(" ");
 
   if (!occ.behindDiscFromHere) {
-    parts.push(
-      `An occultation somewhere on Earth, but not here: from this spot it misses the disc by ` +
-        `${occ.minSeparationDeg.toFixed(2)}° at ${fmt.time(occ.minSeparationAt)}.`,
-    );
+    // Only worth saying when the planet really is occulted for someone.
+    if (p.geocentricMinDeg < OCCULTATION_FLAG_DEG) {
+      const clearance = Math.max(0, occ.minSeparationDeg - occ.moonRadiusDeg);
+      parts.push(
+        `An occultation somewhere on Earth, but not here: from this spot it misses the disc by ` +
+          `${clearance.toFixed(2)}° at ${fmt.time(occ.minSeparationAt)}.`,
+      );
+    }
     return parts.join(" ");
   }
 
@@ -198,8 +209,11 @@ export function pairingVerdict(p: MoonPairing, fmt: Formatters): string {
     );
   } else if (occ.moonAltitudeDeg < 0) {
     parts.push("The whole event happens below the horizon here.");
-  } else if (occ.reappearsAt) {
-    parts.push(`Reappears at ${fmt.time(occ.reappearsAt)}.`);
+  } else {
+    if (occ.sunAltitudeDeg > PAIRING_MAX_SUN_ALTITUDE_DEG) {
+      parts.push(`In daylight here (Sun ${Math.round(occ.sunAltitudeDeg)}° up) — a telescope job.`);
+    }
+    if (occ.reappearsAt) parts.push(`Reappears at ${fmt.time(occ.reappearsAt)}.`);
   }
   return parts.join(" ");
 }

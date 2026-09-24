@@ -2,6 +2,8 @@ import * as Astronomy from "astronomy-engine";
 import { describe, expect, it } from "vitest";
 
 import {
+  OCCULTATION_CHECK_DEG,
+  OCCULTATION_FLAG_DEG,
   geocentricSeparationDeg,
   greatestElongations,
   moonPhases,
@@ -12,6 +14,7 @@ import {
   topocentricSeparationDeg,
   windowAround,
   zodiacalLightRanges,
+  type MoonPairing,
   type Site,
   type TimeWindow,
 } from "../src/astronomy/events";
@@ -164,6 +167,11 @@ describe("moon–planet separations", () => {
 
 describe("moon–planet pairings", () => {
   const pairings = moonPlanetPairings(MILLCREEK, AUTUMN_WINDOW);
+  /** The October pass: the window also holds a September Moon–Jupiter pass. */
+  const octoberJupiter = (): MoonPairing =>
+    pairings.find(
+      (p) => p.body === Astronomy.Body.Jupiter && p.at > new Date("2026-10-01T00:00:00Z"),
+    )!;
 
   it("reports a Moon–Mars pairing under 5° with both bodies up in dark sky", () => {
     const mars = pairings.find((p) => p.body === Astronomy.Body.Mars);
@@ -173,15 +181,20 @@ describe("moon–planet pairings", () => {
     expect(mars!.bodyAltitudeDeg).toBeGreaterThan(5);
   });
 
+  it("reports each lunar pass, not just the closest one in the window", () => {
+    const jupiter = pairings.filter((p) => p.body === Astronomy.Body.Jupiter);
+    expect(jupiter).toHaveLength(2);
+  });
+
   it("flags the 2026-10-06 Moon–Jupiter approach as a possible occultation", () => {
-    const jup = pairings.find((p) => p.body === Astronomy.Body.Jupiter);
+    const jup = octoberJupiter();
     expect(jup).toBeDefined();
-    expect(jup!.possibleOccultation).toBe(true);
-    expect(jup!.geocentricMinDeg).toBeLessThan(0.27);
+    expect(jup.possibleOccultation).toBe(true);
+    expect(jup.geocentricMinDeg).toBeLessThan(0.27);
   });
 
   it("confirms Jupiter is behind the disc from Millcreek, minimum 0.171° at 02:50 MDT", () => {
-    const occ = pairings.find((p) => p.body === Astronomy.Body.Jupiter)!.occultation!;
+    const occ = octoberJupiter().occultation!;
     expect(occ.behindDiscFromHere).toBe(true);
     expect(Math.abs(occ.minSeparationDeg - 0.171)).toBeLessThanOrEqual(ANGLE_TOLERANCE_DEG);
     expectNear(occ.minSeparationAt, mdt("2026-10-06T02:50:00"));
@@ -190,7 +203,7 @@ describe("moon–planet pairings", () => {
   });
 
   it("puts the reappearance just after moonrise, with the Moon barely up", () => {
-    const occ = pairings.find((p) => p.body === Astronomy.Body.Jupiter)!.occultation!;
+    const occ = octoberJupiter().occultation!;
     expect(occ.reappearsAt).not.toBeNull();
     expect(occ.reappearsAt!.getTime()).toBeGreaterThanOrEqual(mdt("2026-10-06T03:05:00").getTime());
     // 03:10 on a one-minute scan grid; the hand-computed value was ~03:05–03:08.
@@ -199,11 +212,70 @@ describe("moon–planet pairings", () => {
     expect(occ.reappearMoonAltitudeDeg!).toBeLessThanOrEqual(2);
   });
 
+  it("reports the separation seen from here at the reported instant, not the geocentric minimum", () => {
+    // Geocentric minimum is 0.16° at 04:23 MDT, when the topocentric separation
+    // from Millcreek is 0.92°. The first observable minute (both bodies > 5°)
+    // is ~03:35 MDT, with the pair ~0.5° apart as seen from here.
+    const jup = octoberJupiter();
+    expect(jup.observableHere).toBe(true);
+    expectNear(jup.at, mdt("2026-10-06T03:35:00"));
+    expect(Math.abs(jup.separationDeg - 0.484)).toBeLessThanOrEqual(ANGLE_TOLERANCE_DEG);
+    expectNear(jup.geocentricMinAt, mdt("2026-10-06T04:23:00"));
+    for (const p of pairings) {
+      const topo = topocentricSeparationDeg(MILLCREEK, Astronomy.Body.Moon, p.body, p.at);
+      expect(Math.abs(p.separationDeg - topo)).toBeLessThanOrEqual(0.001);
+    }
+  });
+
   it("never reports an approach wider than the 5° cutoff", () => {
     for (const p of pairings) {
       if (p.occultation) continue;
       expect(p.separationDeg).toBeLessThanOrEqual(5);
     }
+  });
+
+  it("binds the occultation check to the pass it belongs to", () => {
+    // Window centred 2026-05-21 holds two Moon–Venus passes: a plain 3° pairing
+    // on May 18 (MDT evening) and a daylight occultation on June 17.
+    const w = windowAround(new Date("2026-05-21T21:00:00-06:00"));
+    const venus = moonPlanetPairings(MILLCREEK, w).filter((p) => p.body === Astronomy.Body.Venus);
+    expect(venus).toHaveLength(2);
+    const [may, june] = venus as [MoonPairing, MoonPairing];
+    expectNear(may.at, mdt("2026-05-18T21:57:00"));
+    expect(may.possibleOccultation).toBe(false);
+    expect(may.occultation).toBeNull();
+    expect(june.occultation?.behindDiscFromHere).toBe(true);
+    const occAt = june.occultation!.minSeparationAt.getTime();
+    expect(Math.abs(occAt - june.geocentricMinAt.getTime())).toBeLessThanOrEqual(3 * 3_600_000);
+    expect(Math.abs(occAt - june.at.getTime())).toBeLessThan(86_400_000);
+  });
+
+  it("keeps an earlier pass when a later one in the window is closer", () => {
+    // Window centred 2026-10-15: Moon–Mars on Oct 5 (~2.3°) and Nov 2 (~1.3°).
+    const w = windowAround(new Date("2026-10-15T21:00:00-06:00"));
+    const mars = moonPlanetPairings(MILLCREEK, w).filter((p) => p.body === Astronomy.Body.Mars);
+    expect(mars).toHaveLength(2);
+    expectNear(mars[0]!.at, mdt("2026-10-05T02:23:00"));
+    expectNear(mars[1]!.at, mdt("2026-11-02T06:33:00"));
+    expect(mars[1]!.separationDeg).toBeLessThan(mars[0]!.separationDeg);
+  });
+
+  it("catches an occultation that only parallax brings onto the disc", () => {
+    // 2027-08-01 Moon–Mercury: geocentric minimum 0.287° (outside the Moon's
+    // mean semidiameter), but from Millcreek Mercury passes 0.034° from the
+    // centre at 08:27 MDT with the Moon ~32° up.
+    const w = windowAround(new Date("2027-08-01T21:00:00-06:00"));
+    const mercury = moonPlanetPairings(MILLCREEK, w).find(
+      (p) => p.body === Astronomy.Body.Mercury && p.at > new Date("2027-07-25T00:00:00Z"),
+    )!;
+    expect(mercury).toBeDefined();
+    expect(mercury.geocentricMinDeg).toBeGreaterThan(OCCULTATION_FLAG_DEG);
+    expect(mercury.geocentricMinDeg).toBeLessThan(OCCULTATION_CHECK_DEG);
+    const occ = mercury.occultation!;
+    expect(occ.behindDiscFromHere).toBe(true);
+    expect(Math.abs(occ.minSeparationDeg - 0.034)).toBeLessThanOrEqual(ANGLE_TOLERANCE_DEG);
+    expectNear(occ.minSeparationAt, mdt("2027-08-01T08:27:00"));
+    expect(occ.moonAltitudeDeg).toBeGreaterThan(30);
   });
 });
 

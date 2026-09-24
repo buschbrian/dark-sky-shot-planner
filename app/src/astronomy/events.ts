@@ -9,12 +9,13 @@
  *
  * Two separations are used deliberately and are not interchangeable:
  *
- * - **Geocentric** — the number almanacs quote for a conjunction. Reported as
- *   the headline separation so this app agrees with published tables.
+ * - **Geocentric** — the number almanacs quote for a conjunction. Used only to
+ *   find each lunar pass and to decide whether an occultation is worth checking;
+ *   it is carried on the result but never printed as if it were local.
  * - **Topocentric** — what you actually see from one spot. Lunar parallax is
  *   up to ~1°, which is the whole difference between "close pairing" and
- *   "the planet is behind the Moon from here", so the occultation test is
- *   always topocentric.
+ *   "the planet is behind the Moon from here", so the displayed separation and
+ *   the occultation test are both topocentric.
  */
 
 import * as Astronomy from "astronomy-engine";
@@ -22,8 +23,19 @@ import * as Astronomy from "astronomy-engine";
 /** Half-width of the default window around the selected date, in days. */
 export const DEFAULT_WINDOW_DAYS = 30;
 
-/** Moon's mean angular semidiameter (deg): the "possible occultation" flag. */
+/**
+ * Moon's mean angular semidiameter (deg). A geocentric minimum below this means
+ * the planet is behind the disc for observers near the sub-lunar point, so an
+ * occultation happens *somewhere* on Earth.
+ */
 export const OCCULTATION_FLAG_DEG = 0.27;
+
+/**
+ * Geocentric minimum below which the topocentric occultation check runs: the
+ * lunar semidiameter (≤ 0.28°) plus horizontal parallax (≤ 1.02°). Anything
+ * wider cannot put the planet behind the disc from any spot on Earth.
+ */
+export const OCCULTATION_CHECK_DEG = 1.3;
 
 /** A pairing must be closer than this to be worth reporting. */
 export const PAIRING_MAX_SEPARATION_DEG = 5;
@@ -262,8 +274,12 @@ export interface OccultationFromHere {
   /** Minimum observer-centred separation over the approach, degrees. */
   minSeparationDeg: number;
   minSeparationAt: Date;
+  /** Topocentric angular radius of the lunar disc at that minimum, degrees. */
+  moonRadiusDeg: number;
   /** Moon altitude at that minimum — negative means it happens below the horizon. */
   moonAltitudeDeg: number;
+  /** Sun altitude at that minimum; above −6° the event is in a bright sky. */
+  sunAltitudeDeg: number;
   /** True when the planet passes behind the lunar disc as seen from here. */
   behindDiscFromHere: boolean;
   /** Disc ingress/egress, when they occur inside the scanned approach. */
@@ -275,88 +291,203 @@ export interface OccultationFromHere {
 
 export interface MoonPairing {
   body: Astronomy.Body;
-  /** Closest *observable* approach: < 5°, both > 5° up, sun below −6°. */
+  /**
+   * Closest *observable* approach of this pass: topocentric separation < 5°,
+   * both bodies > 5° up, sun below −6°. When nothing in the pass is observable
+   * but an occultation is in play, the topocentric minimum instead.
+   */
   at: Date;
+  /** Topocentric separation at `at` — what is seen from here at that instant. */
   separationDeg: number;
+  /** True when `at` passed the observability gate (the first case above). */
+  observableHere: boolean;
   moonAltitudeDeg: number;
   bodyAltitudeDeg: number;
   moonIllumFraction: number;
-  /** Geocentric minimum over the whole window, whether observable or not. */
+  /** Geocentric minimum of this same pass (the almanac figure), kept for reference. */
   geocentricMinDeg: number;
   geocentricMinAt: Date;
-  /** Geocentric minimum below the Moon's mean semidiameter. */
+  /** Geocentric minimum below `OCCULTATION_CHECK_DEG`: the occultation check ran. */
   possibleOccultation: boolean;
-  /** Only computed when `possibleOccultation`. */
+  /** Only computed when `possibleOccultation`; always for this same pass. */
   occultation: OccultationFromHere | null;
 }
 
+/** Hourly geocentric samples closer than this belong to one lunar pass. */
+const PASS_MAX_GEOCENTRIC_DEG = PAIRING_MAX_SEPARATION_DEG + 1.5;
+
 /**
- * Closest observable Moon–planet approach per pair inside the window.
+ * Moon–planet approaches inside the window, one per lunar pass per planet.
  *
- * Hourly coarse scan, then a one-minute refinement around the best hour. The
- * observability gate (both bodies above 5°, sun below −6°) is applied at the
- * observer, so a pairing that is only close while it is under the horizon here
- * is correctly *not* reported as something to go look at — but its geocentric
- * minimum is still carried, because that is what triggers the occultation
- * check.
+ * An hourly geocentric scan splits the window into passes (the Moon sweeps
+ * past each planet roughly monthly, so a 61-day window can hold two). Within
+ * each pass the observable approach is judged at the observer: the topocentric
+ * separation, with both bodies above 5° and the sun below −6°. The occultation
+ * check is bound to that same pass, so an item never carries another
+ * conjunction's occultation.
  */
 export function moonPlanetPairings(site: Site, window: TimeWindow): MoonPairing[] {
   const out: MoonPairing[] = [];
+  // The Moon's position is the expensive half of every separation; compute the
+  // hourly track once and share it across the planets.
+  const hours: Date[] = [];
+  for (let t = window.start.getTime(); t <= window.end.getTime(); t += HOUR_MS) hours.push(new Date(t));
+  const moonTrack = hours.map((at) => Astronomy.GeoVector(Astronomy.Body.Moon, at, true));
   for (const body of PAIRING_BODIES) {
-    const pairing = pairingFor(site, window, body);
-    if (pairing) out.push(pairing);
+    for (const pass of lunarPasses(body, hours, moonTrack)) {
+      const pairing = pairingForPass(site, window, body, pass);
+      if (pairing) out.push(pairing);
+    }
   }
   return out.sort(byTime);
 }
 
-function pairingFor(site: Site, window: TimeWindow, body: Astronomy.Body): MoonPairing | null {
+interface HourSample {
+  at: Date;
+  geoSep: number;
+}
+
+/** Runs of consecutive hourly samples with the Moon near the planet. */
+function lunarPasses(
+  body: Astronomy.Body,
+  hours: Date[],
+  moonTrack: Astronomy.Vector[],
+): HourSample[][] {
+  const passes: HourSample[][] = [];
+  let current: HourSample[] | null = null;
+  const planetTrack = slowTrack(body, hours);
+  for (const [i, at] of hours.entries()) {
+    const geoSep = Astronomy.AngleBetween(moonTrack[i]!, planetTrack[i]!);
+    if (geoSep > PASS_MAX_GEOCENTRIC_DEG) {
+      current = null;
+      continue;
+    }
+    if (!current) {
+      current = [];
+      passes.push(current);
+    }
+    current.push({ at, geoSep });
+  }
+  return passes;
+}
+
+/**
+ * A planet's geocentric direction changes by at most a few degrees a day, so
+ * over six hours a straight line between two exact positions is off by far
+ * less than the pass margin. Only pass *detection* uses this; every reported
+ * number is computed exactly.
+ */
+function slowTrack(body: Astronomy.Body, hours: Date[]): Astronomy.Vector[] {
+  const STRIDE = 6;
+  const exact = new Map<number, Astronomy.Vector>();
+  const at = (i: number): Astronomy.Vector => {
+    const k = Math.min(i, hours.length - 1);
+    let v = exact.get(k);
+    if (!v) {
+      v = Astronomy.GeoVector(body, hours[k]!, true);
+      exact.set(k, v);
+    }
+    return v;
+  };
+  return hours.map((when, i) => {
+    const i0 = i - (i % STRIDE);
+    const i1 = Math.min(i0 + STRIDE, hours.length - 1);
+    if (i === i0 || i1 === i0) return at(i);
+    const a = at(i0);
+    const b = at(i1);
+    const f = (i - i0) / (i1 - i0);
+    return new Astronomy.Vector(
+      a.x + (b.x - a.x) * f,
+      a.y + (b.y - a.y) * f,
+      a.z + (b.z - a.z) * f,
+      new Astronomy.AstroTime(when),
+    );
+  });
+}
+
+function pairingForPass(
+  site: Site,
+  window: TimeWindow,
+  body: Astronomy.Body,
+  pass: HourSample[],
+): MoonPairing | null {
+  let closest = pass[0]!;
+  for (const s of pass) if (s.geoSep < closest.geoSep) closest = s;
+  const geoMin = refineGeocentricMinimum(body, closest.at, window);
+  const possibleOccultation = geoMin.sep < OCCULTATION_CHECK_DEG;
+  const occultation = possibleOccultation ? occultationFromHere(site, body, geoMin.at) : null;
+
+  // Altitude work is comparatively expensive; only pay for it inside the pass.
   let bestVisible: { at: Date; sep: number } | null = null;
-  let bestGeo: { at: Date; sep: number } | null = null;
-
-  for (let t = window.start.getTime(); t <= window.end.getTime(); t += HOUR_MS) {
-    const when = new Date(t);
-    const sep = geocentricSeparationDeg(Astronomy.Body.Moon, body, when);
-    if (!bestGeo || sep < bestGeo.sep) bestGeo = { at: when, sep };
-    // Altitude work is comparatively expensive; only pay for it near a pairing.
-    if (sep > PAIRING_MAX_SEPARATION_DEG) continue;
-    if (!observable(site, body, when)) continue;
-    if (!bestVisible || sep < bestVisible.sep) bestVisible = { at: when, sep };
-  }
-  if (!bestGeo) return null;
-
-  const geoMin = refineGeocentricMinimum(body, bestGeo.at, window);
-  const possibleOccultation = geoMin.sep < OCCULTATION_FLAG_DEG;
-  if (!bestVisible) {
-    // No observable approach here, but a flagged near-miss is still worth the
-    // occultation answer ("from here it stays clear of the disc").
-    if (!possibleOccultation) return null;
-    return {
-      body,
-      at: geoMin.at,
-      separationDeg: round3(geoMin.sep),
-      moonAltitudeDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, geoMin.at)),
-      bodyAltitudeDeg: round1(altitudeDeg(site, body, geoMin.at)),
-      moonIllumFraction: round3(Astronomy.Illumination(Astronomy.Body.Moon, geoMin.at).phase_fraction),
-      geocentricMinDeg: round3(geoMin.sep),
-      geocentricMinAt: geoMin.at,
-      possibleOccultation,
-      occultation: occultationFromHere(site, body, geoMin.at),
-    };
+  for (const s of pass) {
+    const sep = visibleTopocentricSeparation(site, body, s.at);
+    if (sep === null) continue;
+    if (!bestVisible || sep < bestVisible.sep) bestVisible = { at: s.at, sep };
   }
 
-  const refined = refineVisibleMinimum(site, body, bestVisible.at, window);
-  return {
+  const base = {
     body,
-    at: refined.at,
-    separationDeg: round3(refined.sep),
-    moonAltitudeDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, refined.at)),
-    bodyAltitudeDeg: round1(altitudeDeg(site, body, refined.at)),
-    moonIllumFraction: round3(Astronomy.Illumination(Astronomy.Body.Moon, refined.at).phase_fraction),
     geocentricMinDeg: round3(geoMin.sep),
     geocentricMinAt: geoMin.at,
     possibleOccultation,
-    occultation: possibleOccultation ? occultationFromHere(site, body, geoMin.at) : null,
+    occultation,
   };
+
+  if (bestVisible) {
+    const refined = refineVisibleMinimum(site, body, bestVisible, window);
+    return {
+      ...base,
+      ...describeAt(site, body, refined.at),
+      separationDeg: round3(refined.sep),
+      observableHere: true,
+    };
+  }
+
+  // Nothing observable from here in this pass. Still worth a line when some
+  // part of an occultation happens with the Moon up here, or when one happens
+  // somewhere on Earth and the useful answer is "not from here".
+  if (!occultation) return null;
+  if (!occultationAboveHorizon(site, occultation) && geoMin.sep >= OCCULTATION_FLAG_DEG) {
+    return null;
+  }
+  return {
+    ...base,
+    ...describeAt(site, body, occultation.minSeparationAt),
+    separationDeg: occultation.minSeparationDeg,
+    observableHere: false,
+  };
+}
+
+/** Behind the disc from here with the Moon above the horizon at some contact. */
+function occultationAboveHorizon(site: Site, occ: OccultationFromHere): boolean {
+  if (!occ.behindDiscFromHere) return false;
+  if (occ.moonAltitudeDeg >= 0) return true;
+  if (occ.reappearMoonAltitudeDeg !== null && occ.reappearMoonAltitudeDeg >= 0) return true;
+  return occ.disappearsAt !== null && altitudeDeg(site, Astronomy.Body.Moon, occ.disappearsAt) >= 0;
+}
+
+function describeAt(
+  site: Site,
+  body: Astronomy.Body,
+  at: Date,
+): { at: Date; moonAltitudeDeg: number; bodyAltitudeDeg: number; moonIllumFraction: number } {
+  return {
+    at,
+    moonAltitudeDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, at)),
+    bodyAltitudeDeg: round1(altitudeDeg(site, body, at)),
+    moonIllumFraction: round3(Astronomy.Illumination(Astronomy.Body.Moon, at).phase_fraction),
+  };
+}
+
+/** Topocentric separation when the pair is observable and within 5°, else null. */
+function visibleTopocentricSeparation(
+  site: Site,
+  body: Astronomy.Body,
+  when: Date,
+): number | null {
+  if (!observable(site, body, when)) return null;
+  const sep = topocentricSeparationDeg(site, Astronomy.Body.Moon, body, when);
+  return sep <= PAIRING_MAX_SEPARATION_DEG ? sep : null;
 }
 
 function observable(site: Site, body: Astronomy.Body, when: Date): boolean {
@@ -365,39 +496,50 @@ function observable(site: Site, body: Astronomy.Body, when: Date): boolean {
   return altitudeDeg(site, body, when) > PAIRING_MIN_ALTITUDE_DEG;
 }
 
+/**
+ * The geocentric separation is unimodal across the ±1 h around the best hourly
+ * sample, so a ternary search to the minute replaces a 121-sample scan.
+ */
 function refineGeocentricMinimum(
   body: Astronomy.Body,
   around: Date,
   window: TimeWindow,
 ): { at: Date; sep: number } {
-  let best = { at: around, sep: geocentricSeparationDeg(Astronomy.Body.Moon, body, around) };
-  const from = Math.max(window.start.getTime(), around.getTime() - HOUR_MS);
-  const to = Math.min(window.end.getTime(), around.getTime() + HOUR_MS);
-  for (let t = from; t <= to; t += 60_000) {
-    const when = new Date(t);
-    const sep = geocentricSeparationDeg(Astronomy.Body.Moon, body, when);
-    if (sep < best.sep) best = { at: when, sep };
+  const sepAt = (t: number): number =>
+    geocentricSeparationDeg(Astronomy.Body.Moon, body, new Date(t));
+  let lo = Math.max(window.start.getTime(), around.getTime() - HOUR_MS);
+  let hi = Math.min(window.end.getTime(), around.getTime() + HOUR_MS);
+  while (hi - lo > 60_000) {
+    const m1 = lo + (hi - lo) / 3;
+    const m2 = hi - (hi - lo) / 3;
+    if (sepAt(m1) < sepAt(m2)) hi = m2;
+    else lo = m1;
   }
-  return best;
+  const at = new Date(Math.round((lo + hi) / 2 / 60_000) * 60_000);
+  return { at, sep: sepAt(at.getTime()) };
 }
 
 function refineVisibleMinimum(
   site: Site,
   body: Astronomy.Body,
-  around: Date,
+  around: { at: Date; sep: number },
   window: TimeWindow,
 ): { at: Date; sep: number } {
-  let best = { at: around, sep: geocentricSeparationDeg(Astronomy.Body.Moon, body, around) };
-  const from = Math.max(window.start.getTime(), around.getTime() - HOUR_MS);
-  const to = Math.min(window.end.getTime(), around.getTime() + HOUR_MS);
-  for (let t = from; t <= to; t += 60_000) {
-    const when = new Date(t);
-    const sep = geocentricSeparationDeg(Astronomy.Body.Moon, body, when);
-    if (sep >= best.sep) continue;
-    if (!observable(site, body, when)) continue;
-    best = { at: when, sep };
-  }
-  return best;
+  // Five-minute pass over ±1 h, then the minute around the best of those. The
+  // gate is not smooth (the minimum often sits on a rise or twilight edge), so
+  // this is a scan rather than a bracket search.
+  const scan = (centre: Date, halfMs: number, stepMs: number, best: { at: Date; sep: number }) => {
+    const from = Math.max(window.start.getTime(), centre.getTime() - halfMs);
+    const to = Math.min(window.end.getTime(), centre.getTime() + halfMs);
+    for (let t = from; t <= to; t += stepMs) {
+      const when = new Date(t);
+      const sep = visibleTopocentricSeparation(site, body, when);
+      if (sep !== null && sep < best.sep) best = { at: when, sep };
+    }
+    return best;
+  };
+  const coarse = scan(around.at, HOUR_MS, 5 * 60_000, around);
+  return scan(coarse.at, 5 * 60_000, 60_000, coarse);
 }
 
 /**
@@ -415,16 +557,20 @@ export function occultationFromHere(
   const from = aroundGeocentricMin.getTime() - 3 * HOUR_MS;
   const to = aroundGeocentricMin.getTime() + 3 * HOUR_MS;
 
-  let best: { at: Date; sep: number } | null = null;
+  let best: { at: Date; sep: number; radius: number } | null = null;
   let disappearsAt: Date | null = null;
   let reappearsAt: Date | null = null;
   let inside = false;
 
+  const obs = observerOf(site);
   for (let t = from; t <= to; t += step) {
     const when = new Date(t);
-    const sep = topocentricSeparationDeg(site, Astronomy.Body.Moon, body, when);
-    if (!best || sep < best.sep) best = { at: when, sep };
-    const hidden = sep < moonAngularRadiusDeg(site, when);
+    const moon = Astronomy.Equator(Astronomy.Body.Moon, when, obs, true, true);
+    const planet = Astronomy.Equator(body, when, obs, true, true);
+    const sep = angularSeparationDeg(moon.ra, moon.dec, planet.ra, planet.dec);
+    const radius = Math.asin(MOON_RADIUS_KM / (moon.dist * KM_PER_AU)) / DEG;
+    if (!best || sep < best.sep) best = { at: when, sep, radius };
+    const hidden = sep < radius;
     if (hidden && !inside) {
       disappearsAt = when;
       inside = true;
@@ -439,7 +585,9 @@ export function occultationFromHere(
   return {
     minSeparationDeg: round3(best?.sep ?? Number.NaN),
     minSeparationAt: at,
+    moonRadiusDeg: round3(best?.radius ?? Number.NaN),
     moonAltitudeDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, at)),
+    sunAltitudeDeg: round1(altitudeDeg(site, Astronomy.Body.Sun, at)),
     behindDiscFromHere: behind,
     disappearsAt,
     reappearsAt,

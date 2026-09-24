@@ -25,7 +25,7 @@ functions over a location and a `±30`-day window):
 - Oppositions of Mars/Jupiter/Saturn (`SearchRelativeLongitude(body, 0)`) and
   greatest elongations of Mercury/Venus (`SearchMaxElongation`), labelled
   morning or evening.
-- Moon–planet pairings, with an occultation test.
+- Moon–planet pairings, one per lunar pass, with an occultation test.
 - Zodiacal-light windows.
 - Equinoxes and solstices (`Seasons`).
 
@@ -76,21 +76,32 @@ radiant time — that better night.
 
 ### 4. Two separations, deliberately
 
-Moon–planet pairings report the **geocentric** separation, because that is
-what published tables quote and the app should agree with them. The
-occultation test is **topocentric**, because lunar parallax reaches ~1° and
-that is exactly the difference between "close pairing" and "the planet is
-behind the disc from here".
+*Amended 2026-09-24 (PR #6 review): the printed separation is topocentric, the
+occultation trigger is 1.3°, and pairings are found per lunar pass.*
 
-A geocentric minimum below 0.27° (the Moon's mean semidiameter) flags a
-*possible* occultation; the app then computes the topocentric minimum at the
-observer, compares it to the Moon's actual angular radius at that instant, and
-says whether it happens here, when it ends, and how high the Moon is — a
+Moon–planet pairings are **found** geocentrically and **reported**
+topocentrically. An hourly geocentric scan splits the window into lunar passes
+(one per planet per ~month, so a ±30-day window can hold two); within each
+pass the app reports the closest *observable* approach and prints the
+separation seen from the observer at that instant. Printing the geocentric
+minimum next to a local clock time was wrong by up to a degree — lunar
+parallax — which is exactly the scale of a close pairing. The geocentric
+minimum of the same pass is kept on the result for reference.
+
+The occultation test is **topocentric** and bound to the same pass. A
+geocentric minimum below **1.3°** (lunar semidiameter plus horizontal
+parallax) runs it; anything wider cannot occult from anywhere on Earth. The
+app then computes the topocentric minimum at the observer, compares it to the
+Moon's actual angular radius at that instant, and says whether it happens
+here, when it ends, how high the Moon is, and whether it is in daylight — a
 reappearance with the Moon 1° up needs a flat eastern horizon, and saying so
-is the useful part.
+is the useful part. A geocentric minimum below 0.27° (the Moon's mean
+semidiameter) means an occultation somewhere on Earth; when it misses from
+here, the app says so.
 
 A pairing is offered as something to go and watch only when both bodies are
-above 5° and the Sun is below −6° at the observer.
+above 5°, the topocentric separation is under 5°, and the Sun is below −6° at
+the observer.
 
 ### 5. Zodiacal light is seasonal and northern-hemisphere only
 
