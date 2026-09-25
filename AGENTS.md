@@ -3,12 +3,12 @@
 Shared context for coding agents (Codex reads this; CLAUDE.md points here).
 This file ROUTES; rules live in scoped files. Keep it under 80 lines.
 
-Zero-server static site answering "is this spot dark, legal, and clear
-tonight?" for Milky Way photography in the Mountain West. Python pipelines
-(GitHub Actions) fetch/clip/normalize source data into committed PMTiles/JSON
-under `data/out/`; a Vite + TypeScript + MapLibre client (no framework,
-ADR-0001) reads those artifacts and computes astronomy client-side. Scope
-contract: `autonomous-build-brief.md`. Live status: `README.md`.
+"Should I go shoot tonight — where, when, how?" for Milky Way photography in
+the Mountain West (scope: ADR-0009, amending `autonomous-build-brief.md`).
+Python pipelines publish PMTiles/JSON to `data/out/`; a Vite + TypeScript +
+MapLibre static site (no framework, ADR-0001) computes astronomy client-side;
+a native SwiftUI app lives in `ios/`; one stateless Worker in `worker/` serves
+live conditions (ADR-0010). Live status: `README.md`.
 
 ## Working on X → read Y
 
@@ -22,6 +22,9 @@ contract: `autonomous-build-brief.md`. Live status: `README.md`.
 | Freshness / provenance labels | ADR-0006, `app/src/freshness.ts` |
 | Sky events (computed or curated) | ADR-0008, `config/sky-events.json` |
 | Deploy / Pages / data-refresh | ADR-0007, `.github/workflows/`, `scripts/build-data.sh` |
+| iOS app (`ios/`) | `ios/AGENTS.md`, ADR-0009, `docs/ios/PLAN.md` |
+| Conditions Worker (`worker/`) | ADR-0010, `docs/ios/PLAN.md` §Worker |
+| Numbers shared across web/iOS | `shared/golden/`, `app/tests/golden-vectors.test.ts` |
 | Allowed data sources | `docs/data-licensing.md` |
 | A decision that felt settled | `docs/adr/` — do not re-litigate |
 
@@ -37,29 +40,25 @@ scripts/build-data.sh                                   # populate data/out (req
 npx playwright test                                      # e2e + axe WCAG 2.1 AA
 ```
 
-`data/out/` is gitignored; the client boots into an empty/degraded page
-without it — always run `scripts/build-data.sh` first for `npm run dev` or e2e.
-
-**Never run `npx playwright install`** (standing rule): use system Chrome via
+`data/out/` is gitignored. **Never run `npx playwright install`** (standing rule): use system Chrome via
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. CI's own `--with-deps chromium` install
 is CI-only, not a local pattern to copy. Name the target you ran before calling
 work complete; label pre-existing failures as pre-existing.
 
 ## Data refresh (what it publishes)
 
-`.github/workflows/data-refresh.yml` runs monthly (4th, 07:17 UTC) plus manual
-dispatch: fetches VNP46A4 light pollution via `blackmarblepy` (needs the
-`BLACKMARBLE_TOKEN` Actions secret, the only credential in the repo), rebuilds
-dark-sky places and client config offline, force-commits to `data/out/`, and
-opens a GitHub issue on failure. A successful run retriggers `deploy-pages.yml`.
-Until then, light-pollution and land-ownership serve sample fixtures (ADR-0007).
+`data-refresh.yml` (monthly + manual) fetches VNP46A4 via `blackmarblepy` (the
+`BLACKMARBLE_TOKEN` Actions secret), rebuilds places/config, force-commits
+`data/out/`, opens an issue on failure, then retriggers `deploy-pages.yml`.
+Until it runs, light pollution and land ownership are fixtures (ADR-0007).
 
 ## Invariants (from tests/ and ADRs)
 
 1. **Forbidden sources never appear** — Falchi 2016 (CC BY-NC) and Lorenz (no
    license); `tests/test_forbidden_sources.py` fails the build on either name.
-2. **No credential anywhere in the repo** — `BLACKMARBLE_TOKEN` is an Actions
-   secret only; CI runs a no-credentials grep plus a full-history gitleaks scan.
+2. **No credential anywhere in the repo** — Actions or Worker secrets only
+   (`BLACKMARBLE_TOKEN`; Worker keys per ADR-0010); CI greps for
+   credentials and runs a full-history gitleaks scan.
 3. **Every displayed number carries source + freshness** (fresh/aging/stale/
    unavailable, ADR-0006); a failed feed shows the last good value with its
    age, never a blank.
