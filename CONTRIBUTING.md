@@ -14,10 +14,16 @@ uv run python -m pytest tests/ # golden + unit tests, fully offline
 
 # Frontend
 npm install
+scripts/build-data.sh          # data/out — see below
 npm run dev                    # http://localhost:5173
+npm run lint                   # ESLint
 npx vitest run                 # client unit tests
-npx playwright install chromium && npm run test:e2e
+npm run test:e2e               # Playwright + axe
 ```
+
+For e2e, use a Chromium you already have rather than running
+`npx playwright install` locally (standing rule in [AGENTS.md](AGENTS.md));
+CI installs its own.
 
 The dev server reads pipeline artifacts from `data/out/`. That directory is
 gitignored for local builds (only `data-refresh.yml` commits real artifacts
@@ -28,7 +34,7 @@ boots into an empty page:
 scripts/build-data.sh
 ```
 
-That runs, in order, the four pipeline commands below — keeping any real
+That runs the four pipeline commands below — keeping any real
 artifact already committed under `data/out/` and using the offline fixtures
 for the rest — and writes `data/out/data-status.json` so the UI can label
 fixture layers. The individual commands, if you need just one:
@@ -59,11 +65,16 @@ config, that is a bug.
 
 ```bash
 uv sync --extra fetch   # heavy geo deps
-export EARTHDATA_USER=... EARTHDATA_PASS=...   # NASA Earthdata, never committed
+export BLACKMARBLE_TOKEN=...   # NASA Earthdata token, never committed
 uv run python -m pipelines.light_pollution.cli fetch-and-build --year 2024 --out /tmp/stage/lp
+uv run python -m pipelines.light_pollution.cli build --grid /tmp/stage/lp/staged-grid.json \
+  --publication-date 2024-12-01 --out data/out/light_pollution
 ```
 
-CI never runs these paths — it is fixture-based by design.
+`fetch-and-build` only stages a grid; the second command turns it into tiles,
+as `data-refresh.yml` does. Getting the token:
+[`docs/credentials-setup.md`](docs/credentials-setup.md). CI never runs these
+paths — it is fixture-based by design.
 
 ## Ground rules
 

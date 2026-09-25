@@ -29,8 +29,11 @@ astronomy is computed client-side; weather is fetched client-side on demand.
 
 ```bash
 uv sync --group dev && uv run python -m pytest tests/   # pipelines + tests (offline)
+scripts/build-data.sh                                   # data/out — required first, or the app boots empty
 npm install && npm run dev                              # http://localhost:5173
 ```
+
+Requires Python 3.11+ with [uv](https://docs.astral.sh/uv/) and Node 22+.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for real data builds and AOI extension.
 
@@ -99,6 +102,10 @@ npx vite preview                                        # http://localhost:4173/
 - [`docs/credentials-setup.md`](docs/credentials-setup.md) — the one secret,
   and what needs none.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — local pipelines, extending the AOI.
+- [`config/horizon-profiles/`](config/horizon-profiles/README.md) — measured
+  terrain horizons for specific sites; not wired into the app yet.
+- [`autonomous-build-brief.md`](autonomous-build-brief.md) — the original
+  scope contract.
 
 ## License
 
