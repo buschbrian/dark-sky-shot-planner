@@ -5,7 +5,8 @@ export function fixtureName(raw: string): string {
   const meta = /^\/data\/([^/]+)\/static\/meta\.json$/.exec(p);
   if (meta) return `open-meteo-meta-${meta[1]}`;
   if (u.hostname === "api.open-meteo.com" && p === "/v1/forecast") {
-    return `open-meteo-forecast-${u.searchParams.get("models")}`;
+    const minutely = u.searchParams.has("minutely_15") ? "minutely_15-" : "";
+    return `open-meteo-forecast-${minutely}${u.searchParams.get("models")}`;
   }
   if (u.hostname === "air-quality-api.open-meteo.com") return "open-meteo-air-quality";
   const ndgd = /\/ndgd_smoke_(sfc|vert)_1hr_avg_time\/ImageServer\/identify$/.exec(p);

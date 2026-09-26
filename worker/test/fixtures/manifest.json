@@ -101,6 +101,12 @@
    "status": 200,
    "bytes": 4526,
    "recorded_utc": "2026-09-26T00:17:47.065Z"
+  },
+  "open-meteo-forecast-minutely_15-ncep_hrrr_conus": {
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&minutely_15=temperature_2m,dew_point_2m,wind_speed_10m,wind_gusts_10m,visibility&models=ncep_hrrr_conus&timezone=GMT&timeformat=iso8601&start_minutely_15=2026-09-26T00:00&end_minutely_15=2026-09-26T14:00",
+   "status": 200,
+   "bytes": 5062,
+   "recorded_utc": "2026-09-26T20:33:28.997Z"
   }
  }
 }

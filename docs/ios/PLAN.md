@@ -103,7 +103,7 @@ notes are in `docs/data-licensing.md`.
 | Need | Source | Via | Notes |
 |---|---|---|---|
 | Cloud cover total + low/mid/high, hourly | Open-Meteo forecast: `ncep_hrrr_conus` (3 km), `gfs_global`, `icon_global` (DWD ICON, ~11 km), `ecmwf_ifs025` side by side | Worker (fallback: direct) | Show model disagreement as a band, don't average it away. Named models only, never a `*_seamless` alias: over Utah `gfs_seamless` serves HRRR for roughly the first 40 h, `gem_seamless` is `gem_regional` and `icon_seamless` is `icon_global`, so an alias would repeat a series and hide the disagreement. Aliases also have no `meta.json`; run times come from `ncep_hrrr_conus`, `ncep_gfs013`, `dwd_icon` and `ecmwf_ifs025`. **ICON replaced GEM HRDPS (2026-09-26):** `gem_hrdps_continental` answers "No data is available for this location" at 38.35, −109.95 and 37.60, −110.00, because its domain misses much of southern Utah. ICON is global, publishes native low/mid/high cloud, runs every 6 h, is independent of NOAA, ECMWF and ECCC, and is CC BY 4.0 via Open-Meteo. It has no `visibility` (served as unavailable). Alternates if ICON fails: `gem_regional` (meta `cmc_gem_rdps_10km`; low/mid/high derived from humidity) or `ukmo_global_deterministic_10km` (CC BY-SA 4.0, share-alike). Never use the stale meta ids `cmc_gem_rdps`/`cmc_gem_gdps` (last run 2026-05-26). Deferred: NWS `api.weather.gov` gridpoint `skyCover` as an "official NWS" reference line (total cover only; NBM plus forecaster edits, so not an independent model). **Not** `ncep_nam_conus` (NOAA retires NAM 2026-10-14) or `ncep_nbm_conus` (no cloud layers) |
-| Model run time | Open-Meteo `/data/{model}/static/meta.json` → `last_run_initialisation_time` | Worker | The forecast response doesn't carry it; the brief requires it |
+| Model run time | Open-Meteo `/data/{model}/static/meta.json` → `last_run_initialisation_time`; next run estimated from `last_run_availability_time` + `update_interval_seconds` ([docs](https://open-meteo.com/en/docs/model-updates)) | Worker | The forecast response doesn't carry it; the brief requires it |
 | Dew point, humidity, wind, gusts, visibility, temperature | Open-Meteo forecast (HRRR has all of them) | Worker | ICON and ECMWF return no visibility; those series are unavailable, never zero |
 | Seeing proxy | Open-Meteo `wind_speed_250hPa` / `200hPa` (jet stream) | Worker | Our own, license-clean seeing indicator |
 | Seeing + transparency indices | 7Timer! ASTRO (GFS-based, 3-hourly, indices 1–8) | Worker (no CORS) | **Non-commercial use only**. Fine for personal use, blocks App Store distribution without written permission. Optional, never required |
@@ -142,12 +142,16 @@ satellite/Starlink passes, Apple Watch.
 GET /v1/conditions?lat=38.35&lon=-109.95&start=2026-09-26T00:00Z&end=2026-09-26T14:00Z
 → {
     "cell": { "lat": 38.35, "lon": -109.95, "rounding_deg": 0.05 },
+    "next_update_expected_utc": "…",
     "fields": {
       "cloud_cover_low": {
         "unit": "%",
-        "series": [ { "model": "hrrr", "model_run_utc": "…", "values": [ { "t": "…", "v": 12 } ] }, … ],
+        "series": [ { "model": "hrrr", "model_run_utc": "…", "next_run_expected_utc": "…",
+                      "values": [ { "t": "…", "v": 12 } ] }, … ],
         "source": "Open-Meteo", "fetched_utc": "…"
       },
+      "visibility": { …, "series": [ … ],
+        "series_15min": [ { "model": "hrrr", "resolution_minutes": 15, … } ] },
       "aerosol_optical_depth": { … },
       "transparency": { …, "status": "unavailable", "last_good_utc": null }
     }
@@ -198,6 +202,60 @@ Anything outside these answers 400 before any upstream call.
   window; a new model run makes a cached forecast stale. Entries are kept a
   week so they can serve as last-good values. Space
   weather uses KV when `SPACE_WEATHER` is bound, otherwise the Cache API.
+  The cache is run-aware (2026-09-26): a model's `meta.json` is kept until
+  its next run is expected (capped at 1 h), then re-read every 2 min while
+  the run is late. A forecast is kept while `meta.json` reports the same run
+  (capped at 6 h). A forecast fetched within 10 min of its run's
+  availability is read once more after that, because Open-Meteo asks
+  clients to wait 10 min for its servers to sync
+  ([model updates](https://open-meteo.com/en/docs/model-updates)).
+  RAP-Smoke is kept until its next issue is expected (capped at 6 h,
+  re-checked every 15 min while late), not for a fixed 30 min. Cache and
+  health writes go through `ctx.waitUntil`, after the response.
+- **Refresh times.** Every series carries `next_run_expected_utc`, the
+  Worker's estimate of when its source publishes the next run. `null` means
+  there is no basis for one, or that the series is being served from a
+  last-good copy. The response carries `next_update_expected_utc`, the
+  soonest estimate among series served fresh.
+  - Open-Meteo models and CAMS: `last_run_availability_time` +
+    `update_interval_seconds` + 600 s, all from `meta.json`. This assumes
+    the next run is as late as the last. Recorded cadences: HRRR 1 h; GFS,
+    ICON and ECMWF 6 h; CAMS 12 h. `temporal_resolution_seconds` (3600;
+    ECMWF 10800) is the step between values, not the update cadence.
+  - RAP-Smoke: newest issue + 24 h + that issue's delay, from issue time
+    to the latest `idp_ingestdate` on the ImageServer catalog (about 83 min
+    on 2026-09-25).
+  - 7Timer: `null`. It publishes no schedule, and the Worker re-checks it
+    every 3 h.
+- **Revalidation.** `/v1/conditions`, `/v1/space-weather` and `/v1/smoke`
+  send a strong `ETag`: the first 128 bits of the SHA-256 of the JSON, with
+  `generated_utc` and `fetched_utc` removed. The tag changes when a run,
+  value, status or reason changes, and not when the Worker merely re-reads
+  an upstream. A matching `If-None-Match` answers 304 with no body. It uses
+  the weak comparison, because Cloudflare may weaken a strong tag when it
+  recompresses a response.
+  `/v1/conditions` has `Cache-Control: public, max-age=N,
+  stale-while-revalidate=600`. N runs to `next_update_expected_utc`,
+  bounded to 60–1800 s. It is 60 s when that time has passed (the run is
+  late) and 300 s when there is no estimate. Space weather keeps
+  `max-age=300`, smoke `max-age=600`. Errors and `/health` are `no-store`.
+- **Near term (15 min).** `temperature`, `dew_point`, `wind_speed`,
+  `wind_gust` and `visibility` carry `series_15min`: one HRRR series with
+  `resolution_minutes: 15`. It covers the part of the window up to the
+  current hour + 18 h, and values past the run + 18 h are dropped. HRRR
+  publishes 15-minute output only for the first 18 h of each run, and
+  beyond that Open-Meteo interpolates. The hourly `series` are unchanged.
+  Cloud cover has no 15-minute series: Open-Meteo's `minutely_15` cloud
+  cover (all layers) and relative humidity equal a Catmull-Rom
+  interpolation of the hourly values at every point checked (2026-09-26,
+  from 19 h in the past to 44 h ahead), so they add nothing. The docs list neither as a native
+  15-minute variable ([forecast API](https://open-meteo.com/en/docs)).
+- **Server-Timing.** Every cacheable answer lists each source's wall time
+  and whether the cache answered, for example `om-hrrr;dur=182;desc="miss"`,
+  plus `total`. The names are `meta-<id>`, `om-<model>`, `om15-hrrr`,
+  `smoke-sfc|vert`, `airnow`, `7timer`, `swpc-*` and `hms`. Workers' clock
+  advances only on I/O, so these are waits on caches and upstreams.
+  `Timing-Allow-Origin: *` and the exposed headers let the web app read it.
 
 ### Abuse protection
 
@@ -211,8 +269,12 @@ Anything outside these answers 400 before any upstream call.
   [Docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
   (`period` must be 10 or 60; `namespace_id` is shared account-wide).
 - **Fan-out cap:** at most 20 upstream fetches per incoming request
-  (`src/limits.ts`). A cold `/v1/conditions` makes 14: four models ×
-  (`meta.json` + forecast), air quality × 2, two smoke layers, AirNow, 7Timer.
+  (`src/limits.ts`). A cold `/v1/conditions` makes 15: four models ×
+  (`meta.json` + forecast), HRRR's 15-minute request, air quality × 2, two
+  smoke layers, AirNow and 7Timer. All of them start together: the cached
+  forecast is read while `meta.json` is in flight, so the fan-out is one
+  round trip deep. `wrangler dev` on 2026-09-26 took 0.95 s cold, 13 ms
+  warm, and 28 ms for a 304.
   A fetch past the cap is reported as that source being unavailable
   ("per-request upstream budget spent").
 

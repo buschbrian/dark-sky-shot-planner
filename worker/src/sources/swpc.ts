@@ -112,7 +112,7 @@ export function loadKp(
   const p = PRODUCTS[which];
   return cachedLoad(
     deps,
-    { store, source: p.source, key: `swpc:${which}`, ttlSeconds: p.ttl },
+    { store, source: p.source, key: `swpc:${which}`, ttlSeconds: p.ttl, timing: p.source },
     async () => ({
       data: p.parse(await getJson(deps.fetch, p.url)),
     }),
@@ -123,7 +123,7 @@ export function loadOvation(deps: Deps, store: EntryStore): Promise<Loaded<Ovati
   const p = PRODUCTS.ovation;
   return cachedLoad(
     deps,
-    { store, source: p.source, key: "swpc:ovation", ttlSeconds: p.ttl },
+    { store, source: p.source, key: "swpc:ovation", ttlSeconds: p.ttl, timing: p.source },
     async () => ({
       data: p.parse(await getJson(deps.fetch, p.url, 15_000)),
     }),

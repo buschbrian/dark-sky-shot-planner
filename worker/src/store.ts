@@ -1,5 +1,5 @@
 import { UpstreamError } from "./http.ts";
-import { type CacheLike, type Deps, iso, type KvLike } from "./types.ts";
+import { type CacheLike, type Deps, iso, type KvLike, type Timing } from "./types.ts";
 
 /**
  * One entry per key, kept for a week so it can serve as the last good value after its
@@ -9,6 +9,12 @@ import { type CacheLike, type Deps, iso, type KvLike } from "./types.ts";
 export interface Entry<T> {
   fetched_utc: string;
   model_run_utc: string | null;
+  /**
+   * When the source should publish its next run. An entry fetched before this goes stale
+   * when it passes; after it (the run is overdue) the entry is re-checked every
+   * `overdueTtlSeconds`.
+   */
+  next_run_expected_utc?: string | null;
   data: T;
 }
 
@@ -80,42 +86,94 @@ export type Loaded<T> =
   | { ok: true; entry: Entry<T>; cached: boolean }
   | { ok: false; reason: string; last_good: Entry<T> | null };
 
-export interface LoadSpec {
+export interface LoadSpec<T = unknown> {
   store: EntryStore;
   source: string;
   key: string;
+  /** Upper bound on an entry's age, whatever the run says. */
   ttlSeconds: number;
   /** When set, a cached entry from a different run is stale. */
   run?: string | null;
+  /** Entries fetched before this instant are stale once it has passed (Open-Meteo's sync margin). */
+  recheckAfter?: string | null;
+  /** Re-check interval once the entry's `next_run_expected_utc` has passed. Default 120 s. */
+  overdueTtlSeconds?: number;
+  /** The stored entry, when the caller has already read it (null: nothing stored). */
+  stored?: Entry<T> | null;
+  /** `Server-Timing` name; omitted loads are not timed. */
+  timing?: string;
+  /** Start of the timed span (epoch ms) when the caller began work before `cachedLoad`. */
+  startedMs?: number;
+}
+
+const DEFAULT_OVERDUE_SECONDS = 120;
+
+/** Whether a stored entry can answer now without an upstream call. */
+export function isFresh<T>(stored: Entry<T>, spec: LoadSpec<T>, now: Date): boolean {
+  const nowMs = now.getTime();
+  const fetched = Date.parse(stored.fetched_utc);
+  const age = (nowMs - fetched) / 1000;
+  if (!(age >= 0 && age < spec.ttlSeconds)) return false;
+  if (spec.run != null && stored.model_run_utc !== spec.run) return false;
+  const boundaries = [spec.recheckAfter, stored.next_run_expected_utc]
+    .filter((b): b is string => typeof b === "string")
+    .map(Date.parse);
+  if (boundaries.some((b) => fetched < b && b <= nowMs)) return false;
+  const next = stored.next_run_expected_utc ? Date.parse(stored.next_run_expected_utc) : Number.NaN;
+  if (next <= nowMs && age >= (spec.overdueTtlSeconds ?? DEFAULT_OVERDUE_SECONDS)) return false;
+  return true;
+}
+
+/** Runs a write after the response when the platform allows it, otherwise inline. */
+export async function defer(deps: Deps, work: Promise<unknown>): Promise<void> {
+  const safe = work.catch(() => {});
+  if (deps.waitUntil) deps.waitUntil(safe);
+  else await safe;
+}
+
+function time(
+  deps: Deps,
+  spec: { timing?: string; startedMs?: number },
+  t0: number,
+  desc: Timing["desc"],
+): void {
+  if (spec.timing && deps.timings) {
+    deps.timings.push({ name: spec.timing, ms: Date.now() - (spec.startedMs ?? t0), desc });
+  }
 }
 
 export async function cachedLoad<T>(
   deps: Deps,
-  spec: LoadSpec,
-  load: () => Promise<{ data: T; model_run_utc?: string | null }>,
+  spec: LoadSpec<T>,
+  load: () => Promise<{
+    data: T;
+    model_run_utc?: string | null;
+    next_run_expected_utc?: string | null;
+  }>,
 ): Promise<Loaded<T>> {
+  const t0 = Date.now();
   const now = deps.now();
-  const stored = await spec.store.get<T>(spec.key);
-  if (stored) {
-    const age = (now.getTime() - Date.parse(stored.fetched_utc)) / 1000;
-    const sameRun = spec.run == null || stored.model_run_utc === spec.run;
-    if (age >= 0 && age < spec.ttlSeconds && sameRun) {
-      return { ok: true, entry: stored, cached: true };
-    }
+  const stored = spec.stored !== undefined ? spec.stored : await spec.store.get<T>(spec.key);
+  if (stored && isFresh(stored, spec, now)) {
+    time(deps, spec, t0, "hit");
+    return { ok: true, entry: stored, cached: true };
   }
   try {
-    const { data, model_run_utc } = await load();
+    const { data, model_run_utc, next_run_expected_utc } = await load();
     const entry: Entry<T> = {
       fetched_utc: iso(now),
       model_run_utc: model_run_utc ?? spec.run ?? null,
+      ...(next_run_expected_utc ? { next_run_expected_utc } : {}),
       data,
     };
-    await spec.store.put(spec.key, entry);
-    await recordHealth(deps, spec.source, null);
+    await defer(deps, spec.store.put(spec.key, entry));
+    await defer(deps, recordHealth(deps, spec.source, null));
+    time(deps, spec, t0, "miss");
     return { ok: true, entry, cached: false };
   } catch (err) {
     const reason = err instanceof UpstreamError ? err.message : "upstream parse error";
-    await recordHealth(deps, spec.source, reason);
+    await defer(deps, recordHealth(deps, spec.source, reason));
+    time(deps, spec, t0, "fail");
     return { ok: false, reason, last_good: stored };
   }
 }
@@ -128,22 +186,31 @@ export interface HealthRecord {
 
 const memoryHealth = new Map<string, HealthRecord>();
 
-async function recordHealth(deps: Deps, source: string, error: string | null): Promise<void> {
+const NO_HEALTH: HealthRecord = {
+  last_success_utc: null,
+  last_failure_utc: null,
+  last_error: null,
+};
+
+/** Updates this isolate's record at once; the shared (cache) copy is written in the background. */
+function recordHealth(deps: Deps, source: string, error: string | null): Promise<void> {
   const store = edgeStore(deps);
   const key = `health:${source}`;
-  const prev = memoryHealth.get(source) ??
-    (await store.get<HealthRecord>(key))?.data ?? {
-      last_success_utc: null,
-      last_failure_utc: null,
-      last_error: null,
-    };
   const at = iso(deps.now());
-  const next: HealthRecord =
+  const apply = (prev: HealthRecord): HealthRecord =>
     error === null
       ? { ...prev, last_success_utc: at }
       : { ...prev, last_failure_utc: at, last_error: error };
-  memoryHealth.set(source, next);
-  await store.put(key, { fetched_utc: at, model_run_utc: null, data: next });
+  const write = (next: HealthRecord) => {
+    memoryHealth.set(source, next);
+    return store.put(key, { fetched_utc: at, model_run_utc: null, data: next });
+  };
+  const mem = memoryHealth.get(source);
+  if (mem) return write(apply(mem));
+  return (async () => {
+    const prev = (await store.get<HealthRecord>(key))?.data ?? NO_HEALTH;
+    await write(apply(memoryHealth.get(source) ?? prev));
+  })();
 }
 
 export async function readHealth(deps: Deps, source: string): Promise<HealthRecord | null> {

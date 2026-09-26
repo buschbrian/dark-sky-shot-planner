@@ -50,6 +50,32 @@ export interface SmokePoint {
   v: number;
   issued_utc: string;
   fcst_hour: number | null;
+  /** When the slice reached the ImageServer (`idp_ingestdate`). */
+  ingested_utc?: string | null;
+}
+
+const DAY_MS = 86_400_000;
+const SMOKE_MAX_TTL_SECONDS = 6 * 3600;
+const SMOKE_UNKNOWN_RUN_TTL_SECONDS = 1800;
+
+/**
+ * One issue a day (03Z, NWS SCN 22-42), so the next is expected 24 h after the newest one,
+ * delayed as much as the newest one was (its latest `idp_ingestdate` minus its issue time).
+ */
+export function nextSmokeIssue(points: SmokePoint[]): string | null {
+  const latest = points
+    .map((p) => p.issued_utc)
+    .sort()
+    .at(-1);
+  if (!latest) return null;
+  const ingested = points
+    .filter((p) => p.issued_utc === latest && p.ingested_utc)
+    .map((p) => Date.parse(p.ingested_utc!))
+    .sort((a, b) => a - b)
+    .at(-1);
+  if (ingested === undefined) return null;
+  const issued = Date.parse(latest);
+  return iso(new Date(issued + DAY_MS + Math.max(0, ingested - issued)));
 }
 
 export const insideConus = (c: Cell): boolean =>
@@ -86,12 +112,14 @@ export function parseIdentify(body: unknown): SmokePoint[] {
     if (valid === null || issued === null || v === null || v < 0) return;
     const prev = byTime.get(valid);
     if (prev && prev.issued >= issued) return;
+    const ingested = num(a.idp_ingestdate);
     byTime.set(valid, {
       t: iso(new Date(valid)),
       v,
       issued,
       issued_utc: iso(new Date(issued)),
       fcst_hour: num(a.idp_fcst_hour),
+      ingested_utc: ingested === null ? null : iso(new Date(ingested)),
     });
   });
   return [...byTime.values()]
@@ -136,6 +164,7 @@ function toSmokeSeries(loaded: Loaded<SmokePoint[]>, layer: SmokeLayer, window: 
     return {
       ...base,
       model_run_utc: run(pts),
+      next_run_expected_utc: null,
       fetched_utc: null,
       status: "unavailable",
       reason: loaded.reason,
@@ -144,7 +173,12 @@ function toSmokeSeries(loaded: Loaded<SmokePoint[]>, layer: SmokeLayer, window: 
     };
   }
   const pts = within(loaded.entry.data);
-  const common = { ...base, model_run_utc: run(pts), fetched_utc: loaded.entry.fetched_utc };
+  const common = {
+    ...base,
+    model_run_utc: run(pts),
+    next_run_expected_utc: loaded.entry.next_run_expected_utc ?? null,
+    fetched_utc: loaded.entry.fetched_utc,
+  };
   if (pts.length === 0) {
     return {
       ...common,
@@ -192,6 +226,7 @@ export async function smokeFields(
               model: "rap_smoke",
               upstream_model: spec.service,
               model_run_utc: null,
+              next_run_expected_utc: null,
               fetched_utc: null,
               status: "unavailable",
               reason: "cell is outside the NDGD CONUS smoke coverage",
@@ -211,15 +246,27 @@ export async function smokeFields(
         `${NDGD_BASE}/${spec.service}/ImageServer/identify?geometry=${geometry}` +
         `&geometryType=esriGeometryPoint&time=${window.start.getTime()},${window.end.getTime()}` +
         "&returnGeometry=false&returnCatalogItems=true&f=json";
+      const store = edgeStore(deps);
+      const key = `ndgd-smoke:${layer}:${cellKey(cell)}:${window.start.getTime()}:${window.end.getTime()}`;
+      const stored = await store.get<SmokePoint[]>(key);
       const loaded = await cachedLoad(
         deps,
         {
-          store: edgeStore(deps),
+          store,
+          key,
+          stored,
           source: "ndgd-smoke",
-          key: `ndgd-smoke:${layer}:${cellKey(cell)}:${window.start.getTime()}:${window.end.getTime()}`,
-          ttlSeconds: 1800,
+          // Run-aware: an entry that knows its next issue is kept until then, else 30 min.
+          ttlSeconds: stored?.next_run_expected_utc
+            ? SMOKE_MAX_TTL_SECONDS
+            : SMOKE_UNKNOWN_RUN_TTL_SECONDS,
+          overdueTtlSeconds: 900,
+          timing: `smoke-${layer}`,
         },
-        async () => ({ data: parseIdentify(await getJson(deps.fetch, url)) }),
+        async () => {
+          const data = parseIdentify(await getJson(deps.fetch, url));
+          return { data, next_run_expected_utc: nextSmokeIssue(data) };
+        },
       );
       out[spec.field] = assembleField(
         cal?.unit ?? "uncalibrated",

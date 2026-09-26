@@ -8,7 +8,11 @@ export interface Point {
 export interface Series {
   model: string;
   upstream_model?: string;
+  /** Minutes between points; only set on sub-hourly series (`series_15min`). */
+  resolution_minutes?: number;
   model_run_utc: string | null;
+  /** When the next run should be on the source, if the source says enough to estimate it. */
+  next_run_expected_utc?: string | null;
   fetched_utc: string | null;
   status: Status;
   reason?: string;
@@ -53,11 +57,24 @@ export interface Env {
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** One `Server-Timing` entry: how long a source took and whether the cache answered. */
+export interface Timing {
+  name: string;
+  ms: number;
+  desc: "hit" | "miss" | "fail";
+}
+
 /** Everything that touches the outside world, injected so tests never reach the network. */
 export interface Deps {
   fetch: FetchLike;
   now: () => Date;
   cache: CacheLike | null;
+  /** `ctx.waitUntil` in production: cache and health writes leave the critical path. */
+  waitUntil?: (p: Promise<unknown>) => void;
+  /** Per-request timings, filled by `cachedLoad` and sent as `Server-Timing`. */
+  timings?: Timing[];
+  /** When the request started (epoch ms), for the `total` timing. */
+  startedMs?: number;
 }
 
 export const iso = (d: Date): string => d.toISOString().replace(/\.\d{3}Z$/, "Z");

@@ -37,6 +37,10 @@ public struct WorkerSeries: Sendable, Hashable, Codable {
     public let reason: String?
     public let lastGoodUTC: Date?
     public let values: [WorkerPoint]
+    /// When the source should publish its next run (the Worker's estimate); nil if unknown.
+    public var nextRunExpectedUTC: Date? = nil
+    /// Minutes between points on a sub-hourly series (`WorkerField.series15Min`); nil otherwise.
+    public var resolutionMinutes: Int? = nil
 
     enum CodingKeys: String, CodingKey {
         case model
@@ -46,6 +50,8 @@ public struct WorkerSeries: Sendable, Hashable, Codable {
         case status, reason
         case lastGoodUTC = "last_good_utc"
         case values
+        case nextRunExpectedUTC = "next_run_expected_utc"
+        case resolutionMinutes = "resolution_minutes"
     }
 
     /// The time the data describes the sky as of: the older of the model run and
@@ -99,6 +105,9 @@ public struct WorkerField: Sendable, Hashable, Codable {
     public let resolutionNote: String?
     public let terms: String?
     public let optional: Bool?
+    /// HRRR's native 15-minute series for the near term, on the fields that have one. Kept
+    /// apart from `series`, which stays one hourly series per model.
+    public var series15Min: [WorkerSeries]? = nil
 
     enum CodingKeys: String, CodingKey {
         case unit, source, status
@@ -110,6 +119,7 @@ public struct WorkerField: Sendable, Hashable, Codable {
         case calibrated, calibration
         case resolutionNote = "resolution_note"
         case terms, optional
+        case series15Min = "series_15min"
     }
 }
 
@@ -141,11 +151,15 @@ public struct ConditionsResponse: Sendable, Hashable, Codable {
     public let generatedUTC: Date
     public let fields: [String: WorkerField]
     public let attribution: [String]
+    /// The soonest `nextRunExpectedUTC` among the series served fresh: when a refetch can
+    /// first bring new data. The HTTP `max-age` runs to it (bounded to 60–1800 s).
+    public var nextUpdateExpectedUTC: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case cell, window
         case generatedUTC = "generated_utc"
         case fields, attribution
+        case nextUpdateExpectedUTC = "next_update_expected_utc"
     }
 
     public static func decode(_ data: Data) throws -> ConditionsResponse {

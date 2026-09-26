@@ -13,7 +13,7 @@ import {
   SWPC_SOURCE,
 } from "./sources/swpc.ts";
 import { edgeStore, kvStore, type Loaded, readHealth } from "./store.ts";
-import { type Deps, type Env, iso } from "./types.ts";
+import { type Deps, type Env, type Field, iso, type Series } from "./types.ts";
 
 export const ATTRIBUTION = [
   "Weather data by Open-Meteo.com (CC BY 4.0)",
@@ -34,13 +34,34 @@ export async function conditions(deps: Deps, env: Env, params: URLSearchParams) 
     airnowField(deps, env, cell),
     sevenTimerFields(deps, env, cell, window),
   ]);
+  const fields: Record<string, Field> = {
+    ...forecast,
+    ...aq,
+    ...smoke,
+    aqi_observed: aqi,
+    ...astro,
+  };
   return {
     cell,
     window: { start_utc: iso(window.start), end_utc: iso(window.end) },
     generated_utc: iso(deps.now()),
-    fields: { ...forecast, ...aq, ...smoke, aqi_observed: aqi, ...astro },
+    next_update_expected_utc: soonestNextRun(fields),
+    fields,
     attribution: ATTRIBUTION,
   };
+}
+
+/**
+ * The earliest `next_run_expected_utc` over the series that are being served fresh. A series
+ * that is down doesn't count: its source is failing, not about to update.
+ */
+export function soonestNextRun(fields: Record<string, Field>): string | null {
+  const times = Object.values(fields).flatMap((f) =>
+    [...f.series, ...((f.series_15min as Series[] | undefined) ?? [])]
+      .filter((s) => s.status === "ok" && s.next_run_expected_utc)
+      .map((s) => s.next_run_expected_utc as string),
+  );
+  return times.sort()[0] ?? null;
 }
 
 function kpBlock(loaded: Loaded<KpPoint[]>, keep: (p: KpPoint) => boolean) {
