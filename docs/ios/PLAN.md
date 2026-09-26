@@ -248,8 +248,8 @@ Each milestone lists what "done" means. "Owner checks" are things only a
 real phone at a real dark site can prove. Record their outcome in §Log.
 
 ### M0 — SkyCore package (Command Line Tools only, no Xcode yet)
-Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo lives on the
-external SSD.
+Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
+`~/Developer`; the SSD holds DerivedData, archives and optionally Xcode.
 - `ios/Packages/SkyCore` Swift package with `CAstronomy` (vendored
   `astronomy.c`/`astronomy.h` from cosinekitty/astronomy v2.1.19, the same
   version as the web app's npm package, with LICENSE alongside and version
@@ -410,6 +410,41 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-26 (Mac, local only, branch `local/ios-integration`): the owner
+  asked to keep all iOS and Worker work local (no push, PRs, CI or deploys)
+  until the local build is solid. Merged here: SkyCore M0+M1 and the Worker
+  (M3), both rebased from PR #9, plus the SkyCore (logic-only) parts of M4,
+  M5, M6/M7, M9 and M10. Nothing needing Xcode (app views, sensors, widgets)
+  is built yet. Checks: `swift test` 209 tests; `npx vitest run` 134;
+  `worker` `npm run verify` 70; tsc, eslint, ruff, mypy, pytest green.
+  - **M4:** port of `freshness.ts`; Worker `Codable` models decoded from the
+    new `shared/golden/{conditions,space-weather}-response.json` (written
+    offline by `worker/test/golden-response.test.ts`); `ConditionsSnapshot`;
+    `Verdict` per §Verdict (worst model per factor, spread kept, not averaged).
+  - **M5:** `WeekOutlook`, 7 nights matching the web `planNight` on 28 nights
+    (both DST changes, month and year ends); missing cloud hours make a mean
+    partial or unavailable, never clear. Aurora flag: Kp against the NOAA
+    G-scale geomagnetic latitudes (WMM2025 dipole), table in
+    `opportunities.kp_index`; OVATION near-cell deliberately not used.
+  - **M6/M7:** WGS84 Vincenty geodesics (1 mm vs Karney 2013 and
+    GeographicLib), azimuth line specs, AR projection from a
+    `.xTrueNorthZVertical` rotation matrix to portrait pixels, heading
+    confidence (`ar_overlay.heading_accuracy_confident_max_deg` = 10°, a
+    proposal) and calibration.
+  - **M9:** both planners take an optional horizon profile (none ⇒ unchanged);
+    `night-report.json` gains `horizon_cases` for Candlestick Camp (+27 and
+    +19 moon-free min; the 8 existing cases unchanged). On-device ray march
+    over 25 recorded z12 AWS Terrain Tiles matches the measured skyline at
+    0.494° RMS (bound 0.5°, thin margin).
+  - **M10:** gear profiles, NPF (Michaud/SAH; non-commercial terms), rough
+    500 rule, star trails, hyperfocal/DoF, stacking, timelapse, tested on
+    published worked examples.
+  - **Open for the owner:** transparency gates the verdict although 7Timer is
+    optional (with 7Timer down every night caps at marginal); weather
+    freshness is whole days (`freshness_days`), not hours as ADR-0006 implies;
+    the web app's "tonight" is the UTC date, so after 18:00 MDT it shows
+    tomorrow's night; AR frame orientation, heading threshold and field-mode
+    brightness need phone checks.
 - 2026-09-26: Mac is 256 GB. Added `docs/ios/MAC-SETUP.md` and split the
   scaffold so M0–M1 need only the Command Line Tools (Swift Testing), with
   Xcode arriving at M1b. PRs checked: #9 (this plan) and #8 (docs
