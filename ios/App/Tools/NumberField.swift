@@ -170,18 +170,22 @@ final class NumberKeypad: UIView {
         }
     }
 
+    /// Numbers are typed like a calculator: every key edits the end of the text,
+    /// wherever the caret was tapped.
     private func press(_ key: Key) {
         guard let field else { return }
-        let text = field.text ?? ""
+        var text = field.text ?? ""
         switch key {
-        case .digit(let d): field.insertText(d)
-        case .point: if !text.contains(".") { field.insertText(".") }
-        case .delete: field.deleteBackward()
-        case .sign:
-            field.text = text.hasPrefix("-") ? String(text.dropFirst()) : "-" + text
-            field.selectedTextRange = field.textRange(from: field.endOfDocument, to: field.endOfDocument)
-        case .done: field.resignFirstResponder()
+        case .digit(let d): text += d
+        case .point: if !text.contains(".") { text += text.isEmpty || text == "-" ? "0." : "." }
+        case .delete: if !text.isEmpty { text.removeLast() }
+        case .sign: text = text.hasPrefix("-") ? String(text.dropFirst()) : "-" + text
+        case .done:
+            field.resignFirstResponder()
+            return
         }
+        field.text = text
+        field.selectedTextRange = field.textRange(from: field.endOfDocument, to: field.endOfDocument)
         onChange?()
     }
 }
