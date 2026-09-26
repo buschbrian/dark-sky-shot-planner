@@ -1,0 +1,11 @@
+{
+ "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,temperature_2m,dew_point_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,wind_speed_250hPa,wind_speed_200hPa&models=gem_hrdps_continental&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+ "status": 400,
+ "content_type": "application/json; charset=utf-8",
+ "body_format": "json",
+ "body": {
+  "error": true,
+  "reason": "No data is available for this location"
+ },
+ "note": "real response recorded 2026-09-25 for gem_hrdps_continental at 38.35, -109.95 (outside its domain)"
+}

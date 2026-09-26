@@ -1,0 +1,15 @@
+{
+ "url": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_vert_1hr_avg_time/ImageServer/identify",
+ "status": 200,
+ "content_type": "application/json",
+ "body_format": "json",
+ "body": {
+  "error": {
+   "code": 500,
+   "message": "Error performing identify",
+   "details": []
+  }
+ },
+ "synthetic": true,
+ "note": "ArcGIS REST reports errors with HTTP 200 and an error object"
+}

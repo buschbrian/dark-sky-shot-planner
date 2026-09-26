@@ -1,0 +1,14 @@
+{
+ "url": "https://www.airnowapi.org/aq/observation/current/ziplatLong/?format=application/json&latitude=38.35&longitude=-109.95&distance=50",
+ "status": 401,
+ "content_type": "application/json;charset=UTF-8",
+ "body_format": "json",
+ "body": {
+  "WebServiceError": [
+   {
+    "Message": "Request not authenticated."
+   }
+  ]
+ },
+ "note": "real keyless response"
+}

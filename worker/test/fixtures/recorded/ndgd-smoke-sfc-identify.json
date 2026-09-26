@@ -1,0 +1,334 @@
+{
+ "url": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_sfc_1hr_avg_time/ImageServer/identify?geometry=%7B%22x%22%3A-109.95%2C%22y%22%3A38.35%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryPoint&time=1790380800000,1790431200000&returnGeometry=false&returnCatalogItems=true&f=json",
+ "status": 200,
+ "content_type": "application/json;charset=UTF-8",
+ "body_format": "json",
+ "body": {
+  "objectId": 0,
+  "name": "Pixel",
+  "value": "4.24e-11",
+  "location": {
+   "x": -12239578.01272043,
+   "y": 4628987.747009288,
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+   }
+  },
+  "properties": {
+   "Values": [
+    "4.24e-11",
+    "5.28e-11",
+    "6.24e-11",
+    "9.2e-11",
+    "1.48e-10",
+    "1.56e-10",
+    "1.4e-10",
+    "4.52e-11",
+    "4.48e-11",
+    "4.24e-11",
+    "4.56e-11",
+    "7.44e-11",
+    "8.16e-11",
+    "8.32e-11",
+    "1.16e-10",
+    "1.32e-10"
+   ]
+  },
+  "catalogItems": {
+   "objectIdFieldName": "objectid",
+   "features": [
+    {
+     "attributes": {
+      "objectid": 676517,
+      "name": "conus_valid_20260926T110000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310268000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790420400000,
+      "idp_validendtime": 1790424000000,
+      "idp_fcst_hour": 32,
+      "idp_time_series": 33,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676515,
+      "name": "conus_valid_20260926T090000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310267000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790413200000,
+      "idp_validendtime": 1790416800000,
+      "idp_fcst_hour": 30,
+      "idp_time_series": 31,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676514,
+      "name": "conus_valid_20260926T080000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310266000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790409600000,
+      "idp_validendtime": 1790413200000,
+      "idp_fcst_hour": 29,
+      "idp_time_series": 30,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676510,
+      "name": "conus_valid_20260926T040000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310264000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790395200000,
+      "idp_validendtime": 1790398800000,
+      "idp_fcst_hour": 25,
+      "idp_time_series": 26,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676508,
+      "name": "conus_valid_20260926T020000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310264000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790388000000,
+      "idp_validendtime": 1790391600000,
+      "idp_fcst_hour": 23,
+      "idp_time_series": 24,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676507,
+      "name": "conus_valid_20260926T010000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310263000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790384400000,
+      "idp_validendtime": 1790388000000,
+      "idp_fcst_hour": 22,
+      "idp_time_series": 23,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676506,
+      "name": "conus_valid_20260926T000000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310263000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790380800000,
+      "idp_validendtime": 1790384400000,
+      "idp_fcst_hour": 21,
+      "idp_time_series": 22,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676520,
+      "name": "conus_valid_20260926T140000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310269000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790431200000,
+      "idp_validendtime": 1790434800000,
+      "idp_fcst_hour": 35,
+      "idp_time_series": 36,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676519,
+      "name": "conus_valid_20260926T130000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310269000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790427600000,
+      "idp_validendtime": 1790431200000,
+      "idp_fcst_hour": 34,
+      "idp_time_series": 35,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676518,
+      "name": "conus_valid_20260926T120000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310268000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790424000000,
+      "idp_validendtime": 1790427600000,
+      "idp_fcst_hour": 33,
+      "idp_time_series": 34,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676516,
+      "name": "conus_valid_20260926T100000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310267000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790416800000,
+      "idp_validendtime": 1790420400000,
+      "idp_fcst_hour": 31,
+      "idp_time_series": 32,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676513,
+      "name": "conus_valid_20260926T070000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310266000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790406000000,
+      "idp_validendtime": 1790409600000,
+      "idp_fcst_hour": 28,
+      "idp_time_series": 29,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676512,
+      "name": "conus_valid_20260926T060000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310265000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790402400000,
+      "idp_validendtime": 1790406000000,
+      "idp_fcst_hour": 27,
+      "idp_time_series": 28,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676511,
+      "name": "conus_valid_20260926T050000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310265000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790398800000,
+      "idp_validendtime": 1790402400000,
+      "idp_fcst_hour": 26,
+      "idp_time_series": 27,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676509,
+      "name": "conus_valid_20260926T030000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310264000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790391600000,
+      "idp_validendtime": 1790395200000,
+      "idp_fcst_hour": 24,
+      "idp_time_series": 25,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    },
+    {
+     "attributes": {
+      "objectid": 676505,
+      "name": "conus_valid_20260925T230000Z",
+      "category": 1,
+      "idp_ingestdate": 1790310262000,
+      "idp_filedate": 1790310160000,
+      "idp_subset": "conus",
+      "idp_validtime": 1790377200000,
+      "idp_validendtime": 1790380800000,
+      "idp_fcst_hour": 20,
+      "idp_time_series": 21,
+      "idp_issueddate": 1790305200000,
+      "st_area_shape_": null,
+      "st_perimeter_shape_": null
+     }
+    }
+   ]
+  },
+  "catalogItemVisibilities": [
+   1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ }
+}

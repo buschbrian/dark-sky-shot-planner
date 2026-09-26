@@ -34,25 +34,44 @@
       "better": "lower",
       "good": 0.1,
       "marginal": 0.25,
-      "gates_verdict": true
+      "gates_verdict": true,
+      "note": "Total column (CAMS, 550 nm). At GC culmination in Utah (airmass 2.6-2.9) 0.10 costs ~0.4 stop and 0.25 ~1 stop of Milky Way signal; clean Utah background is 0.02-0.07 (AERONET NEON_MOAB/NEON_ONAQ 2016-2025). Researched 2026-09-26."
     },
     "smoke_column": {
-      "label": "Smoke overhead (HRRR-Smoke, vertically integrated)",
+      "label": "Smoke overhead (RAP-Smoke, vertically integrated)",
       "unit": "mg/m²",
       "better": "lower",
-      "good": null,
-      "marginal": null,
-      "gates_verdict": false,
-      "note": "Primary smoke signal once calibrated. Set thresholds and the unit after the M3 unit calibration (docs/ios/PLAN.md), then turn gating on. Until then it is shown only."
+      "good": 10,
+      "marginal": 40,
+      "gates_verdict": true,
+      "note": "Worst hour in window. Smoke AOD = 0.0045 x column (mg/m2); with a 0.05 background, 10 and 40 match the AOD edges 0.10 and 0.25 (docs/methods.md). Models tend to underpredict smoke AOD (Ye et al. 2021): do not loosen without logged nights."
     },
     "pm2_5": {
       "label": "Surface smoke (PM2.5)",
       "unit": "µg/m³",
       "better": "lower",
-      "good": 12,
-      "marginal": 35,
+      "good": 9.0,
+      "marginal": 35.4,
       "gates_verdict": false,
-      "note": "Surface PM2.5 is a health signal. Sky transparency follows AOD, so PM2.5 is shown but does not gate."
+      "note": "Advisory: surface health signal, not sky transparency. Edges are the EPA 2024 AQI Good/Moderate breakpoints. Utah 2016-2025: surface PM2.5 missed 79-94% of fire-season AOD>0.25 days and reads high under winter inversions with AOD ~0.04."
+    },
+    "aqi_pm25_observed": {
+      "label": "Observed AQI, PM2.5 only (AirNow NowCast)",
+      "unit": "AQI",
+      "better": "lower",
+      "good": 50,
+      "marginal": 100,
+      "gates_verdict": false,
+      "note": "Advisory, never a go signal; ignore ozone rows. Jun-Oct, AQI>100 coincided with AOD>0.25 on 83-100% of days (Wasatch Front monitors vs AERONET NEON_ONAQ, 2016-2025). Candidate no-go confirmer once the verdict engine supports a PM2.5-only, Jun-Oct or smoke-present rule where no nearby monitor means no signal, not incomplete data."
+    },
+    "dust": {
+      "label": "Surface dust (CAMS)",
+      "unit": "µg/m³",
+      "better": "lower",
+      "good": null,
+      "marginal": null,
+      "gates_verdict": false,
+      "note": "Shown only. Column dust is already in the AOD factor; no evidence found for a surface-dust threshold."
     },
     "transparency": {
       "label": "Transparency (7Timer scale 1–8, 1 best)",

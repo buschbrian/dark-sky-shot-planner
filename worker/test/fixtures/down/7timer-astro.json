@@ -1,0 +1,9 @@
+{
+ "url": "https://www.7timer.info/bin/astro.php",
+ "status": 200,
+ "content_type": "text/html; charset=UTF-8",
+ "body_format": "text",
+ "body": "",
+ "synthetic": true,
+ "note": "synthetic: HTTP 200 with an empty body, which must not parse as a forecast"
+}

@@ -1,0 +1,9 @@
+{
+ "url": "https://air-quality-api.open-meteo.com/v1/air-quality",
+ "status": 503,
+ "content_type": "text/html",
+ "body_format": "text",
+ "body": "<html><body>Service Unavailable</body></html>",
+ "synthetic": true,
+ "note": "synthetic upstream-down response; shape per the upstream's documented error format"
+}

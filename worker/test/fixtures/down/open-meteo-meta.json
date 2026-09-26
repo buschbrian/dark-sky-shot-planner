@@ -1,0 +1,11 @@
+{
+ "url": "https://api.open-meteo.com/data/gfs_seamless/static/meta.json",
+ "status": 500,
+ "content_type": "application/json; charset=utf-8",
+ "body_format": "json",
+ "body": {
+  "error": true,
+  "reason": "Something went wrong."
+ },
+ "note": "real response body and status seen 2026-09-25 for an alias model's meta.json"
+}
