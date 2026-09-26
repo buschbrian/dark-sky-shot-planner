@@ -11,32 +11,32 @@ struct NightPicker: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                step("chevron.left", "Previous night", "tonight.previousNight", -1)
-                Button(action: openCalendar) {
-                    VStack(spacing: 2) {
-                        Text("Night of \(Format.nightTitle(night))")
-                            .font(.headline)
-                            .foregroundStyle(palette.primary)
-                        Text(relative)
-                            .font(.subheadline)
-                            .foregroundStyle(palette.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 44)
+        HStack(spacing: DS.Space.s) {
+            step("chevron.left", "Previous night", "tonight.previousNight", -1)
+            Button(action: openCalendar) {
+                VStack(spacing: DS.Space.xxs) {
+                    Text(Format.nightTitle(night))
+                        .font(.dsHeadline)
+                        .foregroundStyle(palette.primary)
+                    Text(relative)
+                        .font(.dsFootnote)
+                        .foregroundStyle(night == tonight ? palette.secondary : palette.marginal)
                 }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Night of \(Format.nightSpoken(night)), \(relative)")
-                .accessibilityHint("Opens a calendar")
-                .accessibilityIdentifier("tonight.date")
-                step("chevron.right", "Next night", "tonight.nextNight", 1)
+                .frame(maxWidth: .infinity, minHeight: DS.minTarget)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(PressDimStyle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Night of \(Format.nightSpoken(night)), \(relative)")
+            .accessibilityHint("Opens a calendar")
+            .accessibilityIdentifier("tonight.date")
             if night != tonight {
-                Button("Back to tonight") { choose(tonight) }
-                    .buttonStyle(PaletteButtonStyle(palette: palette))
+                Button("Tonight") { choose(tonight) }
+                    .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                    .accessibilityLabel("Back to tonight")
                     .accessibilityIdentifier("tonight.backToTonight")
             }
+            step("chevron.right", "Next night", "tonight.nextNight", 1)
         }
     }
 
@@ -53,9 +53,9 @@ struct NightPicker: View {
 
     private func step(_ icon: String, _ label: String, _ id: String, _ days: Int) -> some View {
         Button { choose(night.adding(days: days)) } label: {
-            Image(systemName: icon).frame(width: 44, height: 44)
+            Image(systemName: icon)
         }
-        .buttonStyle(PaletteButtonStyle(palette: palette))
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
         .accessibilityLabel(label)
         .accessibilityIdentifier(id)
     }
@@ -72,7 +72,6 @@ struct NightCalendar: View {
     let choose: (NightDate) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.palette) private var palette
-    @Environment(AppState.self) private var state
     @State private var month: (year: Int, month: Int) = (2026, 1)
 
     private static let utc: Calendar = {
@@ -88,7 +87,7 @@ struct NightCalendar: View {
                     monthStep("chevron.left", "Previous month", -1)
                     Spacer()
                     Text(monthTitle)
-                        .font(.title3.bold())
+                        .font(.dsTitle)
                         .foregroundStyle(palette.primary)
                         .accessibilityAddTraits(.isHeader)
                     Spacer()
@@ -108,29 +107,15 @@ struct NightCalendar: View {
                     choose(tonight)
                     dismiss()
                 }
-                .buttonStyle(PaletteButtonStyle(palette: palette))
+                .buttonStyle(ActionButtonStyle(.secondary))
                 Spacer()
             }
-            .padding()
+            .padding(DS.Space.screen)
             .background(palette.background)
-            .navigationTitle("Choose a night")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Choose a night").font(.headline).foregroundStyle(palette.primary)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.foregroundStyle(palette.accent)
-                }
-                .sharedBackgroundVisibility(state.fieldMode ? .hidden : .automatic)
-            }
+            .sheetChrome("Choose a night", cancel: SheetAction(title: "Cancel") { dismiss() })
         }
-        .presentationDetents([.medium, .large])
-        .presentationBackground(palette.background)
         .presentationDragIndicator(.hidden)
-        .fieldSafe(state.fieldMode)
+        .sheetPresentation(palette, detents: [.medium, .large])
         .onAppear { month = (selected.year, selected.month) }
     }
 
@@ -183,9 +168,9 @@ struct NightCalendar: View {
             let c = Self.utc.dateComponents([.year, .month], from: date)
             month = (c.year!, c.month!)
         } label: {
-            Image(systemName: icon).frame(width: 44, height: 44)
+            Image(systemName: icon)
         }
-        .buttonStyle(PaletteButtonStyle(palette: palette))
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
         .accessibilityLabel(label)
     }
 }

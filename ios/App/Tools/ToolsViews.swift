@@ -69,39 +69,3 @@ struct ErrorLine: View {
     }
 }
 
-/// A row of mutually exclusive choices drawn from the palette (system
-/// segmented controls and menus are white in field mode).
-struct ChoiceRow<Value: Hashable>: View {
-    let label: String
-    let options: [(Value, String)]
-    @Binding var selection: Value
-    let id: String
-    @Environment(\.palette) private var palette
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).foregroundStyle(palette.primary).accessibilityAddTraits(.isHeader)
-            let layout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
-            layout {
-                ForEach(options, id: \.0) { value, title in
-                    let on = value == selection
-                    Button { selection = value } label: {
-                        Text(title)
-                            .font(.subheadline.weight(on ? .bold : .regular))
-                            .foregroundStyle(on ? palette.accent : palette.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(palette.background, in: RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(on ? palette.accent : palette.surface, lineWidth: 1.5))
-                    }
-                    .buttonStyle(PressDimStyle())
-                    .accessibilityLabel("\(label): \(title)")
-                    .accessibilityAddTraits(on ? .isSelected : [])
-                    .accessibilityIdentifier("\(id).\(title)")
-                }
-            }
-        }
-    }
-}

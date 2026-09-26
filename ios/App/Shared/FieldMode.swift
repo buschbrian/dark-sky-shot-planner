@@ -1,53 +1,40 @@
 import SwiftUI
 
-/// Field mode (ios/AGENTS.md invariant 5): in red mode no white or blue pixel
-/// anywhere. Views take every color from the palette, never a literal.
-struct Palette: Equatable {
-    let background: Color
-    let surface: Color
-    let primary: Color
-    let secondary: Color
-    let accent: Color
-    let good: Color
-    let marginal: Color
-    let poor: Color
-    let colorScheme: ColorScheme
-
-    static let standard = Palette(
-        background: Color(.systemBackground), surface: Color(.secondarySystemBackground),
-        primary: .primary, secondary: .secondary, accent: .indigo,
-        good: .green, marginal: .orange, poor: .red, colorScheme: .dark)
-
-    /// Pure red channel only, black background. Levels differ by brightness.
-    static let field = Palette(
-        background: .black, surface: Color(red: 0.10, green: 0, blue: 0),
-        primary: Color(red: 0.85, green: 0, blue: 0), secondary: Color(red: 0.55, green: 0, blue: 0),
-        accent: Color(red: 1.0, green: 0, blue: 0),
-        good: Color(red: 0.85, green: 0, blue: 0), marginal: Color(red: 0.6, green: 0, blue: 0),
-        poor: Color(red: 0.4, green: 0, blue: 0), colorScheme: .dark)
-}
-
-private struct PaletteKey: EnvironmentKey {
-    static let defaultValue = Palette.standard
-}
-
-extension EnvironmentValues {
-    var palette: Palette {
-        get { self[PaletteKey.self] }
-        set { self[PaletteKey.self] = newValue }
+/// Field mode (ios/AGENTS.md invariant 5): pure red for everything the app
+/// draws. The shell multiplies the window by red and hides the status bar and
+/// home indicator; sheets and full-screen covers are separate presentations,
+/// so each applies `fieldSafe` itself.
+extension View {
+    /// Multiplies by pure red (any stray white becomes red, any blue black)
+    /// and hides the status bar and home indicator while field mode is on.
+    func fieldSafe(_ on: Bool) -> some View {
+        colorMultiply(on ? Color.red(1) : .white)
+            .statusBarHidden(on)
+            .persistentSystemOverlays(on ? .hidden : .automatic)
     }
 }
 
-/// Toolbar toggle reachable from every screen.
+extension Palette {
+    /// Toolbar glass is grey, so field mode hides it.
+    var toolbarGlass: Visibility { isField ? .hidden : .automatic }
+}
+
+/// The field-mode switch. It lives in one place on every screen: the last
+/// item on the trailing side of the navigation bar (`screenChrome`).
 struct FieldModeToggle: View {
     @Environment(AppState.self) private var state
+    @Environment(\.palette) private var palette
 
     var body: some View {
-        @Bindable var state = state
-        Toggle(isOn: $state.fieldMode) {
-            Label("Field mode", systemImage: "moon.stars")
+        Button {
+            state.fieldMode.toggle()
+        } label: {
+            Image(systemName: state.fieldMode ? "moon.stars.fill" : "moon.stars")
+                .foregroundStyle(state.fieldMode ? palette.accent : palette.primary)
+                .contentTransition(.symbolEffect(.replace))
         }
-        .toggleStyle(.button)
+        .accessibilityLabel("Field mode")
+        .accessibilityValue(state.fieldMode ? "On" : "Off")
         .accessibilityHint("Switches the whole app to dim red")
     }
 }
