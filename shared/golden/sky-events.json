@@ -1,0 +1,2853 @@
+{
+  "generated_by": "app/tests/sky-events-golden.test.ts (buildSkyEvents, astronomy-engine, TypeScript)",
+  "astronomy_engine": "2.1.19",
+  "curated_file": "config/sky-events.json",
+  "window_days": 30,
+  "tolerance": {
+    "time_s": 60,
+    "angle_deg": 0.01,
+    "illum_fraction": 0.002,
+    "minutes": 2
+  },
+  "cases": [
+    {
+      "id": "millcreek-2026-09-22",
+      "note": "The web suite's scenario: Saturn opposition, Mercury elongation, a Moon–Jupiter occultation at moonrise, zodiacal light, the equinox, the Orionids with a better night, a festival",
+      "latitude": 40.687,
+      "longitude": -111.824,
+      "elevation_m": 1400,
+      "centre_utc": "2026-09-23T03:00:00Z",
+      "utc_offset_hours": -6,
+      "expected": {
+        "window": {
+          "start": "2026-08-24T03:00:00.000Z",
+          "end": "2026-10-23T03:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2026-08-28T04:19:06.085Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-09-04T07:51:42.224Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-09-11T03:27:28.467Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-09-18T20:44:24.674Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-09-26T16:49:32.233Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-10-03T13:25:33.710Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-10-10T15:50:36.724Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-10-18T16:13:19.496Z",
+            "angle": 90
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2026-10-04T12:12:54.016Z",
+            "body": "Saturn",
+            "kind": "opposition",
+            "elongation_deg": null,
+            "visibility": null
+          },
+          {
+            "at": "2026-10-12T10:06:20.884Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 25.2,
+            "visibility": "evening"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Mars",
+            "at": "2026-09-06T12:28:00.000Z",
+            "separation_deg": 4.36,
+            "observable_here": true,
+            "moon_altitude_deg": 50.7,
+            "body_altitude_deg": 46.5,
+            "moon_illum_fraction": 0.258,
+            "geocentric_min_deg": 2.952,
+            "geocentric_min_at": "2026-09-06T19:28:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Jupiter",
+            "at": "2026-09-08T12:30:00.000Z",
+            "separation_deg": 2.838,
+            "observable_here": true,
+            "moon_altitude_deg": 25.2,
+            "body_altitude_deg": 22.4,
+            "moon_illum_fraction": 0.087,
+            "geocentric_min_deg": 0.774,
+            "geocentric_min_at": "2026-09-08T18:44:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 0.286,
+              "min_separation_at": "2026-09-08T19:02:00.000Z",
+              "moon_radius_deg": 0.273,
+              "moon_altitude_deg": 58.9,
+              "sun_altitude_deg": 54.4,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          },
+          {
+            "body": "Mars",
+            "at": "2026-10-05T08:23:00.000Z",
+            "separation_deg": 2.25,
+            "observable_here": true,
+            "moon_altitude_deg": 5.1,
+            "body_altitude_deg": 6.8,
+            "moon_illum_fraction": 0.303,
+            "geocentric_min_deg": 1.09,
+            "geocentric_min_at": "2026-10-05T06:11:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 0.435,
+              "min_separation_at": "2026-10-05T04:59:00.000Z",
+              "moon_radius_deg": 0.266,
+              "moon_altitude_deg": -22.1,
+              "sun_altitude_deg": -42.4,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          },
+          {
+            "body": "Jupiter",
+            "at": "2026-10-06T09:35:00.000Z",
+            "separation_deg": 0.484,
+            "observable_here": true,
+            "moon_altitude_deg": 5,
+            "body_altitude_deg": 5.5,
+            "moon_illum_fraction": 0.2,
+            "geocentric_min_deg": 0.159,
+            "geocentric_min_at": "2026-10-06T10:23:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 0.171,
+              "min_separation_at": "2026-10-06T08:49:00.000Z",
+              "moon_radius_deg": 0.266,
+              "moon_altitude_deg": -2.4,
+              "sun_altitude_deg": -48.5,
+              "behind_disc_from_here": true,
+              "disappears_at": "2026-10-06T08:30:00.000Z",
+              "reappears_at": "2026-10-06T09:10:00.000Z",
+              "reappear_moon_altitude_deg": 1
+            }
+          }
+        ],
+        "zodiacal": [
+          {
+            "season": "autumn_morning",
+            "start": "2026-08-24T10:07:14.114Z",
+            "end": "2026-08-25T10:08:36.042Z",
+            "nights": 2
+          },
+          {
+            "season": "autumn_morning",
+            "start": "2026-09-08T10:26:42.236Z",
+            "end": "2026-09-23T10:44:11.768Z",
+            "nights": 16
+          },
+          {
+            "season": "autumn_morning",
+            "start": "2026-10-07T10:59:16.449Z",
+            "end": "2026-10-22T11:14:52.079Z",
+            "nights": 16
+          }
+        ],
+        "seasons": [
+          {
+            "at": "2026-09-23T00:05:38.617Z",
+            "name": "September equinox"
+          }
+        ],
+        "showers": [
+          {
+            "id": "sep-epsilon-perseids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-09-09T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-09-09T03:21:59.233Z",
+                "end": "2026-09-09T11:27:55.677Z"
+              },
+              "max_altitude_deg": 89.4,
+              "max_altitude_at": "2026-09-09T11:26:59.233Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-09-09T03:51:59.233Z",
+                "end": "2026-09-09T11:26:59.233Z"
+              },
+              "moon_illum_fraction": 0.042,
+              "usable_windows": [
+                {
+                  "start": "2026-09-09T03:51:59.233Z",
+                  "end": "2026-09-09T11:16:25.429Z",
+                  "minutes": 444
+                }
+              ],
+              "usable_minutes": 444
+            },
+            "better_night": {
+              "evening_utc": "2026-09-12T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-09-12T03:16:16.462Z",
+                "end": "2026-09-12T11:31:32.857Z"
+              },
+              "max_altitude_deg": 89.4,
+              "max_altitude_at": "2026-09-12T11:16:16.462Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-09-12T03:36:16.462Z",
+                "end": "2026-09-12T11:31:16.462Z"
+              },
+              "moon_illum_fraction": 0.017,
+              "usable_windows": [
+                {
+                  "start": "2026-09-12T03:36:16.462Z",
+                  "end": "2026-09-12T11:31:16.462Z",
+                  "minutes": 475
+                }
+              ],
+              "usable_minutes": 475
+            }
+          },
+          {
+            "id": "draconids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-10-09T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-10-09T02:28:22.580Z",
+                "end": "2026-10-09T12:01:22.543Z"
+              },
+              "max_altitude_deg": 60,
+              "max_altitude_at": "2026-10-09T02:28:22.580Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-09T02:28:22.580Z",
+                "end": "2026-10-09T09:48:22.580Z"
+              },
+              "moon_illum_fraction": 0.023,
+              "usable_windows": [
+                {
+                  "start": "2026-10-09T02:28:22.580Z",
+                  "end": "2026-10-09T09:48:22.580Z",
+                  "minutes": 440
+                }
+              ],
+              "usable_minutes": 440
+            },
+            "better_night": null
+          },
+          {
+            "id": "orionids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-10-21T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-10-21T02:10:34.894Z",
+                "end": "2026-10-21T12:13:50.255Z"
+              },
+              "max_altitude_deg": 65.3,
+              "max_altitude_at": "2026-10-21T11:50:34.894Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-21T05:50:34.894Z",
+                "end": "2026-10-21T12:10:34.894Z"
+              },
+              "moon_illum_fraction": 0.752,
+              "usable_windows": [
+                {
+                  "start": "2026-10-21T08:45:22.720Z",
+                  "end": "2026-10-21T12:10:34.894Z",
+                  "minutes": 205
+                }
+              ],
+              "usable_minutes": 205
+            },
+            "better_night": {
+              "evening_utc": "2026-10-18T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-10-18T02:14:45.610Z",
+                "end": "2026-10-18T12:10:44.452Z"
+              },
+              "max_altitude_deg": 65.3,
+              "max_altitude_at": "2026-10-18T11:59:45.610Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-18T05:59:45.610Z",
+                "end": "2026-10-18T12:09:45.610Z"
+              },
+              "moon_illum_fraction": 0.473,
+              "usable_windows": [
+                {
+                  "start": "2026-10-18T05:59:45.610Z",
+                  "end": "2026-10-18T12:09:45.610Z",
+                  "minutes": 370
+                }
+              ],
+              "usable_minutes": 370
+            }
+          },
+          {
+            "id": "leonis-minorids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-10-24T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-10-24T02:06:36.153Z",
+                "end": "2026-10-24T12:16:55.612Z"
+              },
+              "max_altitude_deg": 47.2,
+              "max_altitude_at": "2026-10-24T12:16:36.153Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-24T08:36:36.153Z",
+                "end": "2026-10-24T12:16:36.153Z"
+              },
+              "moon_illum_fraction": 0.96,
+              "usable_windows": [
+                {
+                  "start": "2026-10-24T12:06:46.395Z",
+                  "end": "2026-10-24T12:16:36.153Z",
+                  "minutes": 10
+                }
+              ],
+              "usable_minutes": 10
+            },
+            "better_night": {
+              "evening_utc": "2026-10-21T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-10-21T02:10:34.894Z",
+                "end": "2026-10-21T12:13:50.255Z"
+              },
+              "max_altitude_deg": 43.9,
+              "max_altitude_at": "2026-10-21T12:10:34.894Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-21T08:50:34.894Z",
+                "end": "2026-10-21T12:10:34.894Z"
+              },
+              "moon_illum_fraction": 0.757,
+              "usable_windows": [
+                {
+                  "start": "2026-10-21T08:50:34.894Z",
+                  "end": "2026-10-21T12:10:34.894Z",
+                  "minutes": 200
+                }
+              ],
+              "usable_minutes": 200
+            }
+          },
+          {
+            "id": "southern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-05T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-11-05T01:52:55.752Z",
+                "end": "2026-11-05T12:29:15.729Z"
+              },
+              "max_altitude_deg": 63.4,
+              "max_altitude_at": "2026-11-05T08:02:55.752Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-05T02:07:55.752Z",
+                "end": "2026-11-05T12:27:55.752Z"
+              },
+              "moon_illum_fraction": 0.159,
+              "usable_windows": [
+                {
+                  "start": "2026-11-05T02:07:55.752Z",
+                  "end": "2026-11-05T10:21:34.341Z",
+                  "minutes": 494
+                }
+              ],
+              "usable_minutes": 494
+            },
+            "better_night": {
+              "evening_utc": "2026-11-08T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-11-08T01:50:07.800Z",
+                "end": "2026-11-08T12:32:20.216Z"
+              },
+              "max_altitude_deg": 63.4,
+              "max_altitude_at": "2026-11-08T07:50:07.800Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-08T01:55:07.800Z",
+                "end": "2026-11-08T12:30:07.800Z"
+              },
+              "moon_illum_fraction": 0.012,
+              "usable_windows": [
+                {
+                  "start": "2026-11-08T01:55:07.800Z",
+                  "end": "2026-11-08T12:30:07.800Z",
+                  "minutes": 635
+                }
+              ],
+              "usable_minutes": 635
+            }
+          },
+          {
+            "id": "northern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-09T04:27:17.760Z",
+              "darkness": {
+                "start": "2026-11-09T01:49:15.354Z",
+                "end": "2026-11-09T12:33:21.551Z"
+              },
+              "max_altitude_deg": 71.4,
+              "max_altitude_at": "2026-11-09T08:09:15.354Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-09T01:49:15.354Z",
+                "end": "2026-11-09T12:29:15.354Z"
+              },
+              "moon_illum_fraction": 0.002,
+              "usable_windows": [
+                {
+                  "start": "2026-11-09T01:49:15.354Z",
+                  "end": "2026-11-09T12:29:15.354Z",
+                  "minutes": 640
+                }
+              ],
+              "usable_minutes": 640
+            },
+            "better_night": null
+          }
+        ],
+        "items": [
+          {
+            "at": "2026-08-24T10:07:14.114Z",
+            "until": "2026-08-25T10:08:36.042Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "2 nights with no moon in the way, 08-24 – 08-25. Look east about an hour before astronomical dawn (04:07 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-28T04:19:06.085Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-01T12:00:00.000Z",
+            "until": "2026-09-30T12:00:00.000Z",
+            "category": "place",
+            "title": "Cedar Breaks night-sky programs",
+            "verdict": "Cedar Breaks National Monument, Utah — 353 km from here. Ranger-led programs on Friday and Saturday nights through September 2026.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://www.nps.gov/cebr/planyourvisit/dark-sky-tours-2026.htm",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-09-04T07:51:42.224Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-06T12:28:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "4.4° apart at 06:28, 51° and 47° up, Moon 26% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-08T10:26:42.236Z",
+            "until": "2026-09-23T10:44:11.768Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "16 nights with no moon in the way, 09-08 – 09-23. Look east about an hour before astronomical dawn (04:26 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-08T12:30:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "2.8° apart at 06:30, 25° and 22° up, Moon 9% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-09T18:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "September epsilon-Perseids",
+            "verdict": "ZHR ~5. Radiant up 21:51–05:26, highest 89.4° at 05:26. 4% moon in the way for part of it — usable 21:51–05:16. Active 09-05 – 09-21. A better night inside the active range: 09-11, 475 min moonless with the radiant up. Weak annual shower; fast meteors.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://in-the-sky.org/news.php?id=20260901_10_100",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-09-10T12:00:00.000Z",
+            "until": "2026-09-12T12:00:00.000Z",
+            "category": "place",
+            "title": "Great Basin Astronomy Festival",
+            "verdict": "Great Basin National Park, Baker, Nevada — 277 km from here. Dates approximate: inferred, not published. The park page says only that the festival is held near the time of the new moon each September (2026: September 10). Check the park page for the current programme before driving.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://home.nps.gov/grba/planyourvisit/astrovip.htm",
+              "verifiedOn": null
+            }
+          },
+          {
+            "at": "2026-09-11T03:27:28.467Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-18T20:44:24.674Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-23T00:05:38.617Z",
+            "until": null,
+            "category": "season",
+            "title": "September equinox",
+            "verdict": "Night length turns here — the darkness window changes fastest around this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-26T16:49:32.233Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-03T13:25:33.710Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-04T12:12:54.016Z",
+            "until": null,
+            "category": "planet",
+            "title": "Saturn at opposition",
+            "verdict": "Opposite the Sun: closest, brightest, and above the horizon all night.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-05T08:23:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "2.3° apart at 02:23, 5° and 7° up, Moon 30% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-06T09:35:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "0.5° apart at 03:35, 5° and 6° up, Moon 20% lit. Occultation from here — Jupiter passes behind the Moon, closest 0.171° at 02:49. The Moon is still below the horizon at the minimum; it reappears at 03:10 with the Moon only 1° up — you need a flat eastern horizon.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-07T10:59:16.449Z",
+            "until": "2026-10-22T11:14:52.079Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "16 nights with no moon in the way, 10-07 – 10-22. Look east about an hour before astronomical dawn (04:59 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-09T01:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Draconids",
+            "verdict": "ZHR ~5. Radiant up 20:28–03:48, highest 60° at 20:28, moonless. Active 10-06 – 10-10. Very slow meteors. IMO 2026 calendar: maximum October 9, 01h UT (solar longitude 195.4°, J2000); no enhanced rates predicted for 2026.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+              "verifiedOn": "2026-09-24"
+            }
+          },
+          {
+            "at": "2026-10-10T15:50:36.724Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-12T10:06:20.884Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest evening elongation",
+            "verdict": "25.2° from the Sun — the widest separation of this apparition, low in the west after sunset.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-18T16:13:19.496Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-21T18:28:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Orionids",
+            "verdict": "ZHR ~20. Radiant up 23:50–06:10, highest 65.3° at 05:50. 75% moon in the way for part of it — usable 02:45–06:10. Active 10-02 – 11-07. A better night inside the active range: 10-17, 370 min moonless with the radiant up. Halley's Comet debris; fast meteors. IMO 2026 calendar gives the maximum as October 21 at solar longitude 208° with no hour, and rates can hold for several nights around it; peak_utc is when the Sun reaches 208.0° (J2000).",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+              "verifiedOn": "2026-09-24"
+            }
+          },
+          {
+            "at": "2026-10-24T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Leonis Minorids",
+            "verdict": "ZHR ~2. Radiant up 02:36–06:16, highest 47.2° at 06:16. 96% moon in the way for part of it — usable 06:06–06:16. Active 10-19 – 10-27. A better night inside the active range: 10-20, 200 min moonless with the radiant up. Very sparse; listed so a stray meteor near Leo Minor is not mistaken for an Orionid.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://in-the-sky.org/news.php?id=20261024_10_100",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-05T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Southern Taurids",
+            "verdict": "ZHR ~5. Radiant up 20:07–06:27, highest 63.4° at 02:02. 16% moon in the way for part of it — usable 20:07–04:21. Active 09-23 – 11-12. A better night inside the active range: 11-07, 635 min moonless with the radiant up. 2026 is a minor Taurid resonant-swarm year. Low rate, but a high share of fireballs.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://arxiv.org/html/2509.22602",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-09T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Northern Taurids",
+            "verdict": "ZHR ~5. Radiant up 19:49–06:29, highest 71.4° at 02:09, moonless. Active 10-13 – 12-02. Broad, shallow maximum; overlaps the Southern Taurids.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
+              "verifiedOn": "2026-09-06"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "millcreek-2026-05-21",
+      "note": "Two Moon–Venus passes in one window, the second a daylight occultation; spring zodiacal light; the June solstice",
+      "latitude": 40.687,
+      "longitude": -111.824,
+      "elevation_m": 1400,
+      "centre_utc": "2026-05-22T03:00:00Z",
+      "utc_offset_hours": -6,
+      "expected": {
+        "window": {
+          "start": "2026-04-22T03:00:00.000Z",
+          "end": "2026-06-21T03:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2026-04-24T02:32:17.627Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-05-01T17:23:47.564Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-05-09T21:11:02.665Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-05-16T20:01:32.344Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-05-23T11:11:29.459Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-05-31T08:45:48.291Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-06-08T10:00:59.929Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-06-15T02:54:39.007Z",
+            "angle": 0
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2026-06-15T20:02:43.027Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 24.5,
+            "visibility": "evening"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Jupiter",
+            "at": "2026-04-23T02:47:00.000Z",
+            "separation_deg": 3.602,
+            "observable_here": true,
+            "moon_altitude_deg": 61.4,
+            "body_altitude_deg": 57.8,
+            "moon_illum_fraction": 0.391,
+            "geocentric_min_deg": 3.495,
+            "geocentric_min_at": "2026-04-22T23:13:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Venus",
+            "at": "2026-05-19T03:57:00.000Z",
+            "separation_deg": 2.325,
+            "observable_here": true,
+            "moon_altitude_deg": 14.9,
+            "body_altitude_deg": 13.2,
+            "moon_illum_fraction": 0.083,
+            "geocentric_min_deg": 2.939,
+            "geocentric_min_at": "2026-05-19T02:03:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Mercury",
+            "at": "2026-06-17T03:39:00.000Z",
+            "separation_deg": 4.019,
+            "observable_here": true,
+            "moon_altitude_deg": 13.8,
+            "body_altitude_deg": 10.3,
+            "moon_illum_fraction": 0.063,
+            "geocentric_min_deg": 2.539,
+            "geocentric_min_at": "2026-06-16T20:27:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Jupiter",
+            "at": "2026-06-17T04:31:00.000Z",
+            "separation_deg": 3.106,
+            "observable_here": true,
+            "moon_altitude_deg": 5.1,
+            "body_altitude_deg": 5.2,
+            "moon_illum_fraction": 0.065,
+            "geocentric_min_deg": 2.452,
+            "geocentric_min_at": "2026-06-17T07:58:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Venus",
+            "at": "2026-06-18T03:39:00.000Z",
+            "separation_deg": 3.522,
+            "observable_here": true,
+            "moon_altitude_deg": 21.6,
+            "body_altitude_deg": 20.1,
+            "moon_illum_fraction": 0.132,
+            "geocentric_min_deg": 0.27,
+            "geocentric_min_at": "2026-06-17T20:31:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 0.054,
+              "min_separation_at": "2026-06-17T19:24:00.000Z",
+              "moon_radius_deg": 0.277,
+              "moon_altitude_deg": 48.9,
+              "sun_altitude_deg": 72.7,
+              "behind_disc_from_here": true,
+              "disappears_at": "2026-06-17T18:46:00.000Z",
+              "reappears_at": "2026-06-17T20:05:00.000Z",
+              "reappear_moon_altitude_deg": 55.9
+            }
+          }
+        ],
+        "zodiacal": [],
+        "seasons": [],
+        "showers": [],
+        "items": [
+          {
+            "at": "2026-04-23T02:47:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "3.6° apart at 20:47, 61° and 58° up, Moon 39% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-04-24T02:32:17.627Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-01T17:23:47.564Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-09T21:11:02.665Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-16T20:01:32.344Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-19T03:57:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Venus",
+            "verdict": "2.3° apart at 21:57, 15° and 13° up, Moon 8% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-23T11:11:29.459Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-05-31T08:45:48.291Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-08T10:00:59.929Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-15T02:54:39.007Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-15T20:02:43.027Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest evening elongation",
+            "verdict": "24.5° from the Sun — the widest separation of this apparition, low in the west after sunset.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-17T03:39:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mercury",
+            "verdict": "4.0° apart at 21:39, 14° and 10° up, Moon 6% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-17T04:31:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "3.1° apart at 22:31, 5° and 5° up, Moon 7% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-18T03:39:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Venus",
+            "verdict": "3.5° apart at 21:39, 22° and 20° up, Moon 13% lit. Occultation from here — Venus passes behind the Moon, closest 0.054° at 13:24. In daylight here (Sun 73° up) — a telescope job. Reappears at 14:05.",
+            "provenance": {
+              "kind": "computed"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "millcreek-2027-08-01",
+      "note": "A Moon–Mercury occultation only parallax brings onto the disc, in daylight",
+      "latitude": 40.687,
+      "longitude": -111.824,
+      "elevation_m": 1400,
+      "centre_utc": "2027-08-02T03:00:00Z",
+      "utc_offset_hours": -6,
+      "expected": {
+        "window": {
+          "start": "2027-07-03T03:00:00.000Z",
+          "end": "2027-09-01T03:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2027-07-04T03:02:32.965Z",
+            "angle": 0
+          },
+          {
+            "at": "2027-07-10T18:39:36.903Z",
+            "angle": 90
+          },
+          {
+            "at": "2027-07-18T15:45:36.038Z",
+            "angle": 180
+          },
+          {
+            "at": "2027-07-26T16:55:28.698Z",
+            "angle": 270
+          },
+          {
+            "at": "2027-08-02T10:05:42.274Z",
+            "angle": 0
+          },
+          {
+            "at": "2027-08-09T04:54:48.450Z",
+            "angle": 90
+          },
+          {
+            "at": "2027-08-17T07:29:19.949Z",
+            "angle": 180
+          },
+          {
+            "at": "2027-08-25T02:27:54.872Z",
+            "angle": 270
+          },
+          {
+            "at": "2027-08-31T17:41:40.859Z",
+            "angle": 0
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2027-07-15T19:29:41.626Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 20.7,
+            "visibility": "morning"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Jupiter",
+            "at": "2027-07-07T03:39:00.000Z",
+            "separation_deg": 3.231,
+            "observable_here": true,
+            "moon_altitude_deg": 14.8,
+            "body_altitude_deg": 17.2,
+            "moon_illum_fraction": 0.132,
+            "geocentric_min_deg": 2.228,
+            "geocentric_min_at": "2027-07-07T01:29:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Mercury",
+            "at": "2027-08-01T14:27:00.000Z",
+            "separation_deg": 0.034,
+            "observable_here": false,
+            "moon_altitude_deg": 31.9,
+            "body_altitude_deg": 31.9,
+            "moon_illum_fraction": 0.01,
+            "geocentric_min_deg": 0.287,
+            "geocentric_min_at": "2027-08-01T15:57:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 0.034,
+              "min_separation_at": "2027-08-01T14:27:00.000Z",
+              "moon_radius_deg": 0.281,
+              "moon_altitude_deg": 31.9,
+              "sun_altitude_deg": 21.6,
+              "behind_disc_from_here": true,
+              "disappears_at": "2027-08-01T13:52:00.000Z",
+              "reappears_at": "2027-08-01T15:06:00.000Z",
+              "reappear_moon_altitude_deg": 39
+            }
+          }
+        ],
+        "zodiacal": [
+          {
+            "season": "autumn_morning",
+            "start": "2027-08-01T09:33:23.000Z",
+            "end": "2027-08-13T09:51:15.075Z",
+            "nights": 13
+          },
+          {
+            "season": "autumn_morning",
+            "start": "2027-08-29T10:13:37.877Z",
+            "end": "2027-08-31T10:16:15.953Z",
+            "nights": 3
+          }
+        ],
+        "seasons": [],
+        "showers": [],
+        "items": [
+          {
+            "at": "2027-07-04T03:02:32.965Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-07-07T03:39:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "3.2° apart at 21:39, 15° and 17° up, Moon 13% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-07-10T18:39:36.903Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-07-15T19:29:41.626Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest morning elongation",
+            "verdict": "20.7° from the Sun — the widest separation of this apparition, low in the east before sunrise.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-07-18T15:45:36.038Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-07-26T16:55:28.698Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-01T09:33:23.000Z",
+            "until": "2027-08-13T09:51:15.075Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "13 nights with no moon in the way, 08-01 – 08-13. Look east about an hour before astronomical dawn (03:33 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-01T14:27:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mercury",
+            "verdict": "Closest approach from here 0.0° at 08:27, but not above 5° in dark sky. Occultation from here — Mercury passes behind the Moon, closest 0.034° at 08:27. In daylight here (Sun 22° up) — a telescope job. Reappears at 09:06.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-02T10:05:42.274Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-09T04:54:48.450Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-17T07:29:19.949Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-25T02:27:54.872Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-29T10:13:37.877Z",
+            "until": "2027-08-31T10:16:15.953Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "3 nights with no moon in the way, 08-29 – 08-31. Look east about an hour before astronomical dawn (04:13 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-08-31T17:41:40.859Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "canyonlands-2026-12-10",
+      "note": "Winter: the Leonids and Geminids (curated, unverified), both Taurid branches ending, the December solstice",
+      "latitude": 38.374031,
+      "longitude": -109.965416,
+      "elevation_m": 1800,
+      "centre_utc": "2026-12-11T04:00:00Z",
+      "utc_offset_hours": -7,
+      "expected": {
+        "window": {
+          "start": "2026-11-11T04:00:00.000Z",
+          "end": "2027-01-10T04:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2026-11-17T11:48:27.140Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-11-24T14:54:04.191Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-12-01T06:09:14.538Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-12-09T00:52:31.284Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-12-17T05:43:14.883Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-12-24T01:28:45.040Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-12-30T19:00:07.341Z",
+            "angle": 270
+          },
+          {
+            "at": "2027-01-07T20:25:05.910Z",
+            "angle": 0
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2026-11-20T23:35:39.724Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 19.6,
+            "visibility": "morning"
+          },
+          {
+            "at": "2027-01-03T17:56:03.408Z",
+            "body": "Venus",
+            "kind": "greatest_elongation",
+            "elongation_deg": 47,
+            "visibility": "morning"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Jupiter",
+            "at": "2026-11-30T06:55:00.000Z",
+            "separation_deg": 1.256,
+            "observable_here": true,
+            "moon_altitude_deg": 10.8,
+            "body_altitude_deg": 11.2,
+            "moon_illum_fraction": 0.607,
+            "geocentric_min_deg": 1.052,
+            "geocentric_min_at": "2026-11-30T08:25:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 1.256,
+              "min_separation_at": "2026-11-30T06:55:00.000Z",
+              "moon_radius_deg": 0.268,
+              "moon_altitude_deg": 10.8,
+              "sun_altitude_deg": -72.9,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          },
+          {
+            "body": "Mars",
+            "at": "2026-11-30T13:44:00.000Z",
+            "separation_deg": 3.9,
+            "observable_here": true,
+            "moon_altitude_deg": 59.6,
+            "body_altitude_deg": 62.9,
+            "moon_illum_fraction": 0.576,
+            "geocentric_min_deg": 2.996,
+            "geocentric_min_at": "2026-11-30T16:55:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Jupiter",
+            "at": "2026-12-27T14:02:00.000Z",
+            "separation_deg": 2.744,
+            "observable_here": true,
+            "moon_altitude_deg": 38.7,
+            "body_altitude_deg": 41.4,
+            "moon_illum_fraction": 0.827,
+            "geocentric_min_deg": 1.38,
+            "geocentric_min_at": "2026-12-27T16:26:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          }
+        ],
+        "zodiacal": [
+          {
+            "season": "autumn_morning",
+            "start": "2026-11-11T11:26:14.231Z",
+            "end": "2026-11-21T11:35:30.726Z",
+            "nights": 11
+          }
+        ],
+        "seasons": [
+          {
+            "at": "2026-12-21T20:50:22.187Z",
+            "name": "December solstice"
+          }
+        ],
+        "showers": [
+          {
+            "id": "southern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-05T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-11-05T01:46:41.772Z",
+                "end": "2026-11-05T12:20:35.234Z"
+              },
+              "max_altitude_deg": 65.7,
+              "max_altitude_at": "2026-11-05T07:51:41.772Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-05T02:01:41.772Z",
+                "end": "2026-11-05T12:16:41.772Z"
+              },
+              "moon_illum_fraction": 0.16,
+              "usable_windows": [
+                {
+                  "start": "2026-11-05T02:01:41.772Z",
+                  "end": "2026-11-05T10:13:22.401Z",
+                  "minutes": 492
+                }
+              ],
+              "usable_minutes": 492
+            },
+            "better_night": {
+              "evening_utc": "2026-11-08T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-11-08T01:44:08.759Z",
+                "end": "2026-11-08T12:23:24.817Z"
+              },
+              "max_altitude_deg": 65.7,
+              "max_altitude_at": "2026-11-08T07:39:08.759Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-08T01:49:08.759Z",
+                "end": "2026-11-08T12:19:08.759Z"
+              },
+              "moon_illum_fraction": 0.012,
+              "usable_windows": [
+                {
+                  "start": "2026-11-08T01:49:08.759Z",
+                  "end": "2026-11-08T12:19:08.759Z",
+                  "minutes": 630
+                }
+              ],
+              "usable_minutes": 630
+            }
+          },
+          {
+            "id": "northern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-09T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-11-09T01:43:21.149Z",
+                "end": "2026-11-09T12:24:21.330Z"
+              },
+              "max_altitude_deg": 73.7,
+              "max_altitude_at": "2026-11-09T08:03:21.149Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-09T01:43:21.149Z",
+                "end": "2026-11-09T12:23:21.149Z"
+              },
+              "moon_illum_fraction": 0.002,
+              "usable_windows": [
+                {
+                  "start": "2026-11-09T01:43:21.149Z",
+                  "end": "2026-11-09T12:23:21.149Z",
+                  "minutes": 640
+                }
+              ],
+              "usable_minutes": 640
+            },
+            "better_night": null
+          },
+          {
+            "id": "leonids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-17T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-11-17T01:38:03.469Z",
+                "end": "2026-11-17T12:31:50.441Z"
+              },
+              "max_altitude_deg": 67.3,
+              "max_altitude_at": "2026-11-17T12:28:03.469Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-17T07:28:03.469Z",
+                "end": "2026-11-17T12:28:03.469Z"
+              },
+              "moon_illum_fraction": 0.494,
+              "usable_windows": [
+                {
+                  "start": "2026-11-17T07:28:03.469Z",
+                  "end": "2026-11-17T12:28:03.469Z",
+                  "minutes": 300
+                }
+              ],
+              "usable_minutes": 300
+            },
+            "better_night": null
+          },
+          {
+            "id": "geminids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-12-14T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-12-14T01:34:48.891Z",
+                "end": "2026-12-14T12:54:05.327Z"
+              },
+              "max_altitude_deg": 84.6,
+              "max_altitude_at": "2026-12-14T09:19:48.891Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-12-14T02:24:48.891Z",
+                "end": "2026-12-14T12:49:48.891Z"
+              },
+              "moon_illum_fraction": 0.23,
+              "usable_windows": [
+                {
+                  "start": "2026-12-14T04:17:40.128Z",
+                  "end": "2026-12-14T12:49:48.891Z",
+                  "minutes": 512
+                }
+              ],
+              "usable_minutes": 512
+            },
+            "better_night": {
+              "evening_utc": "2026-12-11T04:19:51.699Z",
+              "darkness": {
+                "start": "2026-12-11T01:34:03.989Z",
+                "end": "2026-12-11T12:52:03.134Z"
+              },
+              "max_altitude_deg": 84.6,
+              "max_altitude_at": "2026-12-11T09:29:03.989Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-12-11T02:34:03.989Z",
+                "end": "2026-12-11T12:49:03.989Z"
+              },
+              "moon_illum_fraction": 0.047,
+              "usable_windows": [
+                {
+                  "start": "2026-12-11T02:34:03.989Z",
+                  "end": "2026-12-11T12:49:03.989Z",
+                  "minutes": 615
+                }
+              ],
+              "usable_minutes": 615
+            }
+          }
+        ],
+        "items": [
+          {
+            "at": "2026-11-05T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Southern Taurids",
+            "verdict": "ZHR ~5. Radiant up 19:01–05:16, highest 65.7° at 00:51. 16% moon in the way for part of it — usable 19:01–03:13. Active 09-23 – 11-12. A better night inside the active range: 11-07, 630 min moonless with the radiant up. 2026 is a minor Taurid resonant-swarm year. Low rate, but a high share of fireballs.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://arxiv.org/html/2509.22602",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-09T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Northern Taurids",
+            "verdict": "ZHR ~5. Radiant up 18:43–05:23, highest 73.7° at 01:03, moonless. Active 10-13 – 12-02. Broad, shallow maximum; overlaps the Southern Taurids.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-11T11:26:14.231Z",
+            "until": "2026-11-21T11:35:30.726Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "11 nights with no moon in the way, 11-11 – 11-21. Look east about an hour before astronomical dawn (04:26 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-11-17T11:48:27.140Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-11-17T12:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Leonids",
+            "verdict": "ZHR ~15. Radiant up 00:28–05:28, highest 67.3° at 05:28, moonless. Active 11-06 – 11-30. Peak date approximate — verify against a current almanac before relying on it.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
+              "verifiedOn": null
+            }
+          },
+          {
+            "at": "2026-11-20T23:35:39.724Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest morning elongation",
+            "verdict": "19.6° from the Sun — the widest separation of this apparition, low in the east before sunrise.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-11-24T14:54:04.191Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-11-30T06:55:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "1.3° apart at 23:55, 11° and 11° up, Moon 61% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-11-30T13:44:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "3.9° apart at 06:44, 60° and 63° up, Moon 58% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-01T06:09:14.538Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-09T00:52:31.284Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-14T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Geminids",
+            "verdict": "ZHR ~120. Radiant up 19:24–05:49, highest 84.6° at 02:19. 23% moon in the way for part of it — usable 21:17–05:49. Active 12-04 – 12-17. A better night inside the active range: 12-10, 615 min moonless with the radiant up. Peak date approximate — verify against a current almanac before relying on it. The strongest annual shower.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
+              "verifiedOn": null
+            }
+          },
+          {
+            "at": "2026-12-17T05:43:14.883Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-21T20:50:22.187Z",
+            "until": null,
+            "category": "season",
+            "title": "December solstice",
+            "verdict": "Night length turns here — the darkness window changes fastest around this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-24T01:28:45.040Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-27T14:02:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "2.7° apart at 07:02, 39° and 41° up, Moon 83% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-12-30T19:00:07.341Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-03T17:56:03.408Z",
+            "until": null,
+            "category": "planet",
+            "title": "Venus at greatest morning elongation",
+            "verdict": "47° from the Sun — the widest separation of this apparition, low in the east before sunrise.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-07T20:25:05.910Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "canyonlands-2027-02-01",
+      "note": "Jupiter and Mars oppositions; spring zodiacal light",
+      "latitude": 38.374031,
+      "longitude": -109.965416,
+      "elevation_m": 1800,
+      "centre_utc": "2027-02-02T04:00:00Z",
+      "utc_offset_hours": -7,
+      "expected": {
+        "window": {
+          "start": "2027-01-03T04:00:00.000Z",
+          "end": "2027-03-04T04:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2027-01-07T20:25:05.910Z",
+            "angle": 0
+          },
+          {
+            "at": "2027-01-15T20:35:05.099Z",
+            "angle": 90
+          },
+          {
+            "at": "2027-01-22T12:17:50.281Z",
+            "angle": 180
+          },
+          {
+            "at": "2027-01-29T10:56:06.214Z",
+            "angle": 270
+          },
+          {
+            "at": "2027-02-06T15:56:47.415Z",
+            "angle": 0
+          },
+          {
+            "at": "2027-02-14T07:59:02.102Z",
+            "angle": 90
+          },
+          {
+            "at": "2027-02-20T23:24:07.298Z",
+            "angle": 180
+          },
+          {
+            "at": "2027-02-28T05:17:07.361Z",
+            "angle": 270
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2027-02-11T00:17:05.482Z",
+            "body": "Jupiter",
+            "kind": "opposition",
+            "elongation_deg": null,
+            "visibility": null
+          },
+          {
+            "at": "2027-02-19T15:44:17.503Z",
+            "body": "Mars",
+            "kind": "opposition",
+            "elongation_deg": null,
+            "visibility": null
+          },
+          {
+            "at": "2027-01-03T17:56:03.411Z",
+            "body": "Venus",
+            "kind": "greatest_elongation",
+            "elongation_deg": 47,
+            "visibility": "morning"
+          },
+          {
+            "at": "2027-02-03T06:20:08.602Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 18.3,
+            "visibility": "evening"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Jupiter",
+            "at": "2027-01-24T02:52:00.000Z",
+            "separation_deg": 3.545,
+            "observable_here": true,
+            "moon_altitude_deg": 5,
+            "body_altitude_deg": 8.4,
+            "moon_illum_fraction": 0.962,
+            "geocentric_min_deg": 1.355,
+            "geocentric_min_at": "2027-01-23T23:21:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Jupiter",
+            "at": "2027-02-20T03:43:00.000Z",
+            "separation_deg": 1.283,
+            "observable_here": true,
+            "moon_altitude_deg": 42,
+            "body_altitude_deg": 42.3,
+            "moon_illum_fraction": 0.99,
+            "geocentric_min_deg": 1.086,
+            "geocentric_min_at": "2027-02-20T04:57:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 1.283,
+              "min_separation_at": "2027-02-20T03:43:00.000Z",
+              "moon_radius_deg": 0.279,
+              "moon_altitude_deg": 42,
+              "sun_altitude_deg": -31.6,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          }
+        ],
+        "zodiacal": [
+          {
+            "season": "spring_evening",
+            "start": "2027-02-02T03:12:51.899Z",
+            "end": "2027-02-10T03:20:50.582Z",
+            "nights": 9
+          },
+          {
+            "season": "spring_evening",
+            "start": "2027-02-24T03:34:48.875Z",
+            "end": "2027-03-04T03:42:50.594Z",
+            "nights": 9
+          }
+        ],
+        "seasons": [],
+        "showers": [],
+        "items": [
+          {
+            "at": "2027-01-03T17:56:03.411Z",
+            "until": null,
+            "category": "planet",
+            "title": "Venus at greatest morning elongation",
+            "verdict": "47° from the Sun — the widest separation of this apparition, low in the east before sunrise.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-07T20:25:05.910Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-15T20:35:05.099Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-22T12:17:50.281Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-24T02:52:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "3.5° apart at 19:52, 5° and 8° up, Moon 96% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-01-29T10:56:06.214Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-02T03:12:51.899Z",
+            "until": "2027-02-10T03:20:50.582Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, after dusk",
+            "verdict": "9 nights with no moon in the way, 02-01 – 02-09. Look west about an hour after astronomical dusk (20:12 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-03T06:20:08.602Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest evening elongation",
+            "verdict": "18.3° from the Sun — the widest separation of this apparition, low in the west after sunset.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-06T15:56:47.415Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-11T00:17:05.482Z",
+            "until": null,
+            "category": "planet",
+            "title": "Jupiter at opposition",
+            "verdict": "Opposite the Sun: closest, brightest, and above the horizon all night.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-14T07:59:02.102Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-19T15:44:17.503Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mars at opposition",
+            "verdict": "Opposite the Sun: closest, brightest, and above the horizon all night.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-20T03:43:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "1.3° apart at 20:43, 42° and 42° up, Moon 99% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-20T23:24:07.298Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-24T03:34:48.875Z",
+            "until": "2027-03-04T03:42:50.594Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, after dusk",
+            "verdict": "9 nights with no moon in the way, 02-23 – 03-03. Look west about an hour after astronomical dusk (20:34 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2027-02-28T05:17:07.361Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "glacier-2026-07-20",
+      "note": "48.9°N: nights with no astronomical darkness early in the window",
+      "latitude": 48.9,
+      "longitude": -114,
+      "elevation_m": 0,
+      "centre_utc": "2026-07-21T03:00:00Z",
+      "utc_offset_hours": -6,
+      "expected": {
+        "window": {
+          "start": "2026-06-21T03:00:00.000Z",
+          "end": "2026-08-20T03:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2026-06-21T21:55:57.925Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-06-29T23:57:17.744Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-07-07T19:29:28.944Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-07-14T09:44:04.307Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-07-21T11:06:11.173Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-07-29T14:36:19.011Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-08-06T02:21:58.672Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-08-12T17:37:11.343Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-08-20T02:46:58.247Z",
+            "angle": 90
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2026-08-02T08:02:28.152Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 19.5,
+            "visibility": "morning"
+          },
+          {
+            "at": "2026-08-15T06:23:03.223Z",
+            "body": "Venus",
+            "kind": "greatest_elongation",
+            "elongation_deg": 45.9,
+            "visibility": "evening"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Mars",
+            "at": "2026-07-11T10:58:00.000Z",
+            "separation_deg": 4.605,
+            "observable_here": true,
+            "moon_altitude_deg": 22,
+            "body_altitude_deg": 17.8,
+            "moon_illum_fraction": 0.128,
+            "geocentric_min_deg": 5.271,
+            "geocentric_min_at": "2026-07-11T13:24:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          },
+          {
+            "body": "Mars",
+            "at": "2026-08-09T08:54:00.000Z",
+            "separation_deg": 4.401,
+            "observable_here": true,
+            "moon_altitude_deg": 6.2,
+            "body_altitude_deg": 5,
+            "moon_illum_fraction": 0.155,
+            "geocentric_min_deg": 4.409,
+            "geocentric_min_at": "2026-08-09T05:48:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          }
+        ],
+        "zodiacal": [
+          {
+            "season": "autumn_morning",
+            "start": "2026-08-10T09:06:45.714Z",
+            "end": "2026-08-19T09:28:45.845Z",
+            "nights": 10
+          }
+        ],
+        "seasons": [
+          {
+            "at": "2026-06-21T08:25:00.316Z",
+            "name": "June solstice"
+          }
+        ],
+        "showers": [],
+        "items": [
+          {
+            "at": "2026-06-21T08:25:00.316Z",
+            "until": null,
+            "category": "season",
+            "title": "June solstice",
+            "verdict": "Night length turns here — the darkness window changes fastest around this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-21T21:55:57.925Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-06-29T23:57:17.744Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-07-07T19:29:28.944Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-07-11T10:58:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "4.6° apart at 04:58, 22° and 18° up, Moon 13% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-07-14T09:44:04.307Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-07-21T11:06:11.173Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-07-29T14:36:19.011Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-02T08:02:28.152Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest morning elongation",
+            "verdict": "19.5° from the Sun — the widest separation of this apparition, low in the east before sunrise.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-06T02:21:58.672Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-09T08:54:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "4.4° apart at 02:54, 6° and 5° up, Moon 16% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-10T09:06:45.714Z",
+            "until": "2026-08-19T09:28:45.845Z",
+            "category": "zodiacal",
+            "title": "Zodiacal light, pre-dawn",
+            "verdict": "10 nights with no moon in the way, 08-10 – 08-19. Look east about an hour before astronomical dawn (03:06 on the first night).",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-12T17:37:11.343Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-15T06:23:03.223Z",
+            "until": null,
+            "category": "planet",
+            "title": "Venus at greatest evening elongation",
+            "verdict": "45.9° from the Sun — the widest separation of this apparition, low in the west after sunset.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-08-20T02:46:58.247Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          }
+        ],
+        "problems": []
+      }
+    },
+    {
+      "id": "patagonia-2026-09-22",
+      "note": "Southern hemisphere: northern radiants below the horizon, no zodiacal light claimed",
+      "latitude": -40,
+      "longitude": -71,
+      "elevation_m": 0,
+      "centre_utc": "2026-09-23T03:00:00Z",
+      "utc_offset_hours": -3,
+      "expected": {
+        "window": {
+          "start": "2026-08-24T03:00:00.000Z",
+          "end": "2026-10-23T03:00:00.000Z"
+        },
+        "moon_phases": [
+          {
+            "at": "2026-08-28T04:19:06.085Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-09-04T07:51:42.224Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-09-11T03:27:28.467Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-09-18T20:44:24.674Z",
+            "angle": 90
+          },
+          {
+            "at": "2026-09-26T16:49:32.233Z",
+            "angle": 180
+          },
+          {
+            "at": "2026-10-03T13:25:33.710Z",
+            "angle": 270
+          },
+          {
+            "at": "2026-10-10T15:50:36.724Z",
+            "angle": 0
+          },
+          {
+            "at": "2026-10-18T16:13:19.496Z",
+            "angle": 90
+          }
+        ],
+        "apparitions": [
+          {
+            "at": "2026-10-04T12:12:54.016Z",
+            "body": "Saturn",
+            "kind": "opposition",
+            "elongation_deg": null,
+            "visibility": null
+          },
+          {
+            "at": "2026-10-12T10:06:20.884Z",
+            "body": "Mercury",
+            "kind": "greatest_elongation",
+            "elongation_deg": 25.2,
+            "visibility": "evening"
+          }
+        ],
+        "pairings": [
+          {
+            "body": "Mars",
+            "at": "2026-10-05T08:12:00.000Z",
+            "separation_deg": 2.496,
+            "observable_here": true,
+            "moon_altitude_deg": 5.1,
+            "body_altitude_deg": 7.5,
+            "moon_illum_fraction": 0.303,
+            "geocentric_min_deg": 1.09,
+            "geocentric_min_at": "2026-10-05T06:11:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 1.785,
+              "min_separation_at": "2026-10-05T04:49:00.000Z",
+              "moon_radius_deg": 0.265,
+              "moon_altitude_deg": -30,
+              "sun_altitude_deg": -44.8,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          },
+          {
+            "body": "Jupiter",
+            "at": "2026-10-06T09:39:00.000Z",
+            "separation_deg": 1.075,
+            "observable_here": true,
+            "moon_altitude_deg": 14.3,
+            "body_altitude_deg": 15.3,
+            "moon_illum_fraction": 0.2,
+            "geocentric_min_deg": 0.159,
+            "geocentric_min_at": "2026-10-06T10:23:00.000Z",
+            "possible_occultation": true,
+            "occultation": {
+              "min_separation_deg": 1.06,
+              "min_separation_at": "2026-10-06T10:05:00.000Z",
+              "moon_radius_deg": 0.267,
+              "moon_altitude_deg": 18.1,
+              "sun_altitude_deg": -1.2,
+              "behind_disc_from_here": false,
+              "disappears_at": null,
+              "reappears_at": null,
+              "reappear_moon_altitude_deg": null
+            }
+          },
+          {
+            "body": "Mercury",
+            "at": "2026-10-12T23:32:00.000Z",
+            "separation_deg": 2.288,
+            "observable_here": true,
+            "moon_altitude_deg": 19.9,
+            "body_altitude_deg": 17.9,
+            "moon_illum_fraction": 0.057,
+            "geocentric_min_deg": 2.019,
+            "geocentric_min_at": "2026-10-12T18:44:00.000Z",
+            "possible_occultation": false,
+            "occultation": null
+          }
+        ],
+        "zodiacal": [],
+        "seasons": [
+          {
+            "at": "2026-09-23T00:05:38.617Z",
+            "name": "September equinox"
+          }
+        ],
+        "showers": [
+          {
+            "id": "sep-epsilon-perseids-2026",
+            "observable_here": false,
+            "peak_night": {
+              "evening_utc": "2026-09-10T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-09-09T23:58:33.452Z",
+                "end": "2026-09-10T09:23:06.655Z"
+              },
+              "max_altitude_deg": 10,
+              "max_altitude_at": "2026-09-10T08:38:33.452Z",
+              "radiant_observable": false,
+              "radiant_window": null,
+              "moon_illum_fraction": 0.011,
+              "usable_windows": [],
+              "usable_minutes": 0
+            },
+            "better_night": null
+          },
+          {
+            "id": "draconids-2026",
+            "observable_here": false,
+            "peak_night": {
+              "evening_utc": "2026-10-09T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-10-09T00:30:32.694Z",
+                "end": "2026-10-09T08:31:37.691Z"
+              },
+              "max_altitude_deg": -14.8,
+              "max_altitude_at": "2026-10-09T00:30:32.694Z",
+              "radiant_observable": false,
+              "radiant_window": null,
+              "moon_illum_fraction": 0.025,
+              "usable_windows": [],
+              "usable_minutes": 0
+            },
+            "better_night": null
+          },
+          {
+            "id": "orionids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-10-22T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-10-22T00:48:37.120Z",
+                "end": "2026-10-22T08:07:55.582Z"
+              },
+              "max_altitude_deg": 32.4,
+              "max_altitude_at": "2026-10-22T08:03:37.120Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-22T04:58:37.120Z",
+                "end": "2026-10-22T08:03:37.120Z"
+              },
+              "moon_illum_fraction": 0.826,
+              "usable_windows": [
+                {
+                  "start": "2026-10-22T07:48:20.332Z",
+                  "end": "2026-10-22T08:03:37.120Z",
+                  "minutes": 15
+                }
+              ],
+              "usable_minutes": 15
+            },
+            "better_night": {
+              "evening_utc": "2026-10-19T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-10-19T00:44:13.297Z",
+                "end": "2026-10-19T08:13:20.076Z"
+              },
+              "max_altitude_deg": 32,
+              "max_altitude_at": "2026-10-19T08:09:13.297Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-10-19T05:09:13.297Z",
+                "end": "2026-10-19T08:09:13.297Z"
+              },
+              "moon_illum_fraction": 0.559,
+              "usable_windows": [
+                {
+                  "start": "2026-10-19T06:31:41.260Z",
+                  "end": "2026-10-19T08:09:13.297Z",
+                  "minutes": 98
+                }
+              ],
+              "usable_minutes": 98
+            }
+          },
+          {
+            "id": "leonis-minorids-2026",
+            "observable_here": false,
+            "peak_night": {
+              "evening_utc": "2026-10-24T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-10-24T00:51:37.435Z",
+                "end": "2026-10-24T08:04:21.402Z"
+              },
+              "max_altitude_deg": -14.9,
+              "max_altitude_at": "2026-10-24T08:01:37.435Z",
+              "radiant_observable": false,
+              "radiant_window": null,
+              "moon_illum_fraction": 0.949,
+              "usable_windows": [],
+              "usable_minutes": 0
+            },
+            "better_night": null
+          },
+          {
+            "id": "southern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-05T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-11-05T01:10:48.605Z",
+                "end": "2026-11-05T07:43:53.578Z"
+              },
+              "max_altitude_deg": 35.9,
+              "max_altitude_at": "2026-11-05T05:15:48.605Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-05T01:10:48.605Z",
+                "end": "2026-11-05T07:40:48.605Z"
+              },
+              "moon_illum_fraction": 0.169,
+              "usable_windows": [
+                {
+                  "start": "2026-11-05T01:10:48.605Z",
+                  "end": "2026-11-05T07:25:46.838Z",
+                  "minutes": 375
+                }
+              ],
+              "usable_minutes": 375
+            },
+            "better_night": null
+          },
+          {
+            "id": "northern-taurids-2026",
+            "observable_here": true,
+            "peak_night": {
+              "evening_utc": "2026-11-09T01:44:00.000Z",
+              "darkness": {
+                "start": "2026-11-09T01:17:33.687Z",
+                "end": "2026-11-09T07:37:35.764Z"
+              },
+              "max_altitude_deg": 28,
+              "max_altitude_at": "2026-11-09T05:27:33.687Z",
+              "radiant_observable": true,
+              "radiant_window": {
+                "start": "2026-11-09T01:52:33.687Z",
+                "end": "2026-11-09T07:37:33.687Z"
+              },
+              "moon_illum_fraction": 0.002,
+              "usable_windows": [
+                {
+                  "start": "2026-11-09T01:52:33.687Z",
+                  "end": "2026-11-09T07:37:33.687Z",
+                  "minutes": 345
+                }
+              ],
+              "usable_minutes": 345
+            },
+            "better_night": null
+          }
+        ],
+        "items": [
+          {
+            "at": "2026-08-28T04:19:06.085Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-01T12:00:00.000Z",
+            "until": "2026-09-30T12:00:00.000Z",
+            "category": "place",
+            "title": "Cedar Breaks night-sky programs",
+            "verdict": "Cedar Breaks National Monument, Utah — 9626 km from here. Ranger-led programs on Friday and Saturday nights through September 2026.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://www.nps.gov/cebr/planyourvisit/dark-sky-tours-2026.htm",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-09-04T07:51:42.224Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-09T18:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "September epsilon-Perseids",
+            "verdict": "ZHR ~5. Below horizon here — the radiant never clears 10° during astronomical darkness. Active 09-05 – 09-21. Weak annual shower; fast meteors.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://in-the-sky.org/news.php?id=20260901_10_100",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-09-10T12:00:00.000Z",
+            "until": "2026-09-12T12:00:00.000Z",
+            "category": "place",
+            "title": "Great Basin Astronomy Festival",
+            "verdict": "Great Basin National Park, Baker, Nevada — 9821 km from here. Dates approximate: inferred, not published. The park page says only that the festival is held near the time of the new moon each September (2026: September 10). Check the park page for the current programme before driving.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://home.nps.gov/grba/planyourvisit/astrovip.htm",
+              "verifiedOn": null
+            }
+          },
+          {
+            "at": "2026-09-11T03:27:28.467Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-18T20:44:24.674Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-23T00:05:38.617Z",
+            "until": null,
+            "category": "season",
+            "title": "September equinox",
+            "verdict": "Night length turns here — the darkness window changes fastest around this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-09-26T16:49:32.233Z",
+            "until": null,
+            "category": "moon",
+            "title": "Full Moon",
+            "verdict": "Up all night. There is no moon-free darkness on either side of this date.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-03T13:25:33.710Z",
+            "until": null,
+            "category": "moon",
+            "title": "Last Quarter",
+            "verdict": "Moon rises near local midnight; the first half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-04T12:12:54.016Z",
+            "until": null,
+            "category": "planet",
+            "title": "Saturn at opposition",
+            "verdict": "Opposite the Sun: closest, brightest, and above the horizon all night.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-05T08:12:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mars",
+            "verdict": "2.5° apart at 05:12, 5° and 8° up, Moon 30% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-06T09:39:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Jupiter",
+            "verdict": "1.1° apart at 06:39, 14° and 15° up, Moon 20% lit. An occultation somewhere on Earth, but not here: from this spot it misses the disc by 0.79° at 07:05.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-09T01:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Draconids",
+            "verdict": "ZHR ~5. Below horizon here — the radiant never clears 10° during astronomical darkness. Active 10-06 – 10-10. Very slow meteors. IMO 2026 calendar: maximum October 9, 01h UT (solar longitude 195.4°, J2000); no enhanced rates predicted for 2026.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+              "verifiedOn": "2026-09-24"
+            }
+          },
+          {
+            "at": "2026-10-10T15:50:36.724Z",
+            "until": null,
+            "category": "moon",
+            "title": "New Moon",
+            "verdict": "The darkest nights of the month — no moon in the sky at any hour.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-12T10:06:20.884Z",
+            "until": null,
+            "category": "planet",
+            "title": "Mercury at greatest evening elongation",
+            "verdict": "25.2° from the Sun — the widest separation of this apparition, low in the west after sunset.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-12T23:32:00.000Z",
+            "until": null,
+            "category": "conjunction",
+            "title": "Moon and Mercury",
+            "verdict": "2.3° apart at 20:32, 20° and 18° up, Moon 6% lit.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-18T16:13:19.496Z",
+            "until": null,
+            "category": "moon",
+            "title": "First Quarter",
+            "verdict": "Moon sets near local midnight; the second half of the night is moon-free.",
+            "provenance": {
+              "kind": "computed"
+            }
+          },
+          {
+            "at": "2026-10-21T18:28:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Orionids",
+            "verdict": "ZHR ~20. Radiant up 01:58–05:03, highest 32.4° at 05:03. 83% moon in the way for part of it — usable 04:48–05:03. Active 10-02 – 11-07. A better night inside the active range: 10-18, 98 min moonless with the radiant up. Halley's Comet debris; fast meteors. IMO 2026 calendar gives the maximum as October 21 at solar longitude 208° with no hour, and rates can hold for several nights around it; peak_utc is when the Sun reaches 208.0° (J2000).",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://web.archive.org/web/20260905025331/https://www.imo.net/files/meteor-shower/cal2026.pdf",
+              "verifiedOn": "2026-09-24"
+            }
+          },
+          {
+            "at": "2026-10-24T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Leonis Minorids",
+            "verdict": "ZHR ~2. Below horizon here — the radiant never clears 10° during astronomical darkness. Active 10-19 – 10-27. Very sparse; listed so a stray meteor near Leo Minor is not mistaken for an Orionid.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://in-the-sky.org/news.php?id=20261024_10_100",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-05T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Southern Taurids",
+            "verdict": "ZHR ~5. Radiant up 22:10–04:40, highest 35.9° at 02:15. 17% moon in the way for part of it — usable 22:10–04:25. Active 09-23 – 11-12. 2026 is a minor Taurid resonant-swarm year. Low rate, but a high share of fireballs.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://arxiv.org/html/2509.22602",
+              "verifiedOn": "2026-09-06"
+            }
+          },
+          {
+            "at": "2026-11-09T00:00:00.000Z",
+            "until": null,
+            "category": "meteor_shower",
+            "title": "Northern Taurids",
+            "verdict": "ZHR ~5. Radiant up 22:52–04:37, highest 28° at 02:27, moonless. Active 10-13 – 12-02. Broad, shallow maximum; overlaps the Southern Taurids.",
+            "provenance": {
+              "kind": "curated",
+              "sourceUrl": "https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/",
+              "verifiedOn": "2026-09-06"
+            }
+          }
+        ],
+        "problems": []
+      }
+    }
+  ]
+}
