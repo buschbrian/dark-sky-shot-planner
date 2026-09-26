@@ -118,4 +118,52 @@ struct NightSkyOverlayTests {
         #expect(window.start == night.evening(in: tz))
         #expect(window.duration == 9 * 3600)
     }
+
+    @Test("per-minute ephemeris interpolates to within 0.01° of the direct positions")
+    func ephemeris() throws {
+        let start = try ISO.date("2026-09-27T03:00:00Z")
+        let span = TimeWindow(start: start, end: start.addingTimeInterval(20 * 60))
+        let eph = try SkyEphemeris.compute(observer: Self.candlestick, span: span)
+        #expect(eph.span == span)
+        #expect(eph.scene(at: start.addingTimeInterval(-1)) == nil)
+        #expect(eph.scene(at: span.end.addingTimeInterval(1)) == nil)
+        #expect(eph.scene(at: start) == (try NightSkyScene.at(start, observer: Self.candlestick)))
+        for seconds in [30.0, 61.5, 599, 1199] {
+            let t = start.addingTimeInterval(seconds)
+            let direct = try NightSkyScene.at(t, observer: Self.candlestick)
+            let interp = try #require(eph.scene(at: t))
+            #expect(interp.date == t)
+            for (a, b) in zip(direct.bodies, interp.bodies) {
+                #expect(a.object == b.object)
+                #expect(separationDeg(a.position, b.position) < 0.01, "\(a.object) at +\(seconds) s")
+            }
+            #expect(zip(direct.milkyWay, interp.milkyWay).map { separationDeg($0, $1) }.max()! < 0.01)
+            #expect(abs(direct.moonIllumination - interp.moonIllumination) < 1e-4)
+        }
+    }
+
+    @Test("placing the image rect reproduces aspect fill")
+    func placedRect() {
+        let viewW = 402.0, viewH = 874.0
+        let s = max(viewW / Self.camera.width, viewH / Self.camera.height)
+        let w = Self.camera.width * s, h = Self.camera.height * s
+        let placed = Self.camera.placed(inImageRectX: (viewW - w) / 2, y: (viewH - h) / 2, width: w, height: h, viewWidth: viewW, viewHeight: viewH)
+        let filled = Self.camera.aspectFilled(toWidth: viewW, height: viewH)
+        for (a, b) in [(placed.fx, filled.fx), (placed.fy, filled.fy), (placed.cx, filled.cx), (placed.cy, filled.cy), (placed.width, filled.width), (placed.height, filled.height)] {
+            #expect(abs(a - b) < 1e-9)
+        }
+    }
+
+    @Test("a stored calibration comes back only nearby and the same night")
+    func storedCalibration() throws {
+        let t = try ISO.date("2026-09-27T04:00:00Z")
+        let stored = StoredCalibration(calibration: HeadingCalibration(offsetDeg: 7), target: "Moon", date: t, latitude: 38.374031, longitude: -109.965416)
+        #expect(stored.isUsable(at: t.addingTimeInterval(3600), latitude: 38.374031, longitude: -109.965416))
+        #expect(stored.isUsable(at: t.addingTimeInterval(3600), latitude: 38.378, longitude: -109.965416))  // ~440 m
+        #expect(!stored.isUsable(at: t.addingTimeInterval(3600), latitude: 38.40, longitude: -109.965416))  // ~2.9 km
+        #expect(!stored.isUsable(at: t.addingTimeInterval(7 * 3600), latitude: 38.374031, longitude: -109.965416))
+        #expect(!stored.isUsable(at: t.addingTimeInterval(-60), latitude: 38.374031, longitude: -109.965416))
+        let decoded = try JSONDecoder().decode(StoredCalibration.self, from: JSONEncoder().encode(stored))
+        #expect(decoded == stored)
+    }
 }

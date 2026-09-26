@@ -149,3 +149,93 @@ extension Planner {
         return TimeWindow(start: evening, end: evening.addingTimeInterval(9 * 3600))
     }
 }
+
+/// Apparent positions sampled every `step` (a minute) across a span, so the
+/// overlay interpolates per frame (`SkyPositions.interpolated`) instead of
+/// calling the astronomy engine. Compute it off the main actor.
+public struct SkyEphemeris: Sendable {
+    public let span: TimeWindow
+    public let step: TimeInterval
+    let scenes: [NightSkyScene]
+
+    public static func compute(
+        observer: Observer, span: TimeWindow, step: TimeInterval = 60, bandStepDeg: Double = 3
+    ) throws(AstronomyError) -> SkyEphemeris {
+        precondition(step > 0, "step must be positive")
+        let count = Int((span.duration / step).rounded(.up)) + 1
+        var scenes: [NightSkyScene] = []
+        scenes.reserveCapacity(count)
+        for i in 0..<count {
+            let t = span.start.addingTimeInterval(Double(i) * step)
+            scenes.append(try NightSkyScene.at(t, observer: observer, bandStepDeg: bandStepDeg))
+        }
+        return SkyEphemeris(span: TimeWindow(start: span.start, end: scenes.last!.date), step: step, scenes: scenes)
+    }
+
+    public func contains(_ date: Date) -> Bool { date >= span.start && date <= span.end }
+
+    /// The scene at `date`, each position interpolated between the samples
+    /// either side; nil outside the span.
+    public func scene(at date: Date) -> NightSkyScene? {
+        guard contains(date) else { return nil }
+        let x = date.timeIntervalSince(span.start) / step
+        let i = min(Int(x.rounded(.down)), scenes.count - 1)
+        let a = scenes[i]
+        guard i + 1 < scenes.count, a.date != date else { return a }
+        let b = scenes[i + 1]
+        func lerp(_ p: HorizontalPosition, _ q: HorizontalPosition) -> HorizontalPosition {
+            SkyPositions.interpolated([SkySample(date: a.date, position: p), SkySample(date: b.date, position: q)], at: date) ?? p
+        }
+        let f = date.timeIntervalSince(a.date) / b.date.timeIntervalSince(a.date)
+        return NightSkyScene(
+            date: date,
+            bodies: zip(a.bodies, b.bodies).map { NightSkyScene.Body(object: $0.object, position: lerp($0.position, $1.position)) },
+            moonIllumination: a.moonIllumination + (b.moonIllumination - a.moonIllumination) * f,
+            milkyWay: zip(a.milkyWay, b.milkyWay).map(lerp))
+    }
+}
+
+extension CameraIntrinsics {
+    /// The same camera when its whole image is drawn scaled into the rect
+    /// (`x`, `y`, `width`, `height`) of a view, for example
+    /// `AVCaptureVideoPreviewLayer.layerRectConverted(fromMetadataOutputRect:)`
+    /// of the unit rect: the preview's own answer to where the image lies.
+    public func placed(
+        inImageRectX x: Double, y: Double, width w: Double, height h: Double, viewWidth: Double, viewHeight: Double
+    ) -> CameraIntrinsics {
+        let sx = w / width, sy = h / height
+        return CameraIntrinsics(fx: fx * sx, fy: fy * sy, cx: cx * sx + x, cy: cy * sy + y, width: viewWidth, height: viewHeight)
+    }
+}
+
+/// A heading calibration saved for the rest of a shooting session: iOS may
+/// end the app while the Camera app is in front. The magnetometer's error
+/// belongs to where the phone stands (car, tripod, rock), so a saved offset
+/// only comes back nearby and within the same night.
+public struct StoredCalibration: Sendable, Hashable, Codable {
+    public static let maxAge: TimeInterval = 6 * 3600
+    public static let maxDistanceMeters = 1000.0
+
+    public let calibration: HeadingCalibration
+    public let target: String
+    public let date: Date
+    public let latitude: Double
+    public let longitude: Double
+
+    public init(calibration: HeadingCalibration, target: String, date: Date, latitude: Double, longitude: Double) {
+        self.calibration = calibration
+        self.target = target
+        self.date = date
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    public func isUsable(at now: Date, latitude lat: Double, longitude lon: Double) -> Bool {
+        let age = now.timeIntervalSince(date)
+        guard age >= 0, age <= Self.maxAge else { return false }
+        guard let d = Geodesy.inverse(
+            from: GeoCoordinate(latitude: latitude, longitude: longitude),
+            to: GeoCoordinate(latitude: lat, longitude: lon))?.distanceMeters else { return false }
+        return d <= Self.maxDistanceMeters
+    }
+}
