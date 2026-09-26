@@ -13,7 +13,8 @@ final class WeekToolsTests: XCTestCase {
     private func launch(_ env: [String: String] = [:], arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = env
-        app.launchArguments = arguments
+        // The shared UI-test mode: no network, throwaway conditions cache, no remembered place.
+        app.launchArguments = ["-DarkSkyUITest"] + arguments
         app.launch()
         return app
     }
