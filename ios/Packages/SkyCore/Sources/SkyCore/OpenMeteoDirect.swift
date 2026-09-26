@@ -215,6 +215,38 @@ public enum OpenMeteoDirect {
     }
 }
 
+extension OpenMeteoDirect {
+    public static let lastGoodReason = "Worker unreachable; last good copy"
+
+    /// ADR-0006: a failed feed shows its last good value with its age. Fields
+    /// the fallback cannot fetch take the cached response's series for the same
+    /// cell and window, marked unavailable with `last_good_utc`, exactly as the
+    /// Worker marks its own last-good copies, so they are shown but never rated.
+    public static func withLastGood(_ direct: ConditionsResponse, from cached: ConditionsResponse?) -> ConditionsResponse {
+        guard let cached, cached.cell == direct.cell, cached.window == direct.window else { return direct }
+        var fields = direct.fields
+        for (name, field) in direct.fields where field.status == .unavailable && field.series.isEmpty {
+            guard let old = cached.fields[name] else { continue }
+            let series = old.series.compactMap { s -> WorkerSeries? in
+                guard s.values.contains(where: { $0.v != nil }), let good = s.fetchedUTC ?? s.lastGoodUTC else { return nil }
+                return WorkerSeries(
+                    model: s.model, upstreamModel: s.upstreamModel, modelRunUTC: s.modelRunUTC, fetchedUTC: nil,
+                    status: .unavailable, reason: lastGoodReason, lastGoodUTC: good, values: s.values)
+            }
+            guard !series.isEmpty else { continue }
+            fields[name] = WorkerField(
+                unit: old.unit, source: old.source, status: .unavailable, fetchedUTC: nil, series: series,
+                reason: lastGoodReason, lastGoodUTC: series.compactMap(\.lastGoodUTC).max(),
+                observations: nil, preliminary: old.preliminary, attribution: old.attribution,
+                description: old.description, valueKind: old.valueKind, calibrated: old.calibrated,
+                calibration: old.calibration, resolutionNote: old.resolutionNote, terms: old.terms, optional: old.optional)
+        }
+        return ConditionsResponse(
+            cell: direct.cell, window: direct.window, generatedUTC: direct.generatedUTC, fields: fields,
+            attribution: direct.attribution)
+    }
+}
+
 extension ConditionsResponse {
     /// Built by `OpenMeteoDirect` rather than received from the Worker.
     public var isDirectFallback: Bool {

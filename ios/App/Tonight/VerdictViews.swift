@@ -170,7 +170,7 @@ private struct FactorRow: View {
             Text(provenanceLine(factor, now: now))
                 .font(.footnote)
                 .foregroundStyle(palette.secondary)
-            if factor.readings.count > 1 && !factor.isUnavailable {
+            if factor.readings.count > 1 || factor.readings.contains(where: \.isLastGood) {
                 Text(FactorText.perModel(factor))
                     .font(.footnote)
                     .foregroundStyle(palette.secondary)

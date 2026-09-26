@@ -126,6 +126,30 @@ import Testing
         #expect(r.fields["cloud_cover_low"]?.series.first?.status == .unavailable)
     }
 
+    @Test func fallbackKeepsTheWorkersLastGoodValuesShownButNotRated() throws {
+        let golden = try ConditionsResponse.decode(Repo.data("shared/golden/conditions-response.json"))
+        let direct = OpenMeteoDirect.response(request: try Self.request(), fetches: try Self.recordedFetches(), fetchedUTC: Self.fetched)
+        let merged = OpenMeteoDirect.withLastGood(direct, from: golden)
+        let wind = try #require(merged.fields["wind_gust"])
+        #expect(wind.status == .unavailable)
+        #expect(wind.series.map(\.values) == golden.fields["wind_gust"]!.series.map(\.values))
+        #expect(wind.series.allSatisfy { $0.status == .unavailable && $0.fetchedUTC == nil && $0.lastGoodUTC != nil })
+        #expect(merged.fields["cloud_cover_total"] == direct.fields["cloud_cover_total"], "fresh clouds win")
+        #expect(merged.fields["visibility"]!.series.count == 2, "series with no values stay out")
+        #expect(merged.isDirectFallback)
+
+        let v = try Verdict.evaluate(night: Sky.night(), conditions: merged, config: .bundled(), now: Sky.now)
+        #expect(v.factor("wind_gust")?.isUnavailable == true, "a last-good copy is never rated")
+        #expect(v.factor("wind_gust")?.readings.first?.isLastGood == true)
+        let row = try #require(StripRow.rows(from: merged).first { $0.kind == .wind })
+        #expect(!row.points.isEmpty && row.unavailableReason == nil && row.source.hasSuffix("(last good copy)"))
+
+        var otherCell = try Self.request()
+        otherCell = try ConditionsRequest.make(latitude: 40, longitude: -111, window: otherCell.window, now: Self.fetched).get()
+        let elsewhere = OpenMeteoDirect.response(request: otherCell, fetches: [], fetchedUTC: Self.fetched)
+        #expect(OpenMeteoDirect.withLastGood(elsewhere, from: golden) == elsewhere, "never borrow another cell's data")
+    }
+
     @Test func nothingReachedMeansUseTheCache() {
         let offline = OpenMeteoDirect.models.map { OpenMeteoDirect.ModelFetch(model: $0, forecast: nil, forecastError: "offline", meta: nil) }
         #expect(OpenMeteoDirect.nothingReached(offline))

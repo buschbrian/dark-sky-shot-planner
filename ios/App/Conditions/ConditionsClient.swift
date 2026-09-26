@@ -72,7 +72,13 @@ nonisolated struct ConditionsClient: LiveConditionsProviding {
         guard let r = request(place, window) else { return nil }
         if networkEnabled {
             let key = "\(r.cell.key)|\(r.start.timeIntervalSince1970)|\(r.end.timeIntervalSince1970)"
-            if let fresh = await inFlight.run(key, { await fetchFresh(r) }) {
+            if var fresh = await inFlight.run(key, { await fetchFresh(r) }) {
+                if fresh.response.isDirectFallback {
+                    let cached = await store.best(for: r.cell, window: r.window)
+                    fresh = ConditionsSnapshot(
+                        response: OpenMeteoDirect.withLastGood(fresh.response, from: cached?.response),
+                        fetchedUTC: fresh.fetchedUTC)
+                }
                 await store.save(fresh)
                 return fresh
             }

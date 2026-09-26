@@ -109,11 +109,13 @@ public struct StripRow: Sendable, Hashable, Identifiable {
     }
 
     static func row(_ kind: Kind, _ s: WorkerSeries, _ f: WorkerField) -> StripRow {
-        let ok = s.status == .ok && s.values.contains { $0.v != nil }
+        // A last-good copy (unavailable, with values) is drawn with its age, never blanked.
+        let ok = s.values.contains { $0.v != nil }
+        let lastGood = ok && s.status != .ok
         return StripRow(
             kind: kind, model: s.model, unit: f.unit, points: ok ? s.values : [],
             unavailableReason: ok ? nil : (s.reason ?? f.reason ?? "no values"),
-            source: f.source, asOfUTC: ok ? s.asOfUTC : nil)
+            source: lastGood ? "\(f.source) (last good copy)" : f.source, asOfUTC: ok ? s.asOfUTC : nil)
     }
 
     static func missing(_ kind: Kind, _ name: String, _ response: ConditionsResponse?) -> StripRow {
