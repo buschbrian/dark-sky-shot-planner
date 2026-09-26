@@ -92,6 +92,16 @@ BASE_PATH=/dark-sky-shot-planner/ npm run build         # dist/
 npx vite preview                                        # http://localhost:4173/dark-sky-shot-planner/
 ```
 
+## Coming next: the iOS field companion
+
+A native SwiftUI app (`ios/`, planned) that puts the whole shoot-night
+routine in one place: this planner's numbers plus cloud layers from several
+models, smoke and haze, seeing, dew and wind, aurora, Night AR, map
+planner lines, and exposure tools. It gives one go / marginal / no-go
+verdict that always names its limiting factor. A small stateless Cloudflare
+Worker (`worker/`, planned) serves the live conditions. Plan and build
+order: [`docs/ios/PLAN.md`](docs/ios/PLAN.md). Why: ADR-0009 and ADR-0010.
+
 ## Documentation
 
 - [`docs/data-licensing.md`](docs/data-licensing.md) — every source, its
