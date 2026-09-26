@@ -2,7 +2,8 @@
 
 **Status:** plan, written 2026-09-25 on Windows, to be built on the M4 MacBook.
 **Why:** ADR-0009 (scope + native app) and ADR-0010 (stateless Worker).
-**How to work:** one milestone at a time, in order. Each ends with the
+**How to work:** on the Mac, use the copy-paste prompts in
+`docs/ios/MAC-PROMPTS.md`. One milestone at a time, in order. Each ends with the
 listed checks passing and a short note in §Log. Do not start a milestone
 whose predecessor's checks are not green.
 
