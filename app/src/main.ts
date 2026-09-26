@@ -226,7 +226,9 @@ async function updateSkyEvents(
     await afterPaint();
     if (request !== skyEventsRequest) return;
     try {
-      result = buildSkyEvents({ latitude: lat, longitude: lon }, eveningUtcFor(dateIso));
+      result = buildSkyEvents({ latitude: lat, longitude: lon }, eveningUtcFor(dateIso), {
+        gcMinAltitudeDeg: appData?.config?.gc_min_useful_altitude_deg ?? null,
+      });
     } catch (err) {
       renderSkyEventsMessage(eventsEl, `Sky events unavailable: ${String(err)}`, status);
       return;

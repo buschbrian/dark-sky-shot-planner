@@ -13,14 +13,21 @@ import {
   DEFAULT_WINDOW_DAYS,
   OCCULTATION_FLAG_DEG,
   PAIRING_MAX_SUN_ALTITUDE_DEG,
+  coreSeasonRanges,
   greatestElongations,
+  lunarEclipses,
   moonPhases,
   moonPlanetPairings,
   planetOppositions,
   seasonMarkers,
+  solarEclipses,
+  supermoons,
   windowAround,
   zodiacalLightRanges,
+  type CoreSeasonRange,
+  type LunarEclipse,
   type MoonPairing,
+  type SolarEclipse,
   type Site,
   type TimeWindow,
 } from "../astronomy/events";
@@ -44,7 +51,9 @@ export type SkyEventCategory =
   | "moon"
   | "planet"
   | "conjunction"
+  | "eclipse"
   | "meteor_shower"
+  | "milky_way"
   | "zodiacal"
   | "season"
   | "place";
@@ -85,6 +94,11 @@ export interface BuildOptions {
   windowDays?: number;
   formatters?: Formatters;
   curated?: CuratedLoadResult;
+  /**
+   * `gc_min_useful_altitude_deg` from `config/app-config.json`. Without it
+   * the Milky Way core season is left out rather than judged on a guess.
+   */
+  gcMinAltitudeDeg?: number | null;
 }
 
 export function buildSkyEvents(
@@ -98,9 +112,12 @@ export function buildSkyEvents(
 
   const items: SkyEventItem[] = [
     ...moonPhaseItems(window),
+    ...supermoonItems(window),
     ...planetItems(window),
+    ...eclipseItems(site, window, fmt),
     ...pairingItems(site, window, fmt),
     ...zodiacalItems(site, window, fmt),
+    ...coreSeasonItems(site, window, options.gcMinAltitudeDeg ?? null, fmt),
     ...seasonItems(window),
     ...curatedItems(site, window, curated.events, fmt),
   ];
@@ -127,6 +144,121 @@ function moonPhaseItems(window: TimeWindow): SkyEventItem[] {
     verdict: MOON_PHASE_VERDICT[p.angle] ?? "",
     provenance: { kind: "computed" as const },
   }));
+}
+
+/** "357,120": digit grouping without the reader's locale, so the text is reproducible. */
+function grouped(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function supermoonItems(window: TimeWindow): SkyEventItem[] {
+  return supermoons(window).map((m) => ({
+    at: m.at,
+    until: null,
+    category: "moon" as const,
+    title: "Supermoon",
+    verdict:
+      `Full moon at ${grouped(m.distanceKm)} km, about ${Math.round((m.sizeRatio - 1) * 100)}% wider and ` +
+      `${Math.round((m.brightnessRatio - 1) * 100)}% brighter than an average full moon. ` +
+      "The brightest night of the month: moonlit landscapes, not the Milky Way.",
+    provenance: { kind: "computed" as const },
+  }));
+}
+
+const CAPITALISED = { penumbral: "Penumbral", partial: "Partial", annular: "Annular", total: "Total" } as const;
+
+function eclipseItems(site: Site, window: TimeWindow, fmt: Formatters): SkyEventItem[] {
+  const lunar = lunarEclipses(site, window).map((e) => ({
+    at: e.peak,
+    until: null,
+    category: "eclipse" as const,
+    title: `${CAPITALISED[e.kind]} lunar eclipse`,
+    verdict: lunarEclipseVerdict(e, fmt),
+    provenance: { kind: "computed" as const },
+  }));
+  const solar = solarEclipses(site, window).map((e) => ({
+    at: e.peak,
+    until: null,
+    category: "eclipse" as const,
+    title: `${CAPITALISED[e.kind]} solar eclipse from here`,
+    verdict: solarEclipseVerdict(e, fmt),
+    provenance: { kind: "computed" as const },
+  }));
+  return [...lunar, ...solar];
+}
+
+export function lunarEclipseVerdict(e: LunarEclipse, fmt: Formatters): string {
+  const parts: string[] = [];
+  if (e.kind === "total") {
+    parts.push(`Totality ${fmt.time(e.totalBegin!)}–${fmt.time(e.totalEnd!)}, peak ${fmt.time(e.peak)}.`);
+  } else if (e.kind === "partial") {
+    parts.push(
+      `${Math.round(e.obscuration * 100)}% of the Moon in Earth's shadow at ${fmt.time(e.peak)}; ` +
+        `partial phase ${fmt.time(e.partialBegin!)}–${fmt.time(e.partialEnd!)}.`,
+    );
+  } else {
+    parts.push(`Only a subtle dimming, deepest at ${fmt.time(e.peak)}: hard to see, harder to photograph.`);
+  }
+  const begin = e.moonAltitudeAtBeginDeg;
+  const end = e.moonAltitudeAtEndDeg;
+  const peak = e.moonAltitudeAtPeakDeg;
+  if (begin < 0 && peak < 0 && end < 0) {
+    parts.push("The Moon is below the horizon here for all of it.");
+  } else if (begin >= 0 && peak >= 0 && end >= 0) {
+    parts.push(`Moon ${Math.round(peak)}° up at peak; all of it is visible from here.`);
+  } else if (begin < 0) {
+    parts.push(`The Moon rises during it here: ${Math.round(end)}° up by the end.`);
+  } else {
+    parts.push(`The Moon sets during it here: ${Math.round(begin)}° up at the start.`);
+  }
+  return parts.join(" ");
+}
+
+export function solarEclipseVerdict(e: SolarEclipse, fmt: Formatters): string {
+  const parts = [
+    `${Math.round(e.obscuration * 100)}% of the Sun covered at ${fmt.time(e.peak)} ` +
+      `(Sun ${Math.round(e.sunAltitudeAtPeakDeg)}° up); ${fmt.time(e.begin)}–${fmt.time(e.end)}.`,
+  ];
+  if (e.sunAltitudeAtBeginDeg < 0) parts.push("Already under way at sunrise.");
+  if (e.sunAltitudeAtEndDeg < 0) parts.push("Still under way at sunset.");
+  parts.push("Never look at the Sun, or point a camera at it, without a certified solar filter.");
+  return parts.join(" ");
+}
+
+function coreSeasonItems(
+  site: Site,
+  window: TimeWindow,
+  minAltitudeDeg: number | null,
+  fmt: Formatters,
+): SkyEventItem[] {
+  if (minAltitudeDeg === null) return [];
+  return coreSeasonRanges(site, window, minAltitudeDeg).map((r) => ({
+    at: r.first.maxAltitudeAt,
+    until: r.last.maxAltitudeAt,
+    category: "milky_way" as const,
+    title:
+      r.opens && !r.closes
+        ? "Milky Way core season opens"
+        : r.closes && !r.opens
+          ? "Milky Way core season ends"
+          : "Milky Way core season",
+    verdict: coreSeasonVerdict(r, minAltitudeDeg, fmt),
+    provenance: { kind: "computed" as const },
+  }));
+}
+
+export function coreSeasonVerdict(r: CoreSeasonRange, minAltitudeDeg: number, fmt: Formatters): string {
+  const nights = `${r.nights} night${r.nights === 1 ? "" : "s"}`;
+  const last =
+    r.nights > 1
+      ? `, ${r.last.maxAltitudeDeg}° at ${fmt.time(r.last.maxAltitudeAt)} on the last`
+      : "";
+  return (
+    `The Galactic Center clears ${minAltitudeDeg}° in astronomical darkness on ${nights}, ` +
+    `${fmt.date(r.first.eveningUtc)} – ${fmt.date(r.last.eveningUtc)}; highest ` +
+    `${r.first.maxAltitudeDeg}° at ${fmt.time(r.first.maxAltitudeAt)} on the first night${last}. ` +
+    "Moon not counted: the night report gives the moon-free part."
+  );
 }
 
 function planetItems(window: TimeWindow): SkyEventItem[] {

@@ -11,6 +11,9 @@
  * "HH:MM" and "MM-DD") so the text is part of the contract too and does not
  * depend on the zone the suite runs in.
  *
+ * The Milky Way core season uses `gc_min_useful_altitude_deg` from
+ * `config/app-config.json`, as the app does.
+ *
  * Regenerate after an intentional change to the events code or to
  * `config/sky-events.json`:
  *   UPDATE_GOLDEN=1 npx vitest run app/tests/sky-events-golden.test.ts
@@ -21,13 +24,18 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  coreSeasonRanges,
   greatestElongations,
+  lunarEclipses,
   moonPhases,
   moonPlanetPairings,
   planetOppositions,
   seasonMarkers,
+  solarEclipses,
+  supermoons,
   windowAround,
   zodiacalLightRanges,
+  type CoreNight,
   type Site,
 } from "../src/astronomy/events";
 import type { MoonFreeWindow } from "../src/astronomy/planner";
@@ -36,6 +44,11 @@ import { buildSkyEvents, type Formatters } from "../src/events/agenda";
 import { CURATED, activeSpan, anchorOf, curatedEventsInWindow } from "../src/events/curated";
 
 const GOLDEN_PATH = resolve(__dirname, "../../shared/golden/sky-events.json");
+
+/** The Milky Way core threshold the app uses, read from the shared config. */
+const GC_MIN_ALTITUDE_DEG: number = JSON.parse(
+  readFileSync(resolve(__dirname, "../../config/app-config.json"), "utf8"),
+).gc_min_useful_altitude_deg;
 
 const ASTRONOMY_ENGINE_VERSION: string = JSON.parse(
   readFileSync(resolve(__dirname, "../../node_modules/astronomy-engine/package.json"), "utf8"),
@@ -63,6 +76,12 @@ const CASES: Case[] = [
     note: "The web suite's scenario: Saturn opposition, Mercury elongation, a Moon–Jupiter occultation at moonrise, zodiacal light, the equinox, the Orionids with a better night, a festival",
     latitude: 40.687, longitude: -111.824, elevation_m: 1400,
     centre_utc: "2026-09-23T03:00:00Z", utc_offset_hours: -6,
+  },
+  {
+    id: "millcreek-2026-03-03",
+    note: "A total lunar eclipse before dawn with the Moon setting; the Milky Way core season opens; spring zodiacal light; the March equinox",
+    latitude: 40.687, longitude: -111.824, elevation_m: 1400,
+    centre_utc: "2026-03-04T04:00:00Z", utc_offset_hours: -7,
   },
   {
     id: "millcreek-2026-05-21",
@@ -93,6 +112,12 @@ const CASES: Case[] = [
     note: "48.9°N: nights with no astronomical darkness early in the window",
     latitude: 48.9, longitude: -114.0, elevation_m: 0,
     centre_utc: "2026-07-21T03:00:00Z", utc_offset_hours: -6,
+  },
+  {
+    id: "burgos-2026-08-12",
+    note: "Outside the AOI on purpose: a total solar eclipse at sunset seen from northern Spain, and the partial lunar eclipse of 2026-08-28",
+    latitude: 42.34, longitude: -3.7, elevation_m: 860,
+    centre_utc: "2026-08-12T19:00:00Z", utc_offset_hours: 2,
   },
   {
     id: "patagonia-2026-09-22",
@@ -128,11 +153,20 @@ function serialiseNight(n: ShowerNight) {
   };
 }
 
+const serialiseCoreNight = (n: CoreNight) => ({
+  evening_utc: iso(n.eveningUtc),
+  max_altitude_deg: n.maxAltitudeDeg,
+  max_altitude_at: iso(n.maxAltitudeAt),
+});
+
 function expected(c: Case) {
   const site: Site = { latitude: c.latitude, longitude: c.longitude, elevationM: c.elevation_m };
   const centre = new Date(c.centre_utc);
   const window = windowAround(centre);
-  const result = buildSkyEvents(site, centre, { formatters: fixedOffsetFormatters(c.utc_offset_hours) });
+  const result = buildSkyEvents(site, centre, {
+    formatters: fixedOffsetFormatters(c.utc_offset_hours),
+    gcMinAltitudeDeg: GC_MIN_ALTITUDE_DEG,
+  });
   const showers = curatedEventsInWindow(CURATED.events, window.start, window.end)
     .filter((e) => e.kind === "meteor_shower" && e.radiantRaHours !== null && e.radiantDecDeg !== null)
     .map((e) => {
@@ -194,6 +228,43 @@ function expected(c: Case) {
       nights: r.nights,
     })),
     seasons: seasonMarkers(window).map((s) => ({ at: iso(s.at), name: s.name })),
+    lunar_eclipses: lunarEclipses(site, window).map((e) => ({
+      kind: e.kind,
+      peak: iso(e.peak),
+      obscuration: e.obscuration,
+      penumbral_begin: iso(e.penumbralBegin),
+      penumbral_end: iso(e.penumbralEnd),
+      partial_begin: iso(e.partialBegin),
+      partial_end: iso(e.partialEnd),
+      total_begin: iso(e.totalBegin),
+      total_end: iso(e.totalEnd),
+      moon_altitude_at_peak_deg: e.moonAltitudeAtPeakDeg,
+      moon_altitude_at_begin_deg: e.moonAltitudeAtBeginDeg,
+      moon_altitude_at_end_deg: e.moonAltitudeAtEndDeg,
+    })),
+    solar_eclipses: solarEclipses(site, window).map((e) => ({
+      kind: e.kind,
+      obscuration: e.obscuration,
+      begin: iso(e.begin),
+      peak: iso(e.peak),
+      end: iso(e.end),
+      sun_altitude_at_begin_deg: e.sunAltitudeAtBeginDeg,
+      sun_altitude_at_peak_deg: e.sunAltitudeAtPeakDeg,
+      sun_altitude_at_end_deg: e.sunAltitudeAtEndDeg,
+    })),
+    supermoons: supermoons(window).map((m) => ({
+      at: iso(m.at),
+      distance_km: m.distanceKm,
+      size_ratio: m.sizeRatio,
+      brightness_ratio: m.brightnessRatio,
+    })),
+    core_season: coreSeasonRanges(site, window, GC_MIN_ALTITUDE_DEG).map((r) => ({
+      first: serialiseCoreNight(r.first),
+      last: serialiseCoreNight(r.last),
+      nights: r.nights,
+      opens: r.opens,
+      closes: r.closes,
+    })),
     showers,
     items: result.items.map((i) => ({
       at: iso(i.at),
@@ -212,6 +283,7 @@ function build() {
     generated_by: "app/tests/sky-events-golden.test.ts (buildSkyEvents, astronomy-engine, TypeScript)",
     astronomy_engine: ASTRONOMY_ENGINE_VERSION,
     curated_file: "config/sky-events.json",
+    gc_min_altitude_deg: GC_MIN_ALTITUDE_DEG,
     window_days: 30,
     tolerance: TOLERANCE,
     cases: CASES.map((c) => ({ ...c, expected: expected(c) })),
@@ -230,7 +302,8 @@ describe("golden sky-events vectors", () => {
 
   it("covers every item category the agenda can produce", () => {
     const categories = new Set<string>(current.cases.flatMap((c) => c.expected.items.map((i) => i.category)));
-    for (const k of ["moon", "planet", "conjunction", "meteor_shower", "zodiacal", "season", "place"]) {
+    const all = ["moon", "planet", "conjunction", "eclipse", "meteor_shower", "milky_way", "zodiacal", "season", "place"];
+    for (const k of all) {
       expect(categories.has(k), k).toBe(true);
     }
   });

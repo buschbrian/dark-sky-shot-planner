@@ -297,3 +297,34 @@ describe("buildSkyEvents", () => {
     expect(r.items.every((i) => i.provenance.kind === "computed")).toBe(true);
   });
 });
+
+describe("buildSkyEvents: eclipses, supermoons and the core season", () => {
+  it("leaves the core season out without a configured threshold", () => {
+    const r = buildSkyEvents(MILLCREEK, CENTRE, { formatters: MDT });
+    expect(r.items.some((i) => i.category === "milky_way")).toBe(false);
+  });
+
+  it("names the core season's end with the configured threshold", () => {
+    const r = buildSkyEvents(MILLCREEK, CENTRE, { formatters: MDT, gcMinAltitudeDeg: 12 });
+    const core = r.items.find((i) => i.category === "milky_way")!;
+    expect(core.title).toBe("Milky Way core season ends");
+    expect(core.verdict).toContain("clears 12° in astronomical darkness");
+    expect(core.until).not.toBeNull();
+  });
+
+  it("describes the August 2026 partial lunar eclipse from here", () => {
+    const r = buildSkyEvents(MILLCREEK, CENTRE, { formatters: MDT });
+    const e = r.items.find((i) => i.title === "Partial lunar eclipse")!;
+    expect(e.category).toBe("eclipse");
+    expect(e.verdict).toMatch(/^\d+% of the Moon in Earth's shadow at 22:12/);
+    expect(e.provenance.kind).toBe("computed");
+  });
+
+  it("warns about the Sun on every solar eclipse", () => {
+    const burgos: Site = { latitude: 42.34, longitude: -3.7 };
+    const r = buildSkyEvents(burgos, new Date("2026-08-12T19:00:00Z"), { formatters: MDT });
+    const e = r.items.find((i) => i.title === "Total solar eclipse from here")!;
+    expect(e.verdict).toContain("certified solar filter");
+    expect(e.verdict).toContain("Still under way at sunset.");
+  });
+});
