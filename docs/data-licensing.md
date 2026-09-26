@@ -49,6 +49,26 @@ in `ios/Packages/SkyCore/Tests/Fixtures/terrarium-candlestick/README.md`.
 Ephemeris code, not data: the iOS app vendors the astronomy-engine C port
 (MIT), the same library and version as the web app (ADR-0009).
 
+## Sky view catalogs (bundled in the iOS app)
+
+Checked 2026-09-26. Built by `ios/scripts/build-sky-catalogs.py` into
+`ios/Packages/SkyCore/Sources/SkyCore/Resources/sky/` (about 350 KB in
+total), with credits and the BSD notice in that folder's `SOURCES.md`.
+
+| Data | Source | License / terms | Personal use | Distribution |
+|---|---|---|---|---|
+| Stars to V 6.5 (8,404: J2000 position, proper motion, V, B−V) | Bright Star Catalogue, 5th Revised Ed. (Preliminary), Hoffleit & Warren 1991, as NASA HEASARC table [`bsc5p`](https://heasarc.gsfc.nasa.gov/W3Browse/star-catalog/bsc5p.html), file `https://heasarc.gsfc.nasa.gov/FTP/heasarc/dbase/tdat_files/heasarc_bsc5p.tdat.gz` (sha256 `122628cd…3931`, table modified 2022-02-03) | [data.gov lists it](https://catalog.data.gov/dataset/bright-star-catalog) with license "U.S. Government Works" (public domain), access level public. The HEASARC page and the CDS ReadMe (V/50) state no terms; CDS's own VizieR terms ("free of usage in a scientific context") cover its copy, so the HEASARC copy is the one used | OK | OK; credit Hoffleit & Warren and HEASARC |
+| Constellation stick figures (88) and label positions | [d3-celestial](https://github.com/ofrohn/d3-celestial) `data/constellations.lines.json` and `constellations.json` at commit `7e720a3d`, by Olaf Frohn; the figures follow the [IAU / Sky & Telescope charts](https://www.iau.org/IAU/IAU/Astronomy-FAQs/Constellations.aspx) (Roger Sinnott, Rick Fienberg) | d3-celestial: BSD 3-Clause (notice kept in `SOURCES.md`). IAU charts: CC BY 4.0 | OK | OK with both credits |
+| Star names (125) | IAU Working Group on Star Names approved names | Names are facts; the short list was typed by hand and matched to HR numbers by Bayer designation | OK | OK |
+| Constellation membership (tests only) | astronomy-engine `Constellation()` (IAU boundaries, Roman 1987), already vendored | MIT | OK | OK |
+
+Considered and not used: **HYG** (CC BY-SA 4.0, share-alike would bind the
+bundled file), **Hipparcos** (listed on data.gov as a NASA table, but ESA
+states no licence for the 1997 catalogue and ESA's own open data is
+CC BY-SA 3.0 IGO), **Stellarium** sky cultures (licences vary per culture),
+and survey images of the Milky Way (the Sky view models it analytically,
+`MilkyWayModel.swift`, so no image data is bundled).
+
 ## Explicitly forbidden
 
 - **Falchi et al. 2016, "New World Atlas of Artificial Night Sky Brightness"**
