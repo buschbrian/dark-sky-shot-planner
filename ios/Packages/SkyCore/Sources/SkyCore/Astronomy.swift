@@ -50,6 +50,11 @@ public struct HorizontalPosition: Sendable, Hashable, Codable {
     public let altitudeDeg: Double
     /// Degrees clockwise from true north.
     public let azimuthDeg: Double
+
+    public init(altitudeDeg: Double, azimuthDeg: Double) {
+        self.altitudeDeg = altitudeDeg
+        self.azimuthDeg = azimuthDeg
+    }
 }
 
 /// Date <-> astronomy-engine time, reproducing astronomy-engine JS exactly:
