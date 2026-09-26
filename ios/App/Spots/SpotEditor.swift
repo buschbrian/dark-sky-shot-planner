@@ -126,6 +126,7 @@ struct SpotEditor: View {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         if let spot {
             let moved = spot.latitude != p.lat || spot.longitude != p.lon
+            let rezoned = spot.timeZoneID != timeZoneID
             spot.name = trimmed
             spot.latitude = p.lat
             spot.longitude = p.lon
@@ -137,7 +138,8 @@ struct SpotEditor: View {
                 spot.horizonSource = nil
                 spot.horizonUpdatedAt = nil
             }
-            spot.weekData = nil
+            // The week depends on place and zone only; SpotDetail re-checks when they change.
+            if moved || rezoned { spot.weekData = nil }
             if spot.isPinned { WidgetBridge.publish(spot) }
         } else {
             context.insert(Spot(name: trimmed, latitude: p.lat, longitude: p.lon, timeZoneID: timeZoneID, notes: notes))
