@@ -41,11 +41,13 @@ nonisolated struct ConditionsClient: LiveConditionsProviding {
 
     /// Reads the Worker URL from Info.plist. The UI tests launch with
     /// `-DarkSkyUITest`: no network and an empty, throwaway cache.
+    /// `-DarkSkyOffline` keeps the real cache but never touches the network,
+    /// the simulator's stand-in for airplane mode.
     static func live(bundle: Bundle = .main, arguments: [String] = ProcessInfo.processInfo.arguments) -> ConditionsClient {
         let testing = arguments.contains("-DarkSkyUITest")
         return ConditionsClient(
             workerBase: workerURL(bundle.object(forInfoDictionaryKey: workerURLKey) as? String),
-            networkEnabled: !testing,
+            networkEnabled: !testing && !arguments.contains("-DarkSkyOffline"),
             store: testing ? .temporary() : .applicationSupport())
     }
 

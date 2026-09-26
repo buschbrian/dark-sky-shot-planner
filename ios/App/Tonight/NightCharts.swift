@@ -167,12 +167,11 @@ struct ConditionsStripChart: View {
                 .foregroundStyle(palette.primary)
                 .accessibilityAddTraits(.isHeader)
             chart
-                .frame(height: CGFloat(rows.count) * 18 + 30)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Conditions by hour")
                 .accessibilityValue(summary)
                 .accessibilityIdentifier("tonight.conditionsStrip")
-            Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. Empty rows are unavailable, never clear.")
+            Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. A row marked – is unavailable, never clear.")
                 .font(.caption)
                 .foregroundStyle(palette.secondary)
             Text(sources)
@@ -182,23 +181,44 @@ struct ConditionsStripChart: View {
         .card(palette)
     }
 
-    private func label(_ row: StripRow) -> String {
-        row.unavailableReason == nil ? row.title : "\(row.title): unavailable"
-    }
+    @ScaledMetric(relativeTo: .caption2) private var rowHeight = 18.0
+    private static let axisHeight = 24.0
 
     private var chart: some View {
+        HStack(alignment: .top, spacing: 6) {
+            VStack(alignment: .trailing, spacing: 0) {
+                ForEach(rows) { row in
+                    Text(row.unavailableReason == nil ? row.title : "\(row.title) –")
+                        .font(.caption2)
+                        .foregroundStyle(row.unavailableReason == nil ? palette.primary : palette.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(height: rowHeight)
+                }
+            }
+            .fixedSize()
+            grid
+        }
+        .frame(height: CGFloat(rows.count) * rowHeight + Self.axisHeight)
+    }
+
+    /// Row i fills [i + 0.1, i + 0.9] on a numeric axis, first row at the top.
+    private var grid: some View {
         Chart {
             if let d = darkness {
-                RectangleMark(xStart: .value("Time", d.start), xEnd: .value("Time", d.end))
+                RectangleMark(
+                    xStart: .value("Time", d.start), xEnd: .value("Time", d.end),
+                    yStart: .value("Row", 0.0), yEnd: .value("Row", Double(rows.count)))
                     .foregroundStyle(palette.background.opacity(0.6))
             }
-            ForEach(rows) { row in
-                ForEach(row.points.filter { $0.v != nil && $0.t >= span.start.addingTimeInterval(-1800) && $0.t <= span.end.addingTimeInterval(1800) }, id: \.t) { p in
+            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                let top = Double(rows.count - index)
+                ForEach(row.points.filter { $0.v != nil && $0.t > span.start.addingTimeInterval(-1800) && $0.t < span.end.addingTimeInterval(1800) }, id: \.t) { p in
                     RectangleMark(
-                        xStart: .value("Time", p.t.addingTimeInterval(-1800)),
-                        xEnd: .value("Time", p.t.addingTimeInterval(1800)),
-                        y: .value("Row", label(row)),
-                        height: .ratio(0.8))
+                        xStart: .value("Time", max(p.t.addingTimeInterval(-1800), span.start)),
+                        xEnd: .value("Time", min(p.t.addingTimeInterval(1800), span.end)),
+                        yStart: .value("Row", top - 0.9),
+                        yEnd: .value("Row", top - 0.1))
                         .foregroundStyle(palette.primary.opacity(0.08 + 0.87 * badness(row, p.v!)))
                 }
             }
@@ -207,7 +227,8 @@ struct ConditionsStripChart: View {
             }
         }
         .chartXScale(domain: span.start...span.end)
-        .chartYScale(domain: rows.map(label))
+        .chartYScale(domain: 0...Double(max(rows.count, 1)))
+        .chartYAxis(.hidden)
         .chartLegend(.hidden)
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 2)) { _ in
@@ -215,11 +236,7 @@ struct ConditionsStripChart: View {
                 AxisValueLabel(format: .dateTime.hour()).foregroundStyle(palette.secondary)
             }
         }
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisValueLabel().font(.caption2).foregroundStyle(palette.secondary)
-            }
-        }
+        .chartPlotStyle { $0.clipped() }
         .environment(\.timeZone, timeZone)
         .overlay {
             if loading && rows.allSatisfy({ $0.points.isEmpty }) {
