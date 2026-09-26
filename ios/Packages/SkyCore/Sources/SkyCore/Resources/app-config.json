@@ -20,6 +20,10 @@
     }
   },
   "gc_min_useful_altitude_deg": 12.0,
+  "ar_overlay": {
+    "heading_accuracy_confident_max_deg": 10.0,
+    "note": "iOS Night AR only. Above this CLHeading.headingAccuracy (degrees), or when it is negative (invalid), the overlay is drawn as approximate and offers heading calibration. 10 degrees is a proposal: a larger error can put the GC marker beside the Sagittarius star cloud instead of on it. Tune it from field nights in docs/ios/PLAN.md Log."
+  },
   "freshness_days": {
     "light_pollution": {
       "layer_id": "light_pollution",
