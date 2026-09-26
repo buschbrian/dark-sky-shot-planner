@@ -16,6 +16,31 @@ each starts with a clean context.
 | 7 | Continue the plan (reuse for every later milestone) | Yes | Branch + PR |
 | W | Windows side track: M3 Worker | Yes (Windows) | Branch + PR |
 
+## Where things stand (2026-09-26, on the Mac)
+
+Read this before running any prompt below. Several of them are already done
+or superseded.
+
+- **Prompts 1–2: done.** 20 GB → 38 GB free; see `~/Desktop/mac-space-audit.md`.
+- **Prompt 3: partly done, partly changed.** The Command Line Tools work
+  (Swift 6.4). The repo stays in `~/Developer/dark-sky-shot-planner`; the SSD
+  is only for DerivedData, archives and optionally Xcode (MAC-SETUP.md Phase 3).
+  No SSD had been connected yet.
+- **Prompts 4–5 (M0, M1): already built on the Mac,** before these prompts
+  existed. Don't rebuild them. The owner asked to keep the iOS and Worker work
+  **local** (commits on local branches, no push, no PRs, no CI, no deploys)
+  until the local build is solid. The combined state is the local branch
+  `local/ios-integration` (worktree `~/Developer/wt-dark-sky-next`): SkyCore
+  M0 + M1 (golden parity green), the M1b project scaffold (unbuilt: needs
+  Xcode), and the Worker (M3, offline tests green, not deployed).
+- **Prompt W: superseded.** The Worker was built on the Mac. Don't run W on
+  Windows. What's left for M3 is the owner's pre-deploy decisions
+  (PLAN.md §Worker), the AirNow secret, and the deploy.
+- **When "keep it local" is lifted:** open PRs against `main` one at a time
+  (M0 → M1 → Worker → the rest), each from `main`, never stacked.
+- **Next on the Mac:** prompt 6 (Xcode + M1b), then prompt 7. Both apply to the
+  local branches above until the owner says to push.
+
 Before prompt 1, on the Mac: install Claude Code if it isn't there. Then
 sign in to GitHub yourself (`gh auth login`, or GitHub Desktop), since
 Claude shouldn't handle your credentials. Prompts 1–3 work in any folder,
@@ -124,9 +149,8 @@ Steps:
    my call, not yours. If it's APFS but named differently, ask whether to
    rename it or adapt the paths.
 2. Create /Volumes/Dev/DerivedData and /Volumes/Dev/Archives.
-3. Clone https://github.com/buschbrian/dark-sky-shot-planner.git to
-   /Volumes/Dev/dark-sky-shot-planner (I have already signed in to GitHub;
-   if `gh auth status` fails, stop and tell me to sign in).
+3. Don't clone or move the repo: it stays in ~/Developer/dark-sky-shot-planner.
+   Check `gh auth status` (if it fails, stop and tell me to sign in).
 4. If the Command Line Tools aren't installed, run `xcode-select --install`
    and tell me to click through the installer dialog. Don't install full
    Xcode yet; that's a later prompt.
@@ -136,16 +160,17 @@ Steps:
    and from Time Machine (System Settings), and wait while I do it.
 7. If macOS is older than Tahoe 26.6, tell me. Don't start the update.
 
-Done when: the repo is on the SSD, `git status` is clean on main, and the
-Command Line Tools work. Summarize what's ready. Then tell me to open a new
-Claude Code session in /Volumes/Dev/dark-sky-shot-planner for the next step.
+Done when: the SSD folders exist, `git status` is clean on main, and the
+Command Line Tools work. Summarize what's ready.
 ```
 
 ---
 
 ## 4 — M0: SkyCore package (Command Line Tools only)
 
-Run in a Claude Code session opened at `/Volumes/Dev/dark-sky-shot-planner`.
+**Already done on this Mac; see "Where things stand".** Kept for a fresh
+machine. SkyCore's `Package.swift` already carries the Command Line Tools
+test fix (MAC-SETUP.md Phase 1).
 
 ```text
 Start milestone M0 of the iOS field companion.
@@ -185,6 +210,8 @@ merge it; I'll review.
 ---
 
 ## 5 — M1: astronomy parity
+
+**Already done on this Mac; see "Where things stand".**
 
 ```text
 Continue the iOS field companion with milestone M1: SkyCore astronomy
@@ -226,7 +253,9 @@ Time to install Xcode and start the app shell: milestone M1b.
 
 Read: ios/AGENTS.md, docs/ios/PLAN.md (M1b and §Log),
 docs/ios/MAC-SETUP.md (Phase 4 in full), and ~/Desktop/mac-space-audit.md.
-Check that M1 is merged into main; if not, stop and tell me.
+Check that M1 is merged into main, or, while the owner has the work kept
+local, that `swift test` is green on `local/ios-integration`. If neither,
+stop and tell me.
 
 Part A: Xcode.
 1. Check free internal space and macOS version. Xcode 27 needs macOS Tahoe
@@ -258,8 +287,9 @@ Verify: `xcodegen generate` and `xcodebuild build` pass. Then tell me the
 steps to run it on my iPhone (trust the developer certificate, turn on
 Developer Mode). That part I do by hand, so list what I should see.
 
-Finish: PLAN.md §Log (including Xcode version and disk space after),
-commit, push, PR. Don't merge.
+Finish: PLAN.md §Log (including Xcode version and disk space after) and a
+local commit. Push and open a PR only if I've lifted "keep it local";
+otherwise tell me the branch and commit. Don't merge.
 ```
 
 ---
@@ -271,7 +301,8 @@ Continue the iOS field companion plan.
 
 Read AGENTS.md, ios/AGENTS.md, and docs/ios/PLAN.md, especially §Log.
 Then work out the next milestone: the first one whose "Done when" isn't
-recorded as met in §Log AND whose predecessor is merged into main (check with
+recorded as met in §Log AND whose predecessor is merged into main, or green
+on `local/ios-integration` while the work is kept local (check with
 git log and gh pr list). Tell me which milestone you're starting and why,
 in two lines, and wait for my go.
 
@@ -290,16 +321,17 @@ Then:
 - Keep the Mac tidy: if free internal space is under 30 GB at the end, tell
   me and suggest the MAC-SETUP.md monthly hygiene commands.
 
-Finish: PLAN.md §Log entry, commit, push, PR against main with a summary,
-the verification output, and the owner checks. Don't merge.
+Finish: PLAN.md §Log entry and a local commit. Push and open a PR against
+main (with a summary, the verification output, and the owner checks) only if
+I've lifted "keep it local"; otherwise report the same in chat. Don't merge.
 ```
 
 ---
 
 ## W — Windows side track: M3 Worker
 
-The Worker doesn't need the Mac. Run this on the Windows PC in
-`V:\Developer\dark-sky-shot-planner`, in parallel with the Mac work.
+**Superseded: the Worker was built on the Mac (see "Where things stand").
+Don't run this.** Kept for reference.
 
 ```text
 Build milestone M3 of docs/ios/PLAN.md: the stateless conditions Worker.

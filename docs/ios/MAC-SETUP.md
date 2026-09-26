@@ -36,18 +36,27 @@ Tools alone**, with one condition: tests must use **Swift Testing**
 
 ```bash
 xcode-select --install          # ~2 GB
-cd /Volumes/Dev/dark-sky-shot-planner/ios/Packages/SkyCore
+cd ~/Developer/dark-sky-shot-planner/ios/Packages/SkyCore
 swift test                      # confirm the output reports a NON-ZERO test count
 ```
 
-Known 2026 trap (*unverified with Swift 6.4*): with Command Line Tools only,
-`swift test` can build, exit 0, and **run zero tests** because
-`Testing.framework` isn't on the default search path. If that happens:
+Checked on the M4 MacBook on 2026-09-26 (macOS 27.2, Command Line Tools,
+Swift 6.4), each from a clean `.build`: a plain `swift test` **fails to
+compile** any `@Test` with "plugin for module 'TestingMacros' not found",
+because SwiftPM doesn't pass the Command Line Tools' swift-testing macro
+plugins. Adding `-F` for `Testing.framework` does not fix it. This does:
 
 ```bash
-FW=$(dirname "$(find /Library/Developer/CommandLineTools -name Testing.framework -maxdepth 6 | head -1)")
-swift test -Xswiftc -F"$FW" -Xlinker -rpath -Xlinker "$FW"
+swift test -Xswiftc -plugin-path \
+  -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
 ```
+
+SkyCore's `Package.swift` adds that flag to its test target automatically
+when the Command Line Tools are the selected toolchain, so a plain
+`swift test` works there. It's a no-op under Xcode; delete the block once
+Xcode is installed. Still check that the output reports a non-zero test
+count, since the older "exits 0 with zero tests" failure has been reported
+on other setups.
 
 Also with Swift 6.4, the default build system can print harmless linker
 warnings about missing `CommandLineTools/Developer/...` paths.
@@ -57,6 +66,11 @@ This lets the astronomy port (M1) and its golden-vector parity tests
 happen before any big download.
 
 ## Phase 2: free up internal space
+
+Done on 2026-09-26: 20 GB → 38 GB free. Removed the local Lightroom library
+(the photos are in the cloud and the masters are on an external drive) and
+the caches that rebuild themselves. The audit and results are in
+`~/Desktop/mac-space-audit.md` on the Mac.
 
 Look before deleting anything:
 
@@ -115,12 +129,11 @@ Highest-yield items, roughly in order:
   mid-build can corrupt DerivedData. The fix is deleting DerivedData, which is
   harmless.
 
-Put the repo on it:
-
-```bash
-cd /Volumes/Dev
-git clone https://github.com/buschbrian/dark-sky-shot-planner.git
-```
+The repo itself stays in `~/Developer/dark-sky-shot-planner` (about 1.5 GB
+with its worktrees and node_modules), where it already is and where the
+owner's other repos live. Moving it wouldn't save enough to be worth the
+"SSD must be plugged in to use git" cost. What goes on the SSD is what grows:
+DerivedData, archives, and optionally Xcode itself (Phase 4, option B).
 
 ## Phase 4: Xcode (when the app target starts, M0 app part / M2)
 
