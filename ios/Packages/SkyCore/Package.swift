@@ -34,7 +34,11 @@ let package = Package(
         .target(
             name: "SkyCore",
             dependencies: ["CAstronomy"],
-            resources: [.copy("Resources/app-config.json")],
+            resources: [
+                .copy("Resources/app-config.json"),
+                .copy("Resources/conditions-thresholds.json"),
+                .copy("Resources/horizon-profiles"),
+            ],
             swiftSettings: swiftSettings
         ),
         .testTarget(

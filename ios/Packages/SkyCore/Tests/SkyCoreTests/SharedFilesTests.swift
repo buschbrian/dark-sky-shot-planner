@@ -15,6 +15,14 @@ struct SharedFilesTests {
         #expect(bundled == original, "Run ios/scripts/sync-shared.sh")
     }
 
+    @Test(
+        "every other bundled config file is byte-identical to its original",
+        arguments: ["conditions-thresholds.json", "horizon-profiles/candlestick-camp.csv"]
+    )
+    func bundledCopyIsInSync(_ path: String) throws {
+        #expect(try SharedResources.data(path) == Repo.data("config/\(path)"), "Run ios/scripts/sync-shared.sh")
+    }
+
     @Test("the GC threshold comes from config, not Swift")
     func gcThresholdFromConfig() throws {
         let original = try AppConfig.decode(Repo.data("config/app-config.json"))
