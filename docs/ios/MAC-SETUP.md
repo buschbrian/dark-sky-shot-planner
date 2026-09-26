@@ -5,6 +5,9 @@ Written 2026-09-26 from research into Apple docs, Apple Developer Forums
 *unverified* could not be confirmed from an Apple source. Check them on the
 machine and correct this file.
 
+Step-by-step prompts that walk Claude Code on the Mac through all of this:
+[`MAC-PROMPTS.md`](MAC-PROMPTS.md).
+
 ## The short version
 
 | Thing | Size | Can it live on the SSD? |
