@@ -24,6 +24,8 @@ final class AppState {
     var place: Place?
     /// nil means "tonight" in the place's zone, recomputed as time passes.
     var chosenNight: NightDate?
+    /// Which half of the Tonight tab shows; Week rows switch it to Tonight.
+    var nightScope = NightTab.Scope.tonight
     var fieldMode = false
 
     func night(at now: Date = .now) -> NightDate {

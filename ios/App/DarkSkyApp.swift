@@ -43,17 +43,18 @@ struct NightTab: View {
     enum Scope: String, CaseIterable { case tonight = "Tonight", week = "Week" }
 
     @Environment(\.palette) private var palette
-    @State private var scope = Scope.tonight
+    @Environment(AppState.self) private var state
 
     var body: some View {
+        @Bindable var state = state
         VStack(spacing: 0) {
-            Picker("Scope", selection: $scope) {
+            Picker("Scope", selection: $state.nightScope) {
                 ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
             .padding(.top, 8)
-            switch scope {
+            switch state.nightScope {
             case .tonight: TonightScreen()
             case .week: WeekScreen()
             }
