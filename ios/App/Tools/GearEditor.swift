@@ -47,7 +47,7 @@ struct GearEditor: View {
                         section("Lens")
                         textRow("Lens name", $lensName, id: "gear.lensName")
                         FieldRow(label: "Focal length", unit: "mm", text: $focalLength, placeholder: "20", id: "gear.focalLength")
-                        FieldRow(label: "Widest aperture", unit: "f/", text: $maxAperture, placeholder: "1.4", id: "gear.maxAperture")
+                        FieldRow(label: "Widest aperture (f-number)", unit: nil, text: $maxAperture, placeholder: "1.4", id: "gear.maxAperture")
                         note("For a zoom, save one profile per focal length you shoot.")
                     }
                     switch draft {

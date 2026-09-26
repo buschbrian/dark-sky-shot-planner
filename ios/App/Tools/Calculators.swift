@@ -92,13 +92,13 @@ struct CalculatorView: View {
         }
         .background(palette.background)
         .scrollDismissesKeyboard(.interactively)
-        .paletteChrome(calculator.title)
+        .paletteChrome(calculator.title, pushed: true)
     }
 
     // MARK: Shared inputs
 
     private var apertureRow: some View {
-        FieldRow(label: "Aperture", unit: "f/", text: $inputs.fNumber,
+        FieldRow(label: "Aperture (f-number)", unit: nil, text: $inputs.fNumber,
                  placeholder: "\(ToolsFormat.number(kit.lens.maxFNumber)) (wide open)", id: "tools.fNumber")
     }
 
