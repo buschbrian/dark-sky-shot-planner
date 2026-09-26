@@ -25,6 +25,7 @@ export interface AppConfigJson {
   };
   gc_min_useful_altitude_deg: number;
   freshness_days: Record<string, LayerFreshnessCfg>;
+  freshness_hours?: Record<string, LayerFreshnessHoursCfg>;
   radiance_mapping: {
     source: string;
     source_year: number;
@@ -46,6 +47,15 @@ interface LayerFreshnessCfg {
   fresh_max_days: number;
   aging_max_days: number;
   stale_max_days: number;
+}
+
+interface LayerFreshnessHoursCfg {
+  layer_id: string;
+  fields?: string[];
+  fresh_max_hours: number;
+  aging_max_hours: number;
+  stale_max_hours: number;
+  note?: string;
 }
 
 export interface ManifestJson {
