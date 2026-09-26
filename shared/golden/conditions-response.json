@@ -9,6 +9,7 @@
     "end_utc": "2026-09-26T14:00:00Z"
   },
   "generated_utc": "2026-09-25T23:39:36Z",
+  "next_update_expected_utc": "2026-09-26T00:45:21Z",
   "fields": {
     "cloud_cover_total": {
       "unit": "%",
@@ -20,6 +21,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -89,6 +91,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -158,6 +161,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -227,6 +231,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -304,6 +309,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -373,6 +379,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -442,6 +449,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -511,6 +519,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -588,6 +597,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -657,6 +667,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -726,6 +737,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -795,6 +807,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -872,6 +885,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -941,6 +955,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1010,6 +1025,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1079,6 +1095,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1156,6 +1173,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1225,6 +1243,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1294,6 +1313,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1363,6 +1383,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1440,6 +1461,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1509,6 +1531,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1578,6 +1601,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1647,6 +1671,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1724,6 +1749,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1793,6 +1819,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1862,6 +1889,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -1931,6 +1959,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2008,6 +2037,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2077,6 +2107,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2146,6 +2177,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2215,6 +2247,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2292,6 +2325,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2361,6 +2395,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2430,6 +2465,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2499,6 +2535,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2576,6 +2613,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2645,6 +2683,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2714,6 +2753,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "unavailable",
           "reason": "model does not publish this variable here",
@@ -2724,6 +2764,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "unavailable",
           "reason": "model does not publish this variable here",
@@ -2742,6 +2783,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2811,6 +2853,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2880,6 +2923,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -2949,6 +2993,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3026,6 +3071,7 @@
           "model": "hrrr",
           "upstream_model": "ncep_hrrr_conus",
           "model_run_utc": "2026-09-25T22:00:00Z",
+          "next_run_expected_utc": "2026-09-26T00:45:21Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3095,6 +3141,7 @@
           "model": "gfs",
           "upstream_model": "gfs_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T05:48:35Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3164,6 +3211,7 @@
           "model": "icon",
           "upstream_model": "icon_global",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": "2026-09-26T03:46:54Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3233,6 +3281,7 @@
           "model": "ecmwf",
           "upstream_model": "ecmwf_ifs025",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T01:57:13Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3310,6 +3359,7 @@
           "model": "cams_global",
           "upstream_model": "cams_global",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T10:17:59Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3388,6 +3438,7 @@
           "model": "cams_global",
           "upstream_model": "cams_global",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T10:17:59Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3466,6 +3517,7 @@
           "model": "cams_global",
           "upstream_model": "cams_global",
           "model_run_utc": "2026-09-25T12:00:00Z",
+          "next_run_expected_utc": "2026-09-26T10:17:59Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3544,6 +3596,7 @@
           "model": "rap_smoke",
           "upstream_model": "ndgd_smoke_sfc_1hr_avg_time",
           "model_run_utc": "2026-09-25T03:00:00Z",
+          "next_run_expected_utc": "2026-09-26T04:24:29Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3625,6 +3678,7 @@
           "model": "rap_smoke",
           "upstream_model": "ndgd_smoke_vert_1hr_avg_time",
           "model_run_utc": "2026-09-25T03:00:00Z",
+          "next_run_expected_utc": "2026-09-26T04:23:01Z",
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3741,6 +3795,7 @@
           "model": "7timer_astro",
           "upstream_model": "GFS via 7Timer! ASTRO",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": null,
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [
@@ -3780,6 +3835,7 @@
           "model": "7timer_astro",
           "upstream_model": "GFS via 7Timer! ASTRO",
           "model_run_utc": "2026-09-25T18:00:00Z",
+          "next_run_expected_utc": null,
           "fetched_utc": "2026-09-25T23:39:36Z",
           "status": "ok",
           "values": [

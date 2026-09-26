@@ -155,7 +155,13 @@ export async function smokePolygons(deps: Deps, bbox: Bbox): Promise<Record<stri
     "&spatialRel=esriSpatialRelIntersects&outSR=4326&geometryPrecision=4&f=geojson";
   const loaded = await cachedLoad(
     deps,
-    { store: edgeStore(deps), source: "hms", key: `hms:${bbox.join(",")}`, ttlSeconds: 900 },
+    {
+      store: edgeStore(deps),
+      source: "hms",
+      key: `hms:${bbox.join(",")}`,
+      ttlSeconds: 900,
+      timing: "hms",
+    },
     async () => {
       const [features, stats] = await Promise.all([
         getJson(deps.fetch, url),

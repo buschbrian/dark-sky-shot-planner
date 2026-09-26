@@ -58,6 +58,7 @@ function toSeries(
     return {
       ...base,
       model_run_utc: lg?.data.init_utc ?? null,
+      next_run_expected_utc: null,
       fetched_utc: null,
       status: "unavailable",
       reason: loaded.reason,
@@ -70,6 +71,8 @@ function toSeries(
   return {
     ...base,
     model_run_utc: loaded.entry.data.init_utc,
+    // 7Timer! documents no update schedule, so no estimate; the Worker re-checks every 3 h.
+    next_run_expected_utc: null,
     fetched_utc: loaded.entry.fetched_utc,
     status: ok ? "ok" : "unavailable",
     ...(ok ? {} : { reason: "no 7Timer forecast covers this window", last_good_utc: null }),
@@ -92,6 +95,7 @@ export async function sevenTimerFields(
           source: "7timer",
           key: `7timer:${cellKey(cell)}`,
           ttlSeconds: 3 * 3600,
+          timing: "7timer",
         },
         async () => {
           const url = `${SEVENTIMER_URL}?lon=${cell.lon}&lat=${cell.lat}&ac=0&unit=metric&output=json&tzshift=0`;

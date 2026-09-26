@@ -95,7 +95,13 @@ describe("NDGD RAP-Smoke", () => {
       },
     });
     expect(pts).toEqual([
-      { t: "2026-09-26T01:00:00Z", v: 1e-7, issued_utc: "2026-09-25T03:00:00Z", fcst_hour: 22 },
+      {
+        t: "2026-09-26T01:00:00Z",
+        v: 1e-7,
+        issued_utc: "2026-09-25T03:00:00Z",
+        fcst_hour: 22,
+        ingested_utc: null,
+      },
     ]);
   });
 

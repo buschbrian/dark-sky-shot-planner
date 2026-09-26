@@ -255,6 +255,9 @@ describe("GET /v1/conditions", () => {
   it("refetches a model's forecast when meta.json shows a new run", async () => {
     const cache = memoryCache();
     await get(`/v1/conditions?${Q}`, makeDeps(fixtureFetch().fetch, { cache }));
+    // Past the fixture runs' sync margins (see freshness.test.ts), so only a new run refetches.
+    const synced = new Date(RECORDED.getTime() + 10 * 60_000);
+    await get(`/v1/conditions?${Q}`, makeDeps(fixtureFetch().fetch, { cache, now: synced }));
     const meta = recorded("open-meteo-meta-ncep_hrrr_conus");
     const newer = {
       ...meta,
@@ -263,8 +266,9 @@ describe("GET /v1/conditions", () => {
         last_run_initialisation_time: (meta.body as Json).last_run_initialisation_time + 3600,
       },
     };
-    // Past the 5-minute meta.json cache, well inside the forecast entry's age limit.
-    const later = new Date(RECORDED.getTime() + 10 * 60_000);
+    // Past HRRR's expected next run (00:45Z) and the one-hour meta.json cap. The other
+    // models report the same runs, so their cached forecasts still answer.
+    const later = new Date(RECORDED.getTime() + 70 * 60_000);
     const f = fixtureFetch({ "open-meteo-meta-ncep_hrrr_conus": newer });
     const res = await get(`/v1/conditions?${Q}`, makeDeps(f.fetch, { cache, now: later }));
     const forecastCalls = f.calls.filter((u) => u.includes("/v1/forecast"));

@@ -118,7 +118,13 @@ export async function airnowField(deps: Deps, env: Env, cell: Cell): Promise<Fie
     `&distance=${DISTANCE_MILES}&API_KEY=${encodeURIComponent(key)}`;
   const loaded = await cachedLoad(
     deps,
-    { store: edgeStore(deps), source: "airnow", key: `airnow:${cellKey(cell)}`, ttlSeconds: 1200 },
+    {
+      store: edgeStore(deps),
+      source: "airnow",
+      key: `airnow:${cellKey(cell)}`,
+      ttlSeconds: 1200,
+      timing: "airnow",
+    },
     async () => ({ data: parseObservations(await getJson(deps.fetch, url)) }),
   );
   if (!loaded.ok) {
