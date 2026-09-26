@@ -7,10 +7,12 @@ public struct AppConfig: Sendable, Hashable, Decodable {
     public let version: Int
     /// GC peak altitude below which the web app calls the night unusable for the core.
     public let gcMinUsefulAltitudeDeg: Double
+    public let arOverlay: AROverlayConfig
 
     enum CodingKeys: String, CodingKey {
         case version
         case gcMinUsefulAltitudeDeg = "gc_min_useful_altitude_deg"
+        case arOverlay = "ar_overlay"
     }
 
     public static func decode(_ data: Data) throws -> AppConfig {
@@ -25,4 +27,14 @@ public struct AppConfig: Sendable, Hashable, Decodable {
     }
 
     static var bundledURL: URL? { Bundle.module.url(forResource: "app-config", withExtension: "json") }
+}
+
+/// `ar_overlay` in `config/app-config.json` (iOS Night AR only).
+public struct AROverlayConfig: Sendable, Hashable, Decodable {
+    /// Largest `CLHeading.headingAccuracy` (degrees) at which the overlay may look confident.
+    public let headingAccuracyConfidentMaxDeg: Double
+
+    enum CodingKeys: String, CodingKey {
+        case headingAccuracyConfidentMaxDeg = "heading_accuracy_confident_max_deg"
+    }
 }
