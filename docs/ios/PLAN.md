@@ -50,9 +50,13 @@ Rules the verdict must follow:
   is unavailable, the verdict is at best "marginal — incomplete data".
 - Stale data (ADR-0006) caps the verdict at marginal.
 - Aurora (Kp) never lowers a verdict; it adds an "aurora possible" flag.
-- Dew and PM2.5 are advisories, not gates (see the notes in the thresholds file).
-- A factor whose thresholds are `null` (HRRR smoke until M3 calibration) is
-  shown with its value and source but never rated.
+- Dew, PM2.5 and observed AQI are advisories, not gates (see the notes in the
+  thresholds file). Observed AQI is PM2.5-only: ozone rows are ignored.
+- A factor whose thresholds are `null` (surface dust) is shown with its value
+  and source but never rated.
+- Haze thresholds (AOD, RAP-Smoke column, PM2.5, AQI) were researched on
+  2026-09-26 against AERONET NEON_MOAB/NEON_ONAQ and Wasatch Front PM2.5
+  monitors; each factor's note in the thresholds file gives the evidence.
 - The thresholds are proposals. When a real night disagrees with the
   verdict, write it in §Log and adjust the config, not the code.
 
@@ -86,21 +90,21 @@ iPhone (SwiftUI)                                   Cloudflare (stateless)
 ## Data sources
 
 Every row must also appear in `docs/data-licensing.md` before code fetches it.
-Status and license details: see that file's "Proposed for the iOS companion"
-section.
+Status and license details: see that file's "Used by the conditions Worker"
+and "Proposed for the iOS companion" sections.
 
 Endpoints below were fetched live on 2026-09-25 by the research pass whose
 notes are in `docs/data-licensing.md`.
 
 | Need | Source | Via | Notes |
 |---|---|---|---|
-| Cloud cover total + low/mid/high, hourly | Open-Meteo forecast: `ncep_hrrr_conus` (3 km), `gfs_seamless`, `gem_hrdps_continental`, `ecmwf_ifs025` side by side | Worker (fallback: direct) | Show model disagreement as a band, don't average it away. **Not** `ncep_nam_conus` (NOAA retires NAM 2026-10-14) or `ncep_nbm_conus` (no cloud layers) |
+| Cloud cover total + low/mid/high, hourly | Open-Meteo forecast: `ncep_hrrr_conus` (3 km), `gfs_global`, `icon_global` (DWD ICON, ~11 km), `ecmwf_ifs025` side by side | Worker (fallback: direct) | Show model disagreement as a band, don't average it away. Named models only, never a `*_seamless` alias: over Utah `gfs_seamless` serves HRRR for roughly the first 40 h, `gem_seamless` is `gem_regional` and `icon_seamless` is `icon_global`, so an alias would repeat a series and hide the disagreement. Aliases also have no `meta.json`; run times come from `ncep_hrrr_conus`, `ncep_gfs013`, `dwd_icon` and `ecmwf_ifs025`. **ICON replaced GEM HRDPS (2026-09-26):** `gem_hrdps_continental` answers "No data is available for this location" at 38.35, −109.95 and 37.60, −110.00, because its domain misses much of southern Utah. ICON is global, publishes native low/mid/high cloud, runs every 6 h, is independent of NOAA, ECMWF and ECCC, and is CC BY 4.0 via Open-Meteo. It has no `visibility` (served as unavailable). Alternates if ICON fails: `gem_regional` (meta `cmc_gem_rdps_10km`; low/mid/high derived from humidity) or `ukmo_global_deterministic_10km` (CC BY-SA 4.0, share-alike). Never use the stale meta ids `cmc_gem_rdps`/`cmc_gem_gdps` (last run 2026-05-26). Deferred: NWS `api.weather.gov` gridpoint `skyCover` as an "official NWS" reference line (total cover only; NBM plus forecaster edits, so not an independent model). **Not** `ncep_nam_conus` (NOAA retires NAM 2026-10-14) or `ncep_nbm_conus` (no cloud layers) |
 | Model run time | Open-Meteo `/data/{model}/static/meta.json` → `last_run_initialisation_time` | Worker | The forecast response doesn't carry it; the brief requires it |
-| Dew point, humidity, wind, gusts, visibility, temperature | Open-Meteo forecast (HRRR has all of them) | Worker | GEM returns no visibility |
+| Dew point, humidity, wind, gusts, visibility, temperature | Open-Meteo forecast (HRRR has all of them) | Worker | ICON and ECMWF return no visibility; those series are unavailable, never zero |
 | Seeing proxy | Open-Meteo `wind_speed_250hPa` / `200hPa` (jet stream) | Worker | Our own, license-clean seeing indicator |
 | Seeing + transparency indices | 7Timer! ASTRO (GFS-based, 3-hourly, indices 1–8) | Worker (no CORS) | **Non-commercial use only**. Fine for personal use, blocks App Store distribution without written permission. Optional, never required |
-| Smoke forecast, near-surface + vertically integrated | NOAA HRRR-Smoke via NWS NDGD ImageServers (`air_quality/ndgd_smoke_{sfc,vert}_1hr_avg_time`), `identify` at a point, +48 h, ~2.7 km | Worker | **Primary smoke/transparency signal.** Units must be calibrated first (the service text says µg/m³, the raw values look like kg/m³, kg/m²). The vertically integrated field is what dims the sky |
-| AOD, PM2.5, dust | Open-Meteo Air Quality (CAMS Global, ~45 km, 12-hourly) | Worker | Coarse. Use as a fallback and a cross-check for HRRR-Smoke, attributing CAMS + Open-Meteo |
+| Smoke forecast, near-surface + vertically integrated | NOAA **RAP-Smoke** (not HRRR-Smoke; NWS SCN 22-42) via NWS NDGD ImageServers (`air_quality/ndgd_smoke_{sfc,vert}_1hr_avg_time`), `identify` at a point. 13 km RAP regridded to the 5 km NDGD grid; one 03Z issue a day, 03Z day 1 to 06Z day 3; instantaneous values despite "1hr_avg" | Worker | **Primary smoke/transparency signal.** Units calibrated in `docs/methods.md` §Smoke forecast units (the service's µg/m³ text is wrong: raw kg/m² column, kg/m³ at 8 m). The vertically integrated field is what dims the sky |
+| AOD, PM2.5, dust | Open-Meteo Air Quality (CAMS Global, ~45 km, 12-hourly) | Worker | Coarse. Use as a fallback and a cross-check for RAP-Smoke, attributing CAMS + Open-Meteo |
 | Observed AQI | EPA AirNow `/aq/observation/current/ziplatLong/` | Worker (key) | The old `latLong/current` path retires 2026-09-30. Must be labelled "preliminary" and credit the reporting agencies |
 | Analyst smoke polygons | NOAA HMS via NESDIS ArcGIS FeatureServer (`NOAA_Satellite_Smoke_Detection_(v1)`), GeoJSON + CORS | Direct or Worker | Human analysis, daytime only. At night it shows the previous afternoon, so label its time |
 | Kp observed + 3-day forecast | SWPC `products/noaa-planetary-k-index{,-forecast}.json` | Worker (KV cache) | Now arrays of objects, so parse by key |
@@ -115,6 +119,11 @@ Before any App Store / TestFlight-for-others release, three need action.
 Open-Meteo needs a paid API plan (the free tier is non-commercial). 7Timer
 needs written permission or has to be dropped in favour of the jet-stream
 proxy. The Mapterhorn terrain terms are unstated, so avoid Mapterhorn.
+
+**NOAA model changes:** per NWS SCN 26-48, RRFS v1 goes operational 2026-10-14,
+replacing NAM, HREF, SREF and HiresW; HRRR and RAP (so RAP-Smoke) retire with
+RRFS v2, around 2027–28. Open-Meteo has no RRFS yet
+([open-meteo#1849](https://github.com/open-meteo/open-meteo/issues/1849)).
 
 Deferred and needing a decision first: raw HRRR GRIB2 range-reads from
 `noaa-hrrr-bdp-pds` (only if the ImageServers prove unreliable),
@@ -148,6 +157,90 @@ The Worker rejects coordinates that aren't already rounded to the 0.05° grid,
 so the privacy rule is enforced server-side as well as in the client.
 Values the Worker cannot get come back as `"status": "unavailable"`, never
 dropped and never zero.
+
+### Request rules
+
+Anything outside these answers 400 before any upstream call.
+
+- `lat`, `lon` and every `bbox` corner must already sit on the 0.05° grid.
+- `/v1/conditions` needs `start` and `end` with a UTC offset (`Z` or `±hh:mm`).
+  Start rounds down and end rounds up to the hour. The window is at most
+  48 h, starts no earlier than now − 2 days and ends no later than now + 16 days.
+- `/v1/space-weather` takes an optional cell: both `lat` and `lon`, or neither.
+- `/v1/smoke?bbox=minLon,minLat,maxLon,maxLat` needs min < max and is capped at
+  30° of longitude × 20° of latitude.
+- Only `GET` and `OPTIONS` (CORS preflight, origin `*`); other methods get 405.
+
+### Behaviour
+
+- **`/health` makes no upstream calls.** Per upstream it reports the last
+  success and last failure (with its error) recorded by real requests in this
+  isolate and this data center's cache: `unknown` until one is seen, `failing`
+  when the latest failure is newer than the latest success. It also reports
+  whether the AirNow key is set (never the key), the KV binding, the edge
+  cache and 7Timer.
+- **Aurora "% near this cell"** is the maximum OVATION probability over the
+  3×3 one-degree grid points around the cell (cell rounded to whole degrees,
+  ±1° in latitude and longitude, longitude wrapped to 0–359).
+- **RAP-Smoke** uses one `identify` per layer, with `time` spanning the whole
+  window, instead of one call per hour. Values are read in catalog order,
+  `idp_subset=conus` only, newest issue per valid hour (validated 14/14
+  against per-slice calls on 2026-09-25; `docs/methods.md`). The service
+  answers 0, not NoData, outside its coverage, so a cell outside a conservative
+  lower-48 box (24–50° N, 125–66° W) is unavailable without a request. An issue
+  hour other than 03Z, or a forecast hour past 51, marks the series
+  unavailable, since the source has probably changed (for example to RRFS).
+- **Caching:** upstream results go in the Cache API, keyed by source, cell and
+  window; a new model run makes a cached forecast stale. Entries are kept a
+  week so they can serve as last-good values. Space
+  weather uses KV when `SPACE_WEATHER` is bound, otherwise the Cache API.
+
+### Abuse protection
+
+- **Rate limit:** the Workers Rate Limiting binding `RATE_LIMITER` (wrangler
+  `ratelimits`), keyed on `cf-connecting-ip`, 120 requests per 60 s. Over the
+  limit the Worker answers 429 `{"error":"rate limited"}` with `Retry-After: 60`
+  before any upstream call. Preflights aren't counted. With no binding (tests)
+  or a binding error it fails open. The counter is per Cloudflare location and
+  eventually consistent. Cloudflare advises against IP keys because carrier NAT
+  shares addresses; a keyless API has no better key, hence the generous limit.
+  [Docs](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+  (`period` must be 10 or 60; `namespace_id` is shared account-wide).
+- **Fan-out cap:** at most 20 upstream fetches per incoming request
+  (`src/limits.ts`). A cold `/v1/conditions` makes 14: four models ×
+  (`meta.json` + forecast), air quality × 2, two smoke layers, AirNow, 7Timer.
+  A fetch past the cap is reported as that source being unavailable
+  ("per-request upstream budget spent").
+
+### Platform notes (checked 2026-09-25)
+
+- **KV id:** `SPACE_WEATHER` has no `id`. Wrangler's automatic provisioning
+  creates the namespace on the first deploy; from Workers Builds the id is not
+  written back to the repo, but the binding stays linked. `wrangler dev`
+  uses a local namespace.
+  [Docs](https://developers.cloudflare.com/workers/wrangler/configuration/#automatic-provisioning)
+- **Cache API on `*.workers.dev`: not confirmed.** The
+  [Cache API page](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+  says Workers on custom domains have functional cache operations, and that
+  the dashboard editor and Playground previews have none. It does not list
+  `*.workers.dev` as a no-op (earlier versions of the page did), and it
+  describes a `.workers.dev` cache-key rule, which suggests `cache.put` works
+  there. It never says so outright. After the first deploy, call the same
+  `/v1/conditions` twice, a minute apart: if `/health` shows `open-meteo-forecast`
+  `last_success_utc` unchanged after the second call, the cache works. If it
+  doesn't, every request fans out upstream. Correct, but slower and heavier
+  on the sources.
+
+### Pre-deploy decisions (owner)
+
+1. **Route:** `*.workers.dev`, or a custom domain. Use the custom domain if the
+   cache check above fails on `workers.dev`.
+2. **Rate limit:** keep 120/min, and confirm `namespace_id` `"10010"` is unused
+   by the account's other Workers.
+3. **KV:** let Workers Builds auto-provision `SPACE_WEATHER`, or create it and
+   pin its id in `wrangler.jsonc`.
+4. **`AIRNOW_API_KEY` secret.** (The HRDPS replacement is settled: DWD ICON
+   Global, see §Data sources.)
 
 ## Milestones
 
@@ -212,13 +305,14 @@ external SSD.
 
 ### M3 — Worker v1 (can be built on Windows)
 - `/v1/conditions`: Open-Meteo forecast (multi-model) with run times from
-  each model's `meta.json`, Open-Meteo air quality, HRRR-Smoke point values
+  each model's `meta.json`, Open-Meteo air quality, RAP-Smoke point values
   from the NDGD ImageServers, AirNow (new `ziplatLong` path), then 7Timer.
   `/v1/space-weather`; `/v1/smoke`; `/health`.
-- **Calibrate HRRR-Smoke units first.** Compare ImageServer `identify` values
-  against a raw HRRR GRIB2 `COLMD`/`MASSDEN` read for the same cell and hour,
-  and write the conversion and evidence into `docs/methods.md`. Until that
-  is done the smoke factor is shown but does not gate.
+- **Calibrate RAP-Smoke units first.** Compare ImageServer `identify` values
+  against the NDGD GRIB2 and a raw RAP `COLMD`/`MASSDEN` read (`noaa-rap-pds`)
+  for the same cell and hour, and write the conversion and evidence into
+  `docs/methods.md`. Done 2026-09-25; the smoke factor is still shown but does
+  not gate until its thresholds are set.
 - Fixture-recorded tests for every upstream, including one "upstream down"
   fixture per source.
 - Deploy with Workers Builds; the only secrets are upstream keys.

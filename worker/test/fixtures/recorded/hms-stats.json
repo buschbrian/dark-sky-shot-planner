@@ -1,0 +1,52 @@
+{
+ "url": "https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/NOAA_Satellite_Smoke_Detection_(v1)/FeatureServer/0/query?where=1%3D1&outStatistics=%5B%7B%22statisticType%22%3A%22max%22%2C%22onStatisticField%22%3A%22End_%22%2C%22outStatisticFieldName%22%3A%22latest_end%22%7D%2C%7B%22statisticType%22%3A%22min%22%2C%22onStatisticField%22%3A%22Start%22%2C%22outStatisticFieldName%22%3A%22earliest_start%22%7D%5D&f=json",
+ "status": 200,
+ "content_type": "application/json; charset=utf-8",
+ "body_format": "json",
+ "body": {
+  "objectIdFieldName": "FID",
+  "uniqueIdField": {
+   "name": "FID",
+   "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryProperties": {
+   "shapeAreaFieldName": "Shape__Area",
+   "shapeLengthFieldName": "Shape__Length",
+   "units": "esriMeters"
+  },
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857
+  },
+  "fields": [
+   {
+    "name": "latest_end",
+    "type": "esriFieldTypeString",
+    "alias": "latest_end",
+    "sqlType": "sqlTypeNVarchar",
+    "length": 12,
+    "domain": null,
+    "defaultValue": null
+   },
+   {
+    "name": "earliest_start",
+    "type": "esriFieldTypeString",
+    "alias": "earliest_start",
+    "sqlType": "sqlTypeNVarchar",
+    "length": 12,
+    "domain": null,
+    "defaultValue": null
+   }
+  ],
+  "features": [
+   {
+    "attributes": {
+     "latest_end": "2026268 2000",
+     "earliest_start": "2026268 1130"
+    }
+   }
+  ]
+ }
+}

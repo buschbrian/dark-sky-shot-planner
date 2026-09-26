@@ -11,7 +11,8 @@ cloud layers from more than one model, smoke and aerosol data, air quality,
 seeing and transparency, and space weather. Some of those sources need an API
 key (EPA AirNow). Some have no CORS for the web app (7Timer). Some return raw
 grids that need clipping and unit conversion (the SWPC aurora grid is about
-1 MB; HRRR-Smoke values need calibrating). Model run times live on a separate
+1 MB; the NWS smoke ImageServers, which carry RAP-Smoke, need their units
+calibrated). Model run times live on a separate
 metadata endpoint (Open-Meteo). And fanning out to six hosts from a phone on
 one bar of LTE at 9 p.m. is slow and fragile.
 
@@ -61,7 +62,7 @@ and the rounded cells of the saved spots, and nothing else.
 ## Alternatives considered
 
 - **Stay strictly zero-server.** Keyless CORS sources cover clouds, AOD/PM2.5,
-  HMS and HRRR smoke, and space weather. They don't cover AirNow (keyed), 7Timer
+  HMS and RAP-Smoke, and space weather. They don't cover AirNow (keyed), 7Timer
   (no CORS), model run times without a second call per model, or a single fast
   request from the field.
 - **A GitHub Actions pipeline for everything.** Right for slow products (the

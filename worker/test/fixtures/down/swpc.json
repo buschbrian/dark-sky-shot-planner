@@ -1,0 +1,9 @@
+{
+ "url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+ "status": 503,
+ "content_type": "text/html",
+ "body_format": "text",
+ "body": "<html><head><title>503 Service Unavailable</title></head></html>",
+ "synthetic": true,
+ "note": "synthetic upstream-down response; shape per the upstream's documented error format"
+}

@@ -36,6 +36,7 @@ uv run mypy --strict pipelines                        # Python types
 uv run python -m pytest tests/                         # Python tests (offline, fixtures)
 npx tsc --noEmit                                        # client types
 npx vitest run                                          # client unit tests
+(cd worker && npm run verify)                           # Worker: tsc + biome + vitest (offline)
 scripts/build-data.sh                                   # populate data/out (required before dev/e2e)
 npx playwright test                                      # e2e + axe WCAG 2.1 AA
 ```

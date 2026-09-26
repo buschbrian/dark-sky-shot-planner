@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dark-sky-conditions",
+  "compatibility_date": "2026-09-25",
+  "main": "src/index.ts",
+  "observability": {
+    "enabled": true
+  },
+  // Space weather only (ADR-0010 point 4). No id: wrangler creates the namespace on the first
+  // deploy (automatic provisioning). The code runs without this binding.
+  "kv_namespaces": [{ "binding": "SPACE_WEATHER" }],
+  // Per-IP abuse guard (src/index.ts). period must stay equal to RATE_LIMIT_PERIOD_SECONDS.
+  // namespace_id is shared account-wide: keep it unique among this account's Workers.
+  "ratelimits": [
+    { "name": "RATE_LIMITER", "namespace_id": "10010", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "vars": {
+    // 7Timer! ASTRO is free for non-commercial use only (docs/data-licensing.md).
+    "SEVENTIMER_ENABLED": "true"
+  }
+  // Secret (never in this file): AIRNOW_API_KEY via `wrangler secret put AIRNOW_API_KEY`.
+}

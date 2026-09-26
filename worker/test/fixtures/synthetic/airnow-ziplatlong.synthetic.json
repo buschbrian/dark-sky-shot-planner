@@ -1,0 +1,40 @@
+{
+ "url": "https://www.airnowapi.org/aq/observation/current/ziplatLong/?format=application/json&latitude=38.35&longitude=-109.95&distance=50&API_KEY=REDACTED",
+ "status": 200,
+ "content_type": "application/json",
+ "body_format": "json",
+ "body": [
+  {
+   "dateObserved": "2026-09-25",
+   "hourObserved": "16:00",
+   "localTimeZone": "MST",
+   "reportingAreaName": "Synthetic Reporting Area",
+   "siteID": "000000001",
+   "siteName": "SYNTHETIC_SITE_A",
+   "parameterName": "PM2.5",
+   "nowcastAQI": 38,
+   "aqiCategoryName": "Good",
+   "reportingAgency": "Synthetic Reporting Agency",
+   "lookupBehavior": "Closest Reading By Pollutant",
+   "consideredMonitors": "All",
+   "lookupBoundary": "50 Miles"
+  },
+  {
+   "dateObserved": "2026-09-25",
+   "hourObserved": "16:00",
+   "localTimeZone": "MST",
+   "reportingAreaName": "Synthetic Reporting Area",
+   "siteID": "000000002",
+   "siteName": "SYNTHETIC_SITE_B",
+   "parameterName": "OZONE",
+   "nowcastAQI": 57,
+   "aqiCategoryName": "Moderate",
+   "reportingAgency": "Synthetic Reporting Agency",
+   "lookupBehavior": "Closest Reading By Pollutant",
+   "consideredMonitors": "All",
+   "lookupBoundary": "50 Miles"
+  }
+ ],
+ "synthetic": true,
+ "note": "SYNTHETIC. No AirNow key exists on the recording machine. Field names follow the replacement ziplatLong schema (nowcastAQI, aqiCategoryName, siteID, reportingAgency, ...) as used by third-party clients; the official docs are behind a login. Values are invented."
+}

@@ -1,0 +1,27 @@
+{
+  "name": "dark-sky-conditions-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Stateless live-conditions Worker for the Dark-Sky Shot Planner (ADR-0010)",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "check": "tsc --noEmit",
+    "lint": "biome check src test scripts",
+    "lint:fix": "biome check --write src test scripts",
+    "test": "vitest run",
+    "verify": "npm run check && npm run lint && npm test",
+    "record-fixtures": "node scripts/record-fixtures.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2",
+    "wrangler": "^4.141.0"
+  }
+}

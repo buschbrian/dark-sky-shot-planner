@@ -1,0 +1,106 @@
+{
+ "recorded_utc": "2026-09-25T23:39:36.069Z",
+ "cell": {
+  "lat": 38.35,
+  "lon": -109.95
+ },
+ "window": {
+  "start": "2026-09-26T00:00Z",
+  "end": "2026-09-26T14:00Z"
+ },
+ "bbox": "-125,30,-100,50",
+ "files": {
+  "ndgd-smoke-sfc-identify": {
+   "url": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_sfc_1hr_avg_time/ImageServer/identify?geometry=%7B%22x%22%3A-109.95%2C%22y%22%3A38.35%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryPoint&time=1790380800000,1790431200000&returnGeometry=false&returnCatalogItems=true&f=json",
+   "status": 200,
+   "bytes": 8805
+  },
+  "7timer-astro": {
+   "url": "https://www.7timer.info/bin/astro.php?lon=-109.95&lat=38.35&ac=0&unit=metric&output=json&tzshift=0",
+   "status": 200,
+   "bytes": 5965
+  },
+  "open-meteo-meta-cams_global": {
+   "url": "https://air-quality-api.open-meteo.com/data/cams_global/static/meta.json",
+   "status": 200,
+   "bytes": 818
+  },
+  "open-meteo-meta-ncep_gfs013": {
+   "url": "https://api.open-meteo.com/data/ncep_gfs013/static/meta.json",
+   "status": 200,
+   "bytes": 820
+  },
+  "open-meteo-meta-ncep_hrrr_conus": {
+   "url": "https://api.open-meteo.com/data/ncep_hrrr_conus/static/meta.json",
+   "status": 200,
+   "bytes": 1171
+  },
+  "open-meteo-meta-ecmwf_ifs025": {
+   "url": "https://api.open-meteo.com/data/ecmwf_ifs025/static/meta.json",
+   "status": 200,
+   "bytes": 809
+  },
+  "open-meteo-air-quality": {
+   "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=38.35&longitude=-109.95&hourly=aerosol_optical_depth,pm2_5,dust&domains=cams_global&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+   "status": 200,
+   "bytes": 1950
+  },
+  "open-meteo-forecast-gfs_global": {
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,temperature_2m,dew_point_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,wind_speed_250hPa,wind_speed_200hPa&models=gfs_global&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+   "status": 200,
+   "bytes": 4527
+  },
+  "open-meteo-forecast-ncep_hrrr_conus": {
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,temperature_2m,dew_point_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,wind_speed_250hPa,wind_speed_200hPa&models=ncep_hrrr_conus&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+   "status": 200,
+   "bytes": 4567
+  },
+  "open-meteo-forecast-ecmwf_ifs025": {
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,temperature_2m,dew_point_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,wind_speed_250hPa,wind_speed_200hPa&models=ecmwf_ifs025&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+   "status": 200,
+   "bytes": 4525
+  },
+  "ndgd-smoke-vert-identify": {
+   "url": "https://mapservices.weather.noaa.gov/raster/rest/services/air_quality/ndgd_smoke_vert_1hr_avg_time/ImageServer/identify?geometry=%7B%22x%22%3A-109.95%2C%22y%22%3A38.35%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D&geometryType=esriGeometryPoint&time=1790380800000,1790431200000&returnGeometry=false&returnCatalogItems=true&f=json",
+   "status": 200,
+   "bytes": 8798
+  },
+  "swpc-kp-forecast": {
+   "url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json",
+   "status": 200,
+   "bytes": 9128
+  },
+  "swpc-kp": {
+   "url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+   "status": 200,
+   "bytes": 6625
+  },
+  "swpc-ovation": {
+   "url": "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
+   "status": 200,
+   "bytes": 57822
+  },
+  "hms-stats": {
+   "url": "https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/NOAA_Satellite_Smoke_Detection_(v1)/FeatureServer/0/query?where=1%3D1&outStatistics=%5B%7B%22statisticType%22%3A%22max%22%2C%22onStatisticField%22%3A%22End_%22%2C%22outStatisticFieldName%22%3A%22latest_end%22%7D%2C%7B%22statisticType%22%3A%22min%22%2C%22onStatisticField%22%3A%22Start%22%2C%22outStatisticFieldName%22%3A%22earliest_start%22%7D%5D&f=json",
+   "status": 200,
+   "bytes": 1471
+  },
+  "hms-query": {
+   "url": "https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/NOAA_Satellite_Smoke_Detection_(v1)/FeatureServer/0/query?where=1%3D1&outFields=Satellite,Start,End_,Density&geometry=-125,30,-100,50&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&geometryPrecision=4&f=geojson",
+   "status": 200,
+   "bytes": 18818
+  },
+  "open-meteo-meta-dwd_icon": {
+   "url": "https://api.open-meteo.com/data/dwd_icon/static/meta.json",
+   "status": 200,
+   "bytes": 804,
+   "recorded_utc": "2026-09-26T00:17:47.065Z"
+  },
+  "open-meteo-forecast-icon_global": {
+   "url": "https://api.open-meteo.com/v1/forecast?latitude=38.35&longitude=-109.95&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,temperature_2m,dew_point_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,wind_speed_250hPa,wind_speed_200hPa&models=icon_global&timezone=GMT&timeformat=iso8601&start_date=2026-09-26&end_date=2026-09-26",
+   "status": 200,
+   "bytes": 4526,
+   "recorded_utc": "2026-09-26T00:17:47.065Z"
+  }
+ }
+}

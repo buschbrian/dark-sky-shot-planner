@@ -13,22 +13,30 @@ source is referenced in pipeline code or configuration.
 | Meteor showers, festivals, other sky events | IMO Meteor Shower Calendar, In-The-Sky.org, EarthSky, arXiv preprints, NPS park pages (cited per row) | Facts, not datasets; no bulk reuse claimed | **Hand-curated JSON** in `config/sky-events.json` with per-row `source_url` and `verified_on`. Nothing is fetched or scraped at build or run time; rows that could not be verified carry a null `verified_on` and are labelled unverified in the UI. See ADR-0008. |
 | Cloud / sky-cover forecast | [Open-Meteo](https://open-meteo.com/) | Free, keyless API; attribution required | **Used**, fetched client-side on demand for one clicked point at a time. |
 
-## Proposed for the iOS companion and conditions Worker (not yet fetched)
+## Used by the conditions Worker
 
 Verified on 2026-09-25 by fetching each endpoint and reading each source's
-terms (ADR-0009, ADR-0010). A row moves up into the table above when code
-starts using it. "Personal use" means the owner's own app. "Distribution"
-means an App Store or public TestFlight release.
+terms (ADR-0009, ADR-0010). `worker/` fetches these rows; it is built and tested
+locally and is not deployed yet. "Personal use" means the owner's own app.
+"Distribution" means an App Store or public TestFlight release.
 
 | Layer | Source | License / terms | Personal use | Distribution |
 |---|---|---|---|---|
-| Cloud layers, dew, wind, visibility, jet-stream winds | [Open-Meteo forecast](https://open-meteo.com/en/docs) (HRRR, GFS, GEM, ECMWF) | Data CC BY 4.0. [Free API is non-commercial](https://open-meteo.com/en/terms) (subscriptions or ads count as commercial) | OK, keyless | Needs a paid API plan; key kept in the Worker |
+| Cloud layers, dew, wind, visibility, jet-stream winds | [Open-Meteo forecast](https://open-meteo.com/en/docs) (HRRR, GFS, DWD ICON Global, ECMWF; run times from each model's `/data/{model}/static/meta.json`). GEM HRDPS is **not used**: its domain misses much of southern Utah | Data CC BY 4.0. [Free API is non-commercial](https://open-meteo.com/en/terms) (subscriptions or ads count as commercial) | OK, keyless | Needs a paid API plan; key kept in the Worker |
+| Cloud layers (ICON series) | [DWD ICON Global](https://open-meteo.com/en/docs/dwd-api) via Open-Meteo (`icon_global`) | CC BY 4.0: Open-Meteo's [licence page](https://open-meteo.com/en/licence) lists DWD forecasts as CC BY (its link there points at ECMWF's page by mistake). DWD's [open-data server](https://opendata.dwd.de/README.txt) defers to its [legal notice](https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html): re-use under CC BY 4.0 with the source acknowledged. Credit "Deutscher Wetterdienst (DWD)" and Open-Meteo. Checked 2026-09-26 | OK | Paid Open-Meteo plan, as above; the DWD credit stays |
 | AOD, PM2.5, dust | [Open-Meteo Air Quality](https://open-meteo.com/en/docs/air-quality-api) (CAMS Global) | CC BY 4.0; credit CAMS and Open-Meteo | OK | Paid plan, as above |
 | Seeing / transparency indices | [7Timer! ASTRO](https://www.7timer.info/doc.php) (Shanghai Astronomical Observatory) | Free for non-commercial use; developers asked to notify | OK | **Blocked** without written permission |
-| Smoke forecast | NOAA HRRR-Smoke via [NWS NDGD ImageServers](https://mapservices.weather.noaa.gov/raster/rest/services/air_quality) | U.S. Government work, public domain | OK | OK |
+| Smoke forecast | NOAA **RAP-Smoke** (not HRRR-Smoke, NWS SCN 22-42) via [NWS NDGD ImageServers](https://mapservices.weather.noaa.gov/raster/rest/services/air_quality) | U.S. Government work, public domain | OK | OK |
 | Smoke polygons | [NOAA NESDIS HMS](https://www.ospo.noaa.gov/products/land/hms.html), via the NESDIS ArcGIS FeatureServer | Public domain (item license CC0) | OK | OK |
-| Observed AQI | [EPA AirNow API](https://docs.airnowapi.org/) | Free key. Label data "preliminary", credit the reporting agencies and AirNow, don't alter values, use official AQI colors, notify AirNow | OK | OK, with the display rules |
+| Observed AQI | [EPA AirNow API](https://docs.airnowapi.org/) `/aq/observation/current/ziplatLong/` (the replacement schema's docs are behind a login; request parameter names unverified) | Free key. Label data "preliminary", credit the reporting agencies and AirNow, don't alter values, use official AQI colors, notify AirNow | OK | OK, with the display rules |
 | Kp, aurora oval | [NOAA SWPC](https://services.swpc.noaa.gov/) JSON | U.S. Government work, public domain (SWPC disclaimer page unreachable when checked) | OK | OK |
+
+## Proposed for the iOS companion (not yet fetched)
+
+Verified on 2026-09-25, as above. A row moves up when code starts using it.
+
+| Layer | Source | License / terms | Personal use | Distribution |
+|---|---|---|---|---|
 | Night cloud imagery | [NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/) GOES ABI band 13 | NASA open data; GIBS acknowledgement text required | OK | OK |
 | Terrain for horizon profiles | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (3DEP/NED, SRTM) and [USGS 3DEP](https://www.usgs.gov/3d-elevation-program) services | Public domain sources; credit per the tiles' attribution file | OK | OK |
 | Terrain (alternative) | Mapterhorn hosted tiles | Terms for the hosted tiles not stated | Avoid | Avoid (self-host its PMTiles if ever needed) |

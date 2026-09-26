@@ -1,0 +1,9 @@
+{
+ "url": "https://api.open-meteo.com/v1/forecast",
+ "status": 502,
+ "content_type": "text/html",
+ "body_format": "text",
+ "body": "<html><body><h1>502 Bad Gateway</h1></body></html>",
+ "synthetic": true,
+ "note": "synthetic upstream-down response; shape per the upstream's documented error format"
+}
