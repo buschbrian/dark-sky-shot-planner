@@ -37,6 +37,10 @@ struct RootView: View {
         // Field mode's guarantee: whatever a view or system control draws,
         // multiplying by pure red leaves no green or blue light.
         .colorMultiply(state.fieldMode ? Color(red: 1, green: 0, blue: 0) : .white)
+        // The status bar and home indicator are drawn outside the window, so
+        // the multiply can't reach them: hide them instead.
+        .statusBarHidden(state.fieldMode)
+        .persistentSystemOverlays(state.fieldMode ? .hidden : .automatic)
     }
 }
 
@@ -46,17 +50,18 @@ struct NightTab: View {
     enum Scope: String, CaseIterable { case tonight = "Tonight", week = "Week" }
 
     @Environment(\.palette) private var palette
-    @State private var scope = Scope.tonight
+    @Environment(AppState.self) private var state
 
     var body: some View {
+        @Bindable var state = state
         VStack(spacing: 0) {
-            Picker("Scope", selection: $scope) {
+            Picker("Scope", selection: $state.nightScope) {
                 ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
             .padding(.top, 8)
-            switch scope {
+            switch state.nightScope {
             case .tonight: TonightScreen()
             case .week: WeekScreen()
             }
