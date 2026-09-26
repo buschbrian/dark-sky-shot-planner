@@ -4,4 +4,9 @@ BUNDLE_ID_PREFIX = org.example.darksky
 DEVELOPMENT_TEAM =
 CODE_SIGN_STYLE = Automatic
 
+// Conditions Worker base URL (Info.plist DarkSkyWorkerURL). Empty: the app
+// fetches clouds directly from Open-Meteo. Set it in Local.xcconfig; "//"
+// starts a comment in xcconfig, so write https:/$()/host.example.
+WORKER_BASE_URL =
+
 #include? "Local.xcconfig"

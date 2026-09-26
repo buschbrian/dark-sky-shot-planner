@@ -45,6 +45,7 @@ targets:
         BGTaskSchedulerPermittedIdentifiers: [$(PRODUCT_BUNDLE_IDENTIFIER).refresh]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        DarkSkyWorkerURL: $(WORKER_BASE_URL)
     dependencies:
       - package: SkyCore
       - package: MapLibre
