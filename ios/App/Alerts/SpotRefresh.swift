@@ -14,21 +14,26 @@ enum SpotRefresh {
     static var taskIdentifier: String { (Bundle.main.bundleIdentifier ?? "darksky") + ".refresh" }
     /// Earliest next run; iOS usually waits longer.
     static let interval: TimeInterval = 3 * 3600
+    /// Conditions requests in flight across all spots in one run.
+    static let globalRequests = 3
     static let lastBackgroundRunKey = "SpotRefresh.lastBackgroundRun"
-
-    /// Conditions for background runs, which have no view environment. The
-    /// app wires the same client it injects as `\.conditions`.
-    static var conditions: any ConditionsProviding = UnavailableConditions()
+    static let lastBackgroundInterruptedKey = "SpotRefresh.lastBackgroundInterrupted"
 
     static var lastBackgroundRun: Date? {
         UserDefaults.standard.object(forKey: lastBackgroundRunKey) as? Date
     }
 
+    static var lastBackgroundInterrupted: Bool {
+        UserDefaults.standard.bool(forKey: lastBackgroundInterruptedKey)
+    }
+
+    static let needsRefresh = #Predicate<Spot> { $0.alertGoThisWeek || $0.isPinned }
+
     /// Submits the next refresh when anything needs one. Harmless to call often:
     /// a new request replaces the pending one.
     static func schedule(_ container: ModelContainer) {
         let context = ModelContext(container)
-        let needed = (try? context.fetchCount(FetchDescriptor<Spot>(predicate: #Predicate { $0.alertGoThisWeek || $0.isPinned }))) ?? 0
+        let needed = (try? context.fetchCount(FetchDescriptor<Spot>(predicate: needsRefresh))) ?? 0
         guard needed > 0 else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
             return
@@ -39,29 +44,56 @@ enum SpotRefresh {
         try? BGTaskScheduler.shared.submit(request)
     }
 
-    static func runInBackground(_ container: ModelContainer) async {
+    /// The `BGAppRefreshTask` body. SwiftUI cancels this task when iOS
+    /// expires the background time; `run` then stops, records "interrupted"
+    /// and keeps each spot's previous week.
+    static func runInBackground(_ container: ModelContainer, conditions: any ConditionsProviding) async {
         let context = ModelContext(container)
-        let spots = (try? context.fetch(FetchDescriptor<Spot>(predicate: #Predicate { $0.alertGoThisWeek || $0.isPinned }))) ?? []
-        for spot in spots {
-            await check(spot, conditions: conditions, background: true, notify: spot.alertGoThisWeek)
-        }
+        let spots = (try? context.fetch(FetchDescriptor<Spot>(predicate: needsRefresh))) ?? []
+        await run(spots, conditions: conditions, background: true)
         try? context.save()
         UserDefaults.standard.set(Date.now, forKey: lastBackgroundRunKey)
+        UserDefaults.standard.set(Task.isCancelled, forKey: lastBackgroundInterruptedKey)
         schedule(container)
     }
 
-    /// One spot's 7-night check: store it, alert on new Go nights, refresh the widget.
-    @discardableResult
-    static func check(_ spot: Spot, conditions: any ConditionsProviding, background: Bool, notify: Bool) async -> SpotWeek {
-        let week = await SpotWeekPlanner.compute(SpotWeekPlanner.input(for: spot), conditions: conditions)
-        spot.week = week
-        spot.lastCheckedAt = week.checkedAt
-        spot.lastCheckedInBackground = background
-        if notify { await notifyNewGoNights(spot, week: week) }
-        if spot.isPinned { WidgetBridge.publish(spot) }
-        return week
+    /// Checks spots together under one request limit, then stores each week
+    /// with its outcome, alerts on new Go nights and refreshes the widget.
+    static func run(_ spots: [Spot], conditions: any ConditionsProviding, background: Bool) async {
+        let limiter = RequestLimiter(globalRequests)
+        let inputs = spots.map(SpotWeekPlanner.input(for:))
+        let weeks = await withTaskGroup(of: (Int, SpotWeek).self) { group in
+            for (i, input) in inputs.enumerated() {
+                group.addTask { (i, await SpotWeekPlanner.compute(input, conditions: conditions, limiter: limiter)) }
+            }
+            var out: [Int: SpotWeek] = [:]
+            for await (i, week) in group { out[i] = week }
+            return out
+        }
+        for (i, spot) in spots.enumerated() {
+            guard let week = weeks[i] else { continue }
+            await apply(week, to: spot, background: background)
+        }
     }
 
+    static func check(_ spot: Spot, conditions: any ConditionsProviding, background: Bool) async {
+        await run([spot], conditions: conditions, background: background)
+    }
+
+    static func apply(_ week: SpotWeek, to spot: Spot, background: Bool) async {
+        let outcome = week.outcome
+        spot.lastAttemptAt = week.checkedAt
+        spot.lastAttemptOutcome = outcome.rawValue
+        spot.lastCheckedInBackground = background
+        // An interrupted check keeps the previous week rather than a half-filled one.
+        guard outcome != .interrupted || spot.week == nil else { return }
+        spot.week = week
+        if outcome.counts { spot.lastCheckedAt = week.checkedAt }
+        if spot.alertGoThisWeek, outcome != .interrupted { await notifyNewGoNights(spot, week: week) }
+        if spot.isPinned { WidgetBridge.publish(spot) }
+    }
+
+    /// Nights are marked only once iOS accepts the notification.
     static func notifyNewGoNights(_ spot: Spot, week: SpotWeek) async {
         let fresh = week.nights.filter { $0.verdict?.level == .go && !spot.alertNotifiedNights.contains($0.night) }
         let oldest = NightDate.containing(.now, in: spot.place.timeZone).adding(days: -7).iso
@@ -75,6 +107,7 @@ enum SpotRefresh {
         let request = UNNotificationRequest(identifier: "go-\(spot.name)-\(fresh.map(\.night).joined(separator: ","))",
                                             content: content, trigger: nil)
         do {
+            UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
             try await UNUserNotificationCenter.current().add(request)
             spot.alertNotifiedNights += fresh.map(\.night)
         } catch {
@@ -126,6 +159,18 @@ enum SpotRefresh {
         let request = UNNotificationRequest(identifier: "test-\(UUID().uuidString)", content: content,
                                             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false))
         return (try? await UNUserNotificationCenter.current().add(request)) != nil
+    }
+}
+
+/// While the app is open an alert goes to Notification Center only: no
+/// banner, which iOS draws in white over field mode.
+final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationPresenter()
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.list]
     }
 }
 

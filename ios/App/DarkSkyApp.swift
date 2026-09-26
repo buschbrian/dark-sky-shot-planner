@@ -4,6 +4,9 @@ import SwiftUI
 @main
 struct DarkSkyApp: App {
     @State private var state = AppState()
+    /// The one conditions client, for the views (`\.conditions`) and the background refresh.
+    /// Integration: replace `UnavailableConditions()` with the real client.
+    private let conditions: any ConditionsProviding = DebugConditions.override ?? UnavailableConditions()
     @Environment(\.scenePhase) private var scenePhase
     /// One container for the scene and the background refresh (same default store as before).
     private let container: ModelContainer = {
@@ -14,10 +17,11 @@ struct DarkSkyApp: App {
         WindowGroup {
             RootView()
                 .environment(state)
+                .environment(\.conditions, conditions)
         }
         .modelContainer(container)
         .backgroundTask(.appRefresh(SpotRefresh.taskIdentifier)) {
-            await SpotRefresh.runInBackground(container)
+            await SpotRefresh.runInBackground(container, conditions: conditions)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { SpotRefresh.schedule(container) }
