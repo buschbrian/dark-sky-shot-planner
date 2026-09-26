@@ -8,11 +8,14 @@ public struct AppConfig: Sendable, Hashable, Decodable {
     /// GC peak altitude below which the web app calls the night unusable for the core.
     public let gcMinUsefulAltitudeDeg: Double
     public let arOverlay: AROverlayConfig
+    /// The area of interest: what the map fetches live layers for.
+    public let aoi: AreaOfInterest
 
     enum CodingKeys: String, CodingKey {
         case version
         case gcMinUsefulAltitudeDeg = "gc_min_useful_altitude_deg"
         case arOverlay = "ar_overlay"
+        case aoi
     }
 
     public static func decode(_ data: Data) throws -> AppConfig {
@@ -37,4 +40,17 @@ public struct AROverlayConfig: Sendable, Hashable, Decodable {
     enum CodingKeys: String, CodingKey {
         case headingAccuracyConfidentMaxDeg = "heading_accuracy_confident_max_deg"
     }
+}
+
+/// `aoi` in `config/app-config.json`; never restated in Swift (AGENTS.md).
+public struct AreaOfInterest: Sendable, Hashable, Decodable {
+    public struct Bbox: Sendable, Hashable, Decodable {
+        public let west: Double
+        public let south: Double
+        public let east: Double
+        public let north: Double
+    }
+
+    public let name: String
+    public let bbox: Bbox
 }

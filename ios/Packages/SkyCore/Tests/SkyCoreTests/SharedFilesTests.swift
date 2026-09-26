@@ -23,6 +23,18 @@ struct SharedFilesTests {
         #expect(try SharedResources.data(path) == Repo.data("config/\(path)"), "Run ios/scripts/sync-shared.sh")
     }
 
+    @Test("the AOI comes from config, not Swift")
+    func aoiFromConfig() throws {
+        struct Root: Decodable {
+            struct A: Decodable { let bbox: [String: Double] }
+            let aoi: A
+        }
+        let raw = try JSONDecoder().decode(Root.self, from: Repo.data("config/app-config.json")).aoi.bbox
+        let b = try AppConfig.bundled().aoi.bbox
+        #expect([b.west, b.south, b.east, b.north] == [raw["west"], raw["south"], raw["east"], raw["north"]])
+        #expect(b.west < b.east && b.south < b.north)
+    }
+
     @Test("the GC threshold comes from config, not Swift")
     func gcThresholdFromConfig() throws {
         let original = try AppConfig.decode(Repo.data("config/app-config.json"))
