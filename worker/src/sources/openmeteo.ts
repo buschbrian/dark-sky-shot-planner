@@ -56,6 +56,19 @@ export const FORECAST_VARIABLES: VariableSpec[] = [
   { field: "wind_speed_200hpa", om: "wind_speed_200hPa", unit: "km/h" },
 ];
 
+/**
+ * HRRR's native 15-minute output (`minutely_15`), served by Open-Meteo for the first 18 h of
+ * each run. Cloud cover is left out on purpose: Open-Meteo's `minutely_15` cloud cover is a
+ * Catmull-Rom interpolation of the hourly values (checked point by point on 2026-09-26), so
+ * it would add no information. Relative humidity is interpolated too.
+ */
+export const NEAR_TERM = {
+  modelId: "hrrr",
+  resolutionMinutes: 15,
+  nativeHours: 18,
+  fields: ["temperature", "dew_point", "wind_speed", "wind_gust", "visibility"],
+} as const;
+
 export const AQ_VARIABLES: VariableSpec[] = [
   { field: "aerosol_optical_depth", om: "aerosol_optical_depth", unit: "" },
   { field: "pm2_5", om: "pm2_5", unit: "µg/m³" },
@@ -343,31 +356,109 @@ export function assembleField(
   return field;
 }
 
+const HOUR_MS = 3_600_000;
+const minuteStamp = (d: Date) => d.toISOString().slice(0, 16);
+
+/** The part of the window HRRR can cover at 15 minutes, or null when none of it can. */
+export function nearTermRange(window: Window, now: Date): { start: Date; end: Date } | null {
+  const horizon = Math.floor(now.getTime() / HOUR_MS) * HOUR_MS + NEAR_TERM.nativeHours * HOUR_MS;
+  const end = Math.min(window.end.getTime(), horizon);
+  return end < window.start.getTime() ? null : { start: window.start, end: new Date(end) };
+}
+
+function nearTermSeries(
+  load: ModelLoad | null,
+  v: VariableSpec,
+  model: ModelSpec,
+  window: Window,
+): Series {
+  const head = {
+    model: model.id,
+    upstream_model: model.upstream,
+    resolution_minutes: NEAR_TERM.resolutionMinutes,
+  };
+  const none = (reason: string): Series => ({
+    ...head,
+    model_run_utc: null,
+    next_run_expected_utc: null,
+    fetched_utc: null,
+    status: "unavailable",
+    reason,
+    last_good_utc: null,
+    values: [],
+  });
+  if (!load)
+    return none(`window starts beyond HRRR's ${NEAR_TERM.nativeHours}-hour 15-minute range`);
+  const { model: _m, upstream_model: _u, ...rest } = toSeries(load, v, model, window);
+  // Past run + 18 h Open-Meteo interpolates from hourly: not native, so not served.
+  const run = rest.model_run_utc ? Date.parse(rest.model_run_utc) : Number.NaN;
+  const limit = run + NEAR_TERM.nativeHours * HOUR_MS;
+  const values = Number.isFinite(limit)
+    ? rest.values.filter((p) => Date.parse(p.t) <= limit)
+    : rest.values;
+  if (rest.status === "ok" && values.length === 0) {
+    return {
+      ...none("no native 15-minute values in this window"),
+      model_run_utc: rest.model_run_utc,
+    };
+  }
+  return { ...head, ...rest, values };
+}
+
 export async function forecastFields(
   deps: Deps,
   cell: Cell,
   window: Window,
 ): Promise<Record<string, Field>> {
   const hourly = FORECAST_VARIABLES.map((v) => v.om).join(",");
-  // Every model's meta.json and forecast start together: the fan-out is one round trip deep.
-  const loaded = await Promise.all(
-    FORECAST_MODELS.map((model) =>
-      loadModel(deps, {
-        meta: modelMeta(deps, FORECAST_HOST, model.meta),
-        host: FORECAST_HOST,
-        path: "/v1/forecast",
-        source: "open-meteo-forecast",
-        model,
-        query: `hourly=${hourly}&models=${model.upstream}`,
-        cell,
-        window,
-      }),
-    ),
+  const metas = new Map(
+    FORECAST_MODELS.map((m) => [m.id, modelMeta(deps, FORECAST_HOST, m.meta)] as const),
   );
+  const nearModel = FORECAST_MODELS.find((m) => m.id === NEAR_TERM.modelId)!;
+  const nearVars = FORECAST_VARIABLES.filter((v) =>
+    (NEAR_TERM.fields as readonly string[]).includes(v.field),
+  );
+  const range = nearTermRange(window, deps.now());
+  // Every model's meta.json and forecast, and HRRR's 15-minute request, start together: the
+  // fan-out is one round trip deep.
+  const [loaded, near] = await Promise.all([
+    Promise.all(
+      FORECAST_MODELS.map((model) =>
+        loadModel(deps, {
+          meta: metas.get(model.id)!,
+          host: FORECAST_HOST,
+          path: "/v1/forecast",
+          source: "open-meteo-forecast",
+          model,
+          query: `hourly=${hourly}&models=${model.upstream}`,
+          cell,
+          window,
+        }),
+      ),
+    ),
+    range
+      ? loadModel(deps, {
+          meta: metas.get(nearModel.id)!,
+          host: FORECAST_HOST,
+          path: "/v1/forecast",
+          source: "open-meteo-forecast",
+          model: nearModel,
+          query: `minutely_15=${nearVars.map((v) => v.om).join(",")}&models=${nearModel.upstream}`,
+          cell,
+          window,
+          variant: "15",
+          block: "minutely_15",
+          range: `start_minutely_15=${minuteStamp(range.start)}&end_minutely_15=${minuteStamp(range.end)}`,
+        })
+      : Promise.resolve(null),
+  ]);
   const out: Record<string, Field> = {};
   for (const v of FORECAST_VARIABLES) {
     const series = FORECAST_MODELS.map((m, i) => toSeries(loaded[i]!, v, m, window));
-    out[v.field] = assembleField(v.unit, FORECAST_SOURCE, series);
+    const extra = nearVars.includes(v)
+      ? { series_15min: [nearTermSeries(near, v, nearModel, window)] }
+      : {};
+    out[v.field] = assembleField(v.unit, FORECAST_SOURCE, series, extra);
   }
   return out;
 }

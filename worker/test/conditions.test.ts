@@ -58,7 +58,7 @@ describe("GET /v1/conditions", () => {
   it("uses gfs_global, not the HRRR-blended gfs_seamless", async () => {
     const { calls } = await conditions();
     const models = calls
-      .filter((u) => u.includes("/v1/forecast"))
+      .filter((u) => u.includes("/v1/forecast") && !u.includes("minutely_15"))
       .map((u) => new URL(u).searchParams.get("models"));
     expect(models.sort()).toEqual(
       ["ecmwf_ifs025", "gfs_global", "icon_global", "ncep_hrrr_conus"].sort(),
@@ -272,7 +272,9 @@ describe("GET /v1/conditions", () => {
     const f = fixtureFetch({ "open-meteo-meta-ncep_hrrr_conus": newer });
     const res = await get(`/v1/conditions?${Q}`, makeDeps(f.fetch, { cache, now: later }));
     const forecastCalls = f.calls.filter((u) => u.includes("/v1/forecast"));
+    // HRRR's hourly and 15-minute requests; no other model.
     expect(forecastCalls.map((u) => new URL(u).searchParams.get("models"))).toEqual([
+      "ncep_hrrr_conus",
       "ncep_hrrr_conus",
     ]);
     expect(res.body.fields.cloud_cover_total.series[0].model_run_utc).toBe(

@@ -56,7 +56,7 @@ export const num = (x: unknown): number | null => {
   return null;
 };
 
-/** Caps upstream calls for one incoming request; the structural maximum today is 14. */
+/** Caps upstream calls for one incoming request; the structural maximum today is 15. */
 export function budgetedFetch(fetch: FetchLike, max: number): FetchLike {
   let used = 0;
   return (input, init) => {

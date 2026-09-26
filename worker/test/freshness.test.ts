@@ -63,8 +63,10 @@ describe("next-run estimates", () => {
 
   it("ignores series that are down when picking the soonest update", async () => {
     const down = recorded("open-meteo-meta-ncep_hrrr_conus");
+    const hrrrDown = { ...down, status: 502, body: { error: true } };
     const f = fixtureFetch({
-      "open-meteo-forecast-ncep_hrrr_conus": { ...down, status: 502, body: { error: true } },
+      "open-meteo-forecast-ncep_hrrr_conus": hrrrDown,
+      "open-meteo-forecast-minutely_15-ncep_hrrr_conus": hrrrDown,
     });
     const { body } = await get(`/v1/conditions?${Q}`, makeDeps(f.fetch));
     expect(body.fields.cloud_cover_total.series[0].next_run_expected_utc).toBeNull();
@@ -116,10 +118,8 @@ describe("run-aware cache", () => {
     // recorded, so both forecasts are read again once the 10-minute sync margin has passed.
     const synced = fixtureFetch();
     await get(`/v1/conditions?${Q}`, makeDeps(synced.fetch, { cache, now: later(10) }));
-    expect(synced.calls.map((u) => new URL(u).searchParams.get("models")).sort()).toEqual([
-      "gfs_global",
-      "ncep_hrrr_conus",
-    ]);
+    const models = synced.calls.map((u) => new URL(u).searchParams.get("models"));
+    expect([...new Set(models)].sort()).toEqual(["gfs_global", "ncep_hrrr_conus"]);
     // 50 min: before the 00:45Z HRRR estimate and inside the one-hour meta.json cap.
     // RAP-Smoke is kept until its next issue (04:23Z) instead of for 30 minutes.
     const f = fixtureFetch();
@@ -163,7 +163,9 @@ describe("run-aware cache", () => {
     // 8.5 min: past this run's sync margin, still inside GFS's (23:48:35Z).
     const after = fixtureFetch(over);
     await get(`/v1/conditions?${Q}`, makeDeps(after.fetch, { cache, now: later(8.5) }));
+    // HRRR's hourly and 15-minute entries both predate the end of the sync margin.
     expect(after.calls.map((u) => new URL(u).searchParams.get("models"))).toEqual([
+      "ncep_hrrr_conus",
       "ncep_hrrr_conus",
     ]);
   });
@@ -182,6 +184,9 @@ describe("run-aware cache", () => {
 });
 
 describe("fan-out", () => {
+  // Four hourly models, HRRR's 15-minute request and CAMS.
+  const FORECASTS = 6;
+
   it("starts every forecast before any meta.json has answered (cold cache)", async () => {
     const inner = fixtureFetch();
     let release: () => void = () => {};
@@ -194,19 +199,19 @@ describe("fan-out", () => {
     const fetch: FetchLike = async (url, init) => {
       if (url.includes("meta.json")) {
         await gate;
-        if (forecasts < 5) metaAnsweredBeforeForecasts = true;
+        if (forecasts < FORECASTS) metaAnsweredBeforeForecasts = true;
         return inner.fetch(url, init);
       }
       if (url.includes("/v1/forecast") || url.includes("/v1/air-quality")) {
         forecasts += 1;
-        if (forecasts === 5) release();
+        if (forecasts === FORECASTS) release();
       }
       return inner.fetch(url, init);
     };
     const { status } = await get(`/v1/conditions?${Q}`, makeDeps(fetch));
     clearTimeout(timedOut);
     expect(status).toBe(200);
-    expect(forecasts).toBe(5);
+    expect(forecasts).toBe(FORECASTS);
     expect(metaAnsweredBeforeForecasts).toBe(false);
   });
 });

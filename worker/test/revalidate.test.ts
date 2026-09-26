@@ -173,6 +173,7 @@ describe("upstream down", () => {
       "open-meteo-forecast-gfs_global": down,
       "open-meteo-forecast-icon_global": down,
       "open-meteo-forecast-ecmwf_ifs025": down,
+      "open-meteo-forecast-minutely_15-ncep_hrrr_conus": down,
       "open-meteo-air-quality": fixture("down/open-meteo-air-quality.json"),
       "ndgd-smoke-sfc-identify": fixture("down/ndgd-smoke-identify.json"),
       "ndgd-smoke-vert-identify": fixture("down/ndgd-smoke-identify.json"),
