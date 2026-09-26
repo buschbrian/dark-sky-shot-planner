@@ -15,6 +15,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { HorizonProfile } from "../src/astronomy/horizon";
 import { gcAltitude, gcAzimuth, planNight, type NightReport } from "../src/astronomy/planner";
 
 const GOLDEN_PATH = resolve(__dirname, "../../shared/golden/night-report.json");
@@ -48,6 +49,17 @@ const CASES: Case[] = [
   { id: "craters-2026-09-10", note: "Idaho, new moon: whole night moon-free", latitude: 43.417, longitude: -113.563, evening_utc: "2026-09-11T03:00:00Z" },
 ];
 
+// Terrain-aware nights (M9): the same planner with a measured skyline. The
+// profile path is relative to the repo root; ports read the same file.
+interface HorizonCase extends Case {
+  horizon_profile: string;
+}
+
+const HORIZON_CASES: HorizonCase[] = [
+  { id: "candlestick-2026-05-06", note: "Waning gibbous: the skyline delays moonrise, the GC clears the skyline mid-night, and its moon-free peak reaches 12° only with terrain", latitude: 38.374031, longitude: -109.965416, evening_utc: "2026-05-07T03:00:00Z", horizon_profile: "config/horizon-profiles/candlestick-camp.csv" },
+  { id: "candlestick-2026-06-24", note: "Waxing gibbous: the skyline brings moonset forward", latitude: 38.374031, longitude: -109.965416, evening_utc: "2026-06-25T03:00:00Z", horizon_profile: "config/horizon-profiles/candlestick-camp.csv" },
+];
+
 const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
 
 function serialise(r: NightReport) {
@@ -71,6 +83,20 @@ function serialise(r: NightReport) {
   };
 }
 
+function serialiseWithTerrain(r: NightReport) {
+  const t = r.terrain!;
+  return {
+    ...serialise(r),
+    terrain: {
+      gc_above_skyline: t.gcAboveSkyline.map((w) => ({ start: iso(w.start), end: iso(w.end) })),
+      gc_clears_skyline: iso(t.gcClearsSkyline),
+      gc_drops_behind_skyline: iso(t.gcDropsBehindSkyline),
+      gc_windows: t.gcWindows.map((w) => ({ start: iso(w.start), end: iso(w.end), minutes: w.minutes })),
+      gc_minutes: t.gcMinutes,
+    },
+  };
+}
+
 function build() {
   return {
     generated_by: "app/tests/golden-vectors.test.ts (astronomy-engine, TypeScript)",
@@ -80,6 +106,17 @@ function build() {
       ...c,
       expected: serialise(
         planNight({ latitude: c.latitude, longitude: c.longitude, eveningUtc: new Date(c.evening_utc) }),
+      ),
+    })),
+    horizon_cases: HORIZON_CASES.map((c) => ({
+      ...c,
+      expected: serialiseWithTerrain(
+        planNight({
+          latitude: c.latitude,
+          longitude: c.longitude,
+          eveningUtc: new Date(c.evening_utc),
+          horizon: HorizonProfile.parse(readFileSync(resolve(__dirname, "../..", c.horizon_profile), "utf8")),
+        }),
       ),
     })),
   };

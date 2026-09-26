@@ -7,6 +7,7 @@ tolerances stored in each file. The TypeScript planner is the reference
 | File | Written by | Read by |
 |---|---|---|
 | `night-report.json` | `app/tests/golden-vectors.test.ts` | that test, and SkyCore's parity tests (`ios/Packages/SkyCore`) |
+| `night-report.json` → `horizon_cases` | the same test, `planNight` with a terrain `horizon` (M9); each case names its profile under `config/horizon-profiles/` | that test, and SkyCore's `GoldenHorizonParityTests` |
 | `gc-horizon.json` | `app/tests/golden-vectors.test.ts` (`gcAltitude`/`gcAzimuth`) | that test, and SkyCore's GC alt/az spot checks |
 | `conditions-response.json`, `space-weather-response.json` | `worker/test/golden-response.test.ts`: real Worker output built offline from its recorded fixtures (AirNow rows are the synthetic fixture) | that test (drift check), and SkyCore's `WorkerContractTests` and verdict tests |
 

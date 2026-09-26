@@ -1,9 +1,10 @@
 # Terrain horizon profiles
 
 Measured skyline profiles for specific observing sites: for each azimuth, how
-many degrees above horizontal the terrain rises. The app's astronomy currently
-assumes a flat horizon, so **nothing here is wired into the build yet.** These
-files are the input a terrain-aware darkness window would need.
+many degrees above horizontal the terrain rises. Both planners take a profile
+as an optional `horizon` (M9: `planNight` in `app/src/astronomy/planner.ts`,
+`Planner.planNight(_:evening:horizon:)` in SkyCore); the golden vectors'
+`horizon_cases` run Candlestick Camp's. The web UI does not load one yet.
 
 ## Why this is not in `darksky-places.csv`
 

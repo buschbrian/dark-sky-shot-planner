@@ -47,6 +47,9 @@ public struct NightReport: Sendable, Hashable, Codable {
     /// Minutes of moon-free astronomical darkness (headline number).
     public let moonFreeMinutes: Int
     public let gc: GCVisibility
+    /// Present only when a horizon profile was given (M9); the fields above
+    /// are then judged against the terrain, not the mathematical horizon.
+    public let terrain: TerrainReport?
 }
 
 public enum Planner {
@@ -129,7 +132,7 @@ public enum Planner {
         return windows
     }
 
-    private static func pushWindow(_ out: inout [MoonFreeWindow], _ start: Date, _ end: Date) {
+    static func pushWindow(_ out: inout [MoonFreeWindow], _ start: Date, _ end: Date) {
         let ms = (end.timeIntervalSince(start) * 1000).rounded()
         if ms > 60_000 {
             out.append(MoonFreeWindow(start: start, end: end, minutes: Int(jsRound(ms / 60_000))))
@@ -219,6 +222,7 @@ public enum Planner {
             moonrise: try findMoonEvent(observer, darkness: darkness, direction: DIRECTION_RISE),
             moonFreeWindows: moonFree,
             moonFreeMinutes: max(0, moonFree.map(\.minutes).max() ?? 0),
-            gc: gcVisibility(observer, moonFree: moonFree))
+            gc: gcVisibility(observer, moonFree: moonFree),
+            terrain: nil)
     }
 }
