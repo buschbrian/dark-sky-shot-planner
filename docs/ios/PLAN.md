@@ -51,8 +51,11 @@ Rules the verdict must follow:
   is unavailable, the verdict is at best "marginal — incomplete data".
 - Stale data (ADR-0006) caps the verdict at marginal.
 - Aurora (Kp) never lowers a verdict; it adds an "aurora possible" flag.
-- Dew, PM2.5 and observed AQI are advisories, not gates (see the notes in the
-  thresholds file). Observed AQI is PM2.5-only: ozone rows are ignored.
+- Dew, PM2.5, observed AQI and transparency are advisories, not gates (see the
+  notes in the thresholds file). Observed AQI is PM2.5-only: ozone rows are
+  ignored. Transparency's only source, 7Timer, is optional (owner, 2026-09-26).
+- Live conditions age in whole hours, per source (`freshness_hours` in
+  `config/app-config.json`): a daily smoke issue is not "stale" every evening.
 - A factor whose thresholds are `null` (surface dust) is shown with its value
   and source but never rated.
 - Haze thresholds (AOD, RAP-Smoke column, PM2.5, AQI) were researched on
@@ -440,12 +443,13 @@ nights here, newest first.
   - **M10:** gear profiles, NPF (Michaud/SAH; non-commercial terms), rough
     500 rule, star trails, hyperfocal/DoF, stacking, timelapse, tested on
     published worked examples.
-  - **Open for the owner:** transparency gates the verdict although 7Timer is
-    optional (with 7Timer down every night caps at marginal); weather
-    freshness is whole days (`freshness_days`), not hours as ADR-0006 implies;
-    the web app's "tonight" is the UTC date, so after 18:00 MDT it shows
-    tomorrow's night; AR frame orientation, heading threshold and field-mode
-    brightness need phone checks.
+  - **Owner decisions, same day:** transparency is advisory, not a gate;
+    live conditions age in hours per source (default 12/24/48 h, CAMS
+    24/36/48 h, RAP-Smoke 30/48/72 h, all proposals); the web app's
+    "tonight" default now uses the browser's local date instead of the UTC
+    date (branch `fix/tonight-local-date`, also merged here). Still open:
+    AR frame orientation, the heading threshold and field-mode brightness
+    need phone checks. `swift test` 211, `npx vitest run` 139.
 - 2026-09-26: Mac is 256 GB. Added `docs/ios/MAC-SETUP.md` and split the
   scaffold so M0–M1 need only the Command Line Tools (Swift Testing), with
   Xcode arriving at M1b. PRs checked: #9 (this plan) and #8 (docs
