@@ -415,6 +415,16 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-26: **M1b build checks green** (local). Xcode 27.0 (27A266a) on
+  macOS 27.2, iOS 27.0 platform + simulator runtime (7.5 GB); DerivedData on
+  the internal disk until an SSD is connected. `xcodegen generate` and
+  `xcodebuild build` for `generic/platform=iOS` pass with no project warnings
+  (widget version now follows the app); `xcodebuild test` on the iPhone 17
+  simulator passes (211 SkyCore tests + the launch UI test), and the
+  placeholder shows "0 min moon-free darkness" for Canyonlands on the
+  2026-09-26 full moon (99.8%, up all night: correct). Free space 31 GB.
+  **Pending:** launch on the owner's iPhone (needs the signing certificate
+  and `Local.xcconfig`).
 - 2026-09-26 (Mac, local only, branch `local/ios-integration`): the owner
   asked to keep all iOS and Worker work local (no push, PRs, CI or deploys)
   until the local build is solid. Merged here: SkyCore M0+M1 and the Worker
