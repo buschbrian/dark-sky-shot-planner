@@ -10,7 +10,7 @@ final class SpotsTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-resetSpots"]
+        app.launchArguments = ["-resetSpots"] + (name.contains("GoNight") ? ["-stubConditions", "go"] : [])
         app.launch()
         app.tabBars.buttons["Spots"].tap()
     }
@@ -72,6 +72,32 @@ final class SpotsTests: XCTestCase {
         XCTAssertTrue(el("alert-check-now").exists)
         XCTAssertEqual(toggle.value as? String, "1")
         shot("spot-alert")
+    }
+
+    /// A stub provider with every gating factor good (DEBUG `-stubConditions go`)
+    /// makes a Go night, and the check posts the alert: nights are marked
+    /// "Alerted for" only after iOS accepts the notification. Needs a night
+    /// with ≥ 120 moon-free minutes this week (true on all but a few nights
+    /// either side of full moon at Candlestick).
+    @MainActor
+    func testGoNightFromStubProviderPostsAlert() {
+        enableAlert(at: "Candlestick Camp", lat: Self.camp.lat, lon: Self.camp.lon)
+        let notified = el("alert-notified")
+        XCTAssertTrue(notified.waitForExistence(timeout: 60), "no Go night alerted")
+        XCTAssertTrue(el("alert-last-checked").label.hasPrefix("Checked"), el("alert-last-checked").label)
+        shot("spot-alert-go")
+    }
+
+    /// With no usable conditions the check records "couldn't check", never
+    /// "checked, no Go night", and alerts nothing.
+    @MainActor
+    func testUnavailableProviderRecordsCouldntCheck() {
+        enableAlert(at: "Candlestick Camp", lat: Self.camp.lat, lon: Self.camp.lon)
+        let status = el("alert-last-checked")
+        XCTAssertTrue(waitFor(status, labelContains: "Couldn't check", timeout: 60), status.label)
+        XCTAssertTrue(status.label.contains("Conditions unavailable"), status.label)
+        XCTAssertFalse(el("alert-notified").exists)
+        shot("spot-alert-unavailable")
     }
 
     /// ios/AGENTS.md invariant 5 over this screen's content: no pixel with a
@@ -155,6 +181,20 @@ final class SpotsTests: XCTestCase {
         app.textFields["spot-longitude"].typeText(lon)
         app.buttons["spot-save"].tap()
         XCTAssertTrue(app.buttons["spot-row-\(name)"].waitForExistence(timeout: 5))
+    }
+
+    /// Adds a spot, turns its Go alert on (allowing notifications) and taps Check now.
+    func enableAlert(at name: String, lat: String, lon: String) {
+        addSpot(name: name, lat: lat, lon: lon)
+        app.buttons["spot-row-\(name)"].tap()
+        let toggle = el("alert-toggle")
+        toggle.swipeUpUntilVisible(in: app)
+        toggle.tap()
+        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
+        if allow.waitForExistence(timeout: 5) { allow.tap() }
+        let check = el("alert-check-now")
+        check.swipeUpUntilVisible(in: app)
+        check.tap()
     }
 
     func waitFor(_ element: XCUIElement, labelContains text: String, timeout: TimeInterval) -> Bool {
