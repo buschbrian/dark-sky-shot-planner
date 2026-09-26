@@ -19,7 +19,8 @@ enum Sky {
             darkness: TimeWindow(start: at(2), end: at(10.5)), noAstronomicalDarkness: false,
             moonIllumFraction: 0.1, moonset: nil, moonrise: nil, moonFreeWindows: mf,
             moonFreeMinutes: mf.reduce(0) { $0 + $1.minutes },
-            gc: GCVisibility(maxAltitudeDeg: windows.isEmpty ? nil : gc, maxAltitudeAt: nil, risesDuringDarkness: gc != nil))
+            gc: GCVisibility(maxAltitudeDeg: windows.isEmpty ? nil : gc, maxAltitudeAt: nil, risesDuringDarkness: gc != nil),
+            terrain: nil)
     }
 
     static func flat(_ v: Double?, count: Int = 15) -> [Double?] { Array(repeating: v, count: count) }
