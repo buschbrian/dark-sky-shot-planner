@@ -211,10 +211,13 @@ struct SkyOverlayView: View {
                 : StrokeStyle(lineWidth: 1, dash: [2, 5])
             c.stroke(path(p.projectPath(run.positions)), with: .color(color.opacity(run.up ? 0.9 : 0.4)), style: stroke)
         }
+        let gc = input.scene.position(of: .galacticCenter).flatMap { p.project($0).pixel }
         for tick in input.track.hourTicks where tick.position.altitudeDeg > -2 {
             guard case .inFrame(let px) = p.project(tick.position) else { continue }
             let point = CGPoint(x: px.u, y: px.v)
             c.fill(Path(ellipseIn: CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6)), with: .color(color))
+            // The GC marker already says where it is at this hour.
+            if let gc, hypot(gc.u - px.u, gc.v - px.v) < 24 { continue }
             c.draw(Text(SkyOverlayInput.hour(tick.date, input.timeZone)).font(.caption2).foregroundStyle(color),
                    at: CGPoint(x: point.x, y: point.y + 6), anchor: .top)
         }
