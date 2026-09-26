@@ -135,3 +135,47 @@ public enum HMSSmoke {
         return ((a["earliest_start"] ?? nil).flatMap(time), (a["latest_end"] ?? nil).flatMap(time))
     }
 }
+
+/// Where a published map layer came from, per `data/out/data-status.json`
+/// (ADR-0007). Anything not confirmed `real` is never used for an answer.
+public enum PagesOrigin: String, Sendable, Hashable {
+    case real, fixture
+    /// No readable data-status file, or the layer is not listed in it.
+    case unknown
+
+    /// Whether a text answer (land manager, sky brightness) may come from the layer.
+    public var mayAnswer: Bool { self == .real }
+
+    /// Suffix for the layer's provenance line; nil when real.
+    public var caveat: String? {
+        switch self {
+        case .real: nil
+        case .fixture: "SAMPLE FIXTURE — not real coverage."
+        case .unknown: "Origin unknown (data-status.json not loaded): treated as unconfirmed."
+        }
+    }
+}
+
+public struct PagesDataStatus: Sendable, Hashable {
+    public let builtUTC: String?
+    private let layers: [String: String]
+
+    /// nil or unreadable data gives a status in which every layer is `unknown`.
+    public init(data: Data?) {
+        struct File: Decodable {
+            let built_utc: String?
+            let layers: [String: String]
+        }
+        let file = data.flatMap { try? JSONDecoder().decode(File.self, from: $0) }
+        builtUTC = file?.built_utc
+        layers = file?.layers ?? [:]
+    }
+
+    public func origin(_ layerId: String) -> PagesOrigin {
+        switch layers[layerId] {
+        case "real": .real
+        case "fixture": .fixture
+        default: .unknown
+        }
+    }
+}

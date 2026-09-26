@@ -73,3 +73,40 @@ struct MapFeedsTests {
         #expect(HMSSmoke.queryURL(west: -120, south: 31.3, east: -102, north: 49.1).absoluteString.contains("geometry=-120.0,31.3,-102.0,49.1"))
     }
 }
+
+@Suite("Pages layer origin (ADR-0007)")
+struct PagesOriginTests {
+    /// As published on 2026-09-26.
+    static let published = Data(#"{"built_utc":"2026-09-26T17:51:02Z","layers":{"light_pollution":"fixture","land_ownership":"fixture","darksky_places":"real"}}"#.utf8)
+
+    @Test("missing or unreadable data-status: every layer unknown, none may answer")
+    func missing() {
+        for status in [PagesDataStatus(data: nil), PagesDataStatus(data: Data("<html>404</html>".utf8)), PagesDataStatus(data: Data("{}".utf8))] {
+            for id in ["light_pollution", "land_ownership", "darksky_places"] {
+                #expect(status.origin(id) == .unknown)
+                #expect(!status.origin(id).mayAnswer)
+                #expect(status.origin(id).caveat != nil)
+            }
+        }
+    }
+
+    @Test("fixture layers are labelled and withheld; real layers answer")
+    func fixtureAndReal() {
+        let s = PagesDataStatus(data: Self.published)
+        #expect(s.builtUTC == "2026-09-26T17:51:02Z")
+        #expect(s.origin("land_ownership") == .fixture)
+        #expect(!s.origin("land_ownership").mayAnswer)
+        #expect(s.origin("land_ownership").caveat == "SAMPLE FIXTURE — not real coverage.")
+        #expect(s.origin("darksky_places") == .real)
+        #expect(s.origin("darksky_places").mayAnswer)
+        #expect(s.origin("darksky_places").caveat == nil)
+        #expect(s.origin("not_listed") == .unknown)
+    }
+
+    @Test("an unexpected origin value is unknown, not real")
+    func oddValue() {
+        let s = PagesDataStatus(data: Data(#"{"built_utc":null,"layers":{"land_ownership":"REAL","darksky_places":"unknown"}}"#.utf8))
+        #expect(s.origin("land_ownership") == .unknown)
+        #expect(s.origin("darksky_places") == .unknown)
+    }
+}
