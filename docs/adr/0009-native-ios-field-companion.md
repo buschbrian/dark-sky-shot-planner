@@ -45,6 +45,13 @@ permission system.
 
 - **SwiftUI, Swift 6 language mode, iOS 18 deployment target.** It is
   one person's app on one person's phone, so the target can move up freely.
+
+  > **Amendment 2026-09-25 (owner's instruction):** the deployment target is
+  > **iOS 26** (SkyCore also declares macOS 26 so `swift test` runs on the
+  > Mac). The owner asked for the best current iOS practice, and the app
+  > targets one phone, which must be on iOS 26 or later. That means Swift 6 strict concurrency with `Sendable` value
+  > types, swift-testing for tests (XCTest only where UI automation needs
+  > it), `@Observable` app models, SwiftData, and current SwiftUI APIs.
 - **The web app stays.** It is the shareable, desktop, no-install view and
   the reference implementation of the astronomy. The iOS app is a peer, not
   a replacement. Both read the same `config/` files.
@@ -110,5 +117,7 @@ answer; a spinner is not.
   runner (`swift test` for SkyCore first, and `xcodebuild test` once the app
   target exists). Windows development continues to cover `app/`,
   `pipelines/`, and `worker/`.
+  *2026-09-25: the macOS CI runner is deferred by the owner until the local
+  build is solid.*
 - The plan and build order live in `docs/ios/PLAN.md`; agent instructions for
   working in `ios/` live in `ios/AGENTS.md`.

@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "aoi": {
+    "name": "Mountain West",
+    "states": [
+      "Utah",
+      "Nevada",
+      "Idaho",
+      "Wyoming",
+      "Colorado",
+      "Arizona",
+      "New Mexico",
+      "Montana"
+    ],
+    "bbox": {
+      "west": -120.0,
+      "south": 31.3,
+      "east": -102.0,
+      "north": 49.1
+    }
+  },
+  "gc_min_useful_altitude_deg": 12.0,
+  "freshness_days": {
+    "light_pollution": {
+      "layer_id": "light_pollution",
+      "fresh_max_days": 400,
+      "aging_max_days": 550,
+      "stale_max_days": 800
+    },
+    "land_ownership": {
+      "layer_id": "land_ownership",
+      "fresh_max_days": 200,
+      "aging_max_days": 400,
+      "stale_max_days": 730
+    },
+    "darksky_places": {
+      "layer_id": "darksky_places",
+      "fresh_max_days": 90,
+      "aging_max_days": 180,
+      "stale_max_days": 365
+    },
+    "weather_forecast": {
+      "layer_id": "weather_forecast",
+      "fresh_max_days": 0,
+      "aging_max_days": 1,
+      "stale_max_days": 2
+    }
+  },
+  "radiance_mapping": {
+    "source": "VIIRS VNP46A4 (Black Marble annual composite)",
+    "source_year": 2024,
+    "unit": "nW/cm2/sr",
+    "breakpoints": [
+      { "radiance": 0.0, "color": "#000005", "label": "Pristine dark sky" },
+      { "radiance": 0.25, "color": "#0d1338", "label": "Dark" },
+      { "radiance": 1.0, "color": "#28306e", "label": "Low glow" },
+      { "radiance": 5.0, "color": "#4f6cb0", "label": "Bright fringe" },
+      { "radiance": 20.0, "color": "#9fc0dd", "label": "Suburban" },
+      { "radiance": 60.0, "color": "#ffffff", "label": "Urban core" }
+    ]
+  },
+  "manager_taxonomy": [
+    { "key": "federal_blm", "label": "Federal – BLM", "color": "#f4c266" },
+    { "key": "federal_usfs", "label": "Federal – USFS", "color": "#7bbf85" },
+    { "key": "federal_nps", "label": "Federal – NPS", "color": "#c76b98" },
+    { "key": "federal_other", "label": "Federal – other", "color": "#a08fc4" },
+    { "key": "state", "label": "State", "color": "#6fb3c0" },
+    { "key": "tribal", "label": "Tribal", "color": "#c98a5e" },
+    { "key": "private", "label": "Private / undetermined", "color": "#8a8a8a" },
+    { "key": "unknown", "label": "Unknown", "color": "#555555" }
+  ]
+}

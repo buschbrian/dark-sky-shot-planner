@@ -1,0 +1,58 @@
+{
+  "generated_by": "app/tests/golden-vectors.test.ts (planner.ts gcAltitude/gcAzimuth)",
+  "astronomy_engine": "2.1.19",
+  "tolerance": {
+    "altitude_deg": 0.1,
+    "azimuth_deg": 0.1
+  },
+  "points": [
+    {
+      "id": "canyonlands-peak",
+      "latitude": 38.374031,
+      "longitude": -109.965416,
+      "utc": "2026-06-16T07:27:18.530Z",
+      "altitude_deg": 22.6064,
+      "azimuth_deg": 179.6292
+    },
+    {
+      "id": "slc-evening",
+      "latitude": 40.76,
+      "longitude": -111.89,
+      "utc": "2026-09-16T03:36:01.331Z",
+      "altitude_deg": 14.7557,
+      "azimuth_deg": 207.2142
+    },
+    {
+      "id": "bryce-predawn",
+      "latitude": 37.593,
+      "longitude": -112.187,
+      "utc": "2026-04-19T11:14:07.491Z",
+      "altitude_deg": 23.332,
+      "azimuth_deg": 177.2205
+    },
+    {
+      "id": "great-basin-dusk",
+      "latitude": 38.98,
+      "longitude": -114.3,
+      "utc": "2026-08-08T04:24:27.001Z",
+      "altitude_deg": 21.9834,
+      "azimuth_deg": 181.5758
+    },
+    {
+      "id": "craters-midnight",
+      "latitude": 43.417,
+      "longitude": -113.563,
+      "utc": "2026-09-11T06:00:00.000Z",
+      "altitude_deg": -0.8357,
+      "azimuth_deg": 229.148
+    },
+    {
+      "id": "glacier-noon-below",
+      "latitude": 48.99,
+      "longitude": -114,
+      "utc": "2026-06-21T19:00:00.000Z",
+      "altitude_deg": -69.533,
+      "azimuth_deg": 345.2296
+    }
+  ]
+}

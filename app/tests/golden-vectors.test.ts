@@ -15,9 +15,15 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { planNight, type NightReport } from "../src/astronomy/planner";
+import { gcAltitude, gcAzimuth, planNight, type NightReport } from "../src/astronomy/planner";
 
 const GOLDEN_PATH = resolve(__dirname, "../../shared/golden/night-report.json");
+const GC_HORIZON_PATH = resolve(__dirname, "../../shared/golden/gc-horizon.json");
+
+/** The installed library, read at generation time: ports must vendor the same one. */
+const ASTRONOMY_ENGINE_VERSION: string = JSON.parse(
+  readFileSync(resolve(__dirname, "../../node_modules/astronomy-engine/package.json"), "utf8"),
+).version;
 
 /** Tolerances any port must meet. Times in seconds, angles in degrees. */
 const TOLERANCE = { time_s: 60, altitude_deg: 0.1, illum_fraction: 0.002, minutes: 2 };
@@ -68,6 +74,7 @@ function serialise(r: NightReport) {
 function build() {
   return {
     generated_by: "app/tests/golden-vectors.test.ts (astronomy-engine, TypeScript)",
+    astronomy_engine: ASTRONOMY_ENGINE_VERSION,
     tolerance: TOLERANCE,
     cases: CASES.map((c) => ({
       ...c,
@@ -77,6 +84,48 @@ function build() {
     })),
   };
 }
+
+// GC alt/az spot checks for ports: peaks, twilight edges, and below-horizon.
+const GC_POINTS = [
+  { id: "canyonlands-peak", latitude: 38.374031, longitude: -109.965416, utc: "2026-06-16T07:27:18.530Z" },
+  { id: "slc-evening", latitude: 40.76, longitude: -111.89, utc: "2026-09-16T03:36:01.331Z" },
+  { id: "bryce-predawn", latitude: 37.593, longitude: -112.187, utc: "2026-04-19T11:14:07.491Z" },
+  { id: "great-basin-dusk", latitude: 38.98, longitude: -114.3, utc: "2026-08-08T04:24:27.001Z" },
+  { id: "craters-midnight", latitude: 43.417, longitude: -113.563, utc: "2026-09-11T06:00:00.000Z" },
+  { id: "glacier-noon-below", latitude: 48.99, longitude: -114.0, utc: "2026-06-21T19:00:00.000Z" },
+];
+
+function buildGcHorizon() {
+  return {
+    generated_by: "app/tests/golden-vectors.test.ts (planner.ts gcAltitude/gcAzimuth)",
+    astronomy_engine: ASTRONOMY_ENGINE_VERSION,
+    tolerance: { altitude_deg: 0.1, azimuth_deg: 0.1 },
+    points: GC_POINTS.map((p) => {
+      const when = new Date(p.utc);
+      return {
+        ...p,
+        altitude_deg: Math.round(gcAltitude(p.latitude, p.longitude, when) * 1e4) / 1e4,
+        azimuth_deg: Math.round(gcAzimuth(p.latitude, p.longitude, when) * 1e4) / 1e4,
+      };
+    }),
+  };
+}
+
+describe("golden files record the astronomy-engine that wrote them", () => {
+  it.each([GOLDEN_PATH, GC_HORIZON_PATH])("%s", (path) => {
+    expect(JSON.parse(readFileSync(path, "utf8")).astronomy_engine).toBe(ASTRONOMY_ENGINE_VERSION);
+  });
+});
+
+describe("golden GC horizon points", () => {
+  it("match the committed cross-platform contract", () => {
+    const current = buildGcHorizon();
+    if (process.env.UPDATE_GOLDEN) {
+      writeFileSync(GC_HORIZON_PATH, `${JSON.stringify(current, null, 2)}\n`);
+    }
+    expect(current).toEqual(JSON.parse(readFileSync(GC_HORIZON_PATH, "utf8")));
+  });
+});
 
 describe("golden night-report vectors", () => {
   it("match the committed cross-platform contract", () => {

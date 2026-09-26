@@ -9,7 +9,8 @@ export interface AnswerContext {
   report: NightReport;
   lat: number;
   lon: number;
-  gcMinAltDeg: number;
+  /** From config.json; null when it could not be loaded (never a hardcoded default). */
+  gcMinAltDeg: number | null;
   radianceAtPoint: { value: number | null; year: number; label: string };
   landManager: { label: string; agencyUrl: string | null } | null;
   cloudPct: number | null;
@@ -26,6 +27,14 @@ function fmtMinutes(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h > 0 ? `${h} h ${m} min` : `${m} min`;
+}
+
+/** Verdict against the config threshold; "unavailable" (ADR-0006) without one. */
+export function gcUsability(maxAltitudeDeg: number | null, gcMinAltDeg: number | null): string {
+  if (gcMinAltDeg === null) return "useful-photography threshold unavailable (config.json not loaded)";
+  return (maxAltitudeDeg ?? -90) >= gcMinAltDeg
+    ? `usable (threshold ${gcMinAltDeg}°)`
+    : `below the ${gcMinAltDeg}° useful-photography threshold`;
 }
 
 export function renderAnswer(el: HTMLElement, ctx: AnswerContext): void {
@@ -76,13 +85,12 @@ export function renderAnswer(el: HTMLElement, ctx: AnswerContext): void {
       `Not above the horizon during darkness tonight — it is out of season here. Try April through September.`,
     ]);
   } else {
-    const usable =
-      (report.gc.maxAltitudeDeg ?? -90) >= gcMinAltDeg
-        ? `usable (threshold ${gcMinAltDeg}°)`
-        : `below the ${gcMinAltDeg}° useful-photography threshold`;
     rows.push([
       "Galactic Center",
-      `peaks ${report.gc.maxAltitudeDeg}° at ${localTime(report.gc.maxAltitudeAt!)} — ${usable}`,
+      `peaks ${report.gc.maxAltitudeDeg}° at ${localTime(report.gc.maxAltitudeAt!)} — ${gcUsability(
+        report.gc.maxAltitudeDeg,
+        gcMinAltDeg,
+      )}`,
     ]);
   }
 

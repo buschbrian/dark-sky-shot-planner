@@ -1,5 +1,6 @@
 {
   "generated_by": "app/tests/golden-vectors.test.ts (astronomy-engine, TypeScript)",
+  "astronomy_engine": "2.1.19",
   "tolerance": {
     "time_s": 60,
     "altitude_deg": 0.1,
@@ -31,7 +32,7 @@
         ],
         "moon_free_minutes": 480,
         "gc": {
-          "max_altitude_deg": 14.6,
+          "max_altitude_deg": 14.8,
           "max_altitude_at": "2026-09-16T03:36:01.331Z",
           "rises_during_darkness": true
         }
@@ -190,7 +191,7 @@
         ],
         "moon_free_minutes": 424,
         "gc": {
-          "max_altitude_deg": 23.4,
+          "max_altitude_deg": 23.3,
           "max_altitude_at": "2026-04-19T11:14:07.491Z",
           "rises_during_darkness": true
         }
@@ -220,7 +221,7 @@
         ],
         "moon_free_minutes": 479,
         "gc": {
-          "max_altitude_deg": 14.5,
+          "max_altitude_deg": 14.6,
           "max_altitude_at": "2026-09-11T03:31:39.171Z",
           "rises_during_darkness": true
         }

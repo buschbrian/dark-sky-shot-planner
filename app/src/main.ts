@@ -173,7 +173,7 @@ async function computeAndRender(): Promise<void> {
     report,
     lat: state.lat,
     lon: state.lon,
-    gcMinAltDeg: appData?.config?.gc_min_useful_altitude_deg ?? 12,
+    gcMinAltDeg: appData?.config?.gc_min_useful_altitude_deg ?? null,
     radianceAtPoint: {
       value: radiance,
       year: appData?.lpYear ?? 0,
@@ -356,7 +356,7 @@ function renderProvenance(): void {
     const warn = document.createElement("p");
     warn.className = "hint";
     warn.textContent =
-      "config.json could not be loaded, so sky-brightness classes, land-manager labels, and freshness thresholds are unavailable. Darkness and Galactic Center times are computed in your browser and are unaffected.";
+      "config.json could not be loaded, so sky-brightness classes, land-manager labels, freshness thresholds, and the Galactic Center usefulness threshold are unavailable. Darkness and Galactic Center times are computed in your browser and are unaffected.";
     el.append(warn);
   }
 }

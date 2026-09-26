@@ -168,6 +168,11 @@ external SSD.
 - `.github/workflows/ios.yml`: macOS runner, `swift test` in SkyCore.
 - **Done when:** `swift test` passes locally **and reports a non-zero test
   count** (see the zero-tests trap in MAC-SETUP.md), and passes in CI.
+- *Note 2026-09-25:* without Xcode (Command Line Tools only), `swift test`
+  needs the `-plugin-path` workaround in SkyCore's `Package.swift` (the
+  Phase 1 `-F` flags in MAC-SETUP.md were not enough on this Mac); remove it
+  once Xcode is installed. `ios.yml` is deferred by the owner until the local
+  build is solid.
 
 ### M1 — SkyCore astronomy parity
 - Port `planner.ts` (darkness window, moon-up intervals, moon-free windows,
@@ -315,5 +320,26 @@ nights here, newest first.
   scaffold so M0–M1 need only the Command Line Tools (Swift Testing), with
   Xcode arriving at M1b. PRs checked: #9 (this plan) and #8 (docs
   housekeeping) both green and mutually mergeable.
+- 2026-09-25: **M1 checks green** (SkyCore astronomy parity; started before
+  M0's `xcodebuild` check could run, at the owner's direction). `swift test` in
+  `ios/Packages/SkyCore`: all 8 golden night-report cases match the web
+  planner to within a millisecond (tolerance 60 s), and GC alt/az matches
+  `gcAltitude`/`gcAzimuth` to within 0.0001° on the 6 points in the new
+  `shared/golden/gc-horizon.json` (written by `app/tests/golden-vectors.test.ts`).
+  **GC precession fix:** both planners now rotate the GC's J2000 RA/Dec to
+  the equator of date before `Horizon()` (it was ~0.37° off in 2026); golden
+  files regenerated, GC peaks moved by up to 0.2° (same peak times), and both
+  files now record `astronomy_engine` (checked against npm and `VENDORED.md`).
+  The Milky Way band's l = 0 point now sits within 0.1° of the GC. The
+  moon-up seed now follows the rise/set rule on both platforms (ADR-0002
+  amendment); no golden value moved.
+  Adds alt/az series (sun, moon, planets, GC), the Milky Way band, and
+  rise/set/transit azimuths. The GC threshold is read from a bundled copy of
+  `config/app-config.json` (`ios/scripts/sync-shared.sh`; a test fails if
+  the copy drifts). **M0 partial:** the SkyCore package, `project.yml`
+  (validated with `xcodegen generate`), and the app/widget/UI-test stubs
+  exist, but `xcodebuild` and the simulator launch are unverified until
+  Xcode is installed. `ios.yml` CI is deferred by the owner until the local
+  build is solid. Deployment target raised to iOS 26 (ADR-0009 §2 amendment).
 - 2026-09-25: Plan written. Golden vectors for 8 nights exported from the
   web planner to `shared/golden/night-report.json`.

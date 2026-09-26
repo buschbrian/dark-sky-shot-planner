@@ -9,7 +9,8 @@
 
 import * as Astronomy from "astronomy-engine";
 
-export const GC_RA_HOURS = 17.7611222; // Sgr A*: 17h 45m 40.04s
+/** Sgr A*, J2000 (ICRS). Precessed to the date before any horizon math. */
+export const GC_RA_HOURS = 17.7611222; // 17h 45m 40.04s
 export const GC_DEC_DEG = -29.0078056; // −29° 00′ 28.1″
 
 /** Minutes sampled when scanning for GC peak altitude. */
@@ -87,7 +88,16 @@ export function darknessWindow(
   return { window: { start: toJs(dusk), end: toJs(dawn) }, noDarkness: false };
 }
 
+/**
+ * Up iff the most recent rise/set event was a rise: the same top-limb,
+ * refracted definition `SearchRiseSet` uses for the events that follow.
+ */
 function isMoonUp(obs: Astronomy.Observer, when: Date): boolean {
+  const rise = Astronomy.SearchRiseSet(Astronomy.Body.Moon, obs, +1, when, -2);
+  const set = Astronomy.SearchRiseSet(Astronomy.Body.Moon, obs, -1, when, -2);
+  if (rise && set) return rise.ut > set.ut;
+  if (rise || set) return rise !== null;
+  // No event within 2 days (polar latitudes only).
   const eq = Astronomy.Equator(Astronomy.Body.Moon, when, obs, true, true);
   return Astronomy.Horizon(when, obs, eq.ra, eq.dec, "normal").altitude > 0;
 }
@@ -160,14 +170,32 @@ export function moonIllumination(when: Date): number {
   return Astronomy.Illumination(Astronomy.Body.Moon, when).phase_fraction;
 }
 
+const GC_EQJ = new Astronomy.Spherical(GC_DEC_DEG, GC_RA_HOURS * 15, 1);
+
+/**
+ * GC RA/Dec on the true equator of date. `Horizon()` expects of-date
+ * coordinates; feeding it the J2000 catalogue values is ~0.3° off in 2026.
+ */
+export function gcEquatorOfDate(when: Date): Astronomy.EquatorialCoordinates {
+  const time = Astronomy.MakeTime(when);
+  const eqj = Astronomy.VectorFromSphere(GC_EQJ, time);
+  return Astronomy.EquatorFromVector(
+    Astronomy.RotateVector(Astronomy.Rotation_EQJ_EQD(time), eqj),
+  );
+}
+
+/** Geometric (unrefracted) GC position: ADR-0002, 2026-09-25 amendment. */
+function gcHorizon(latitude: number, longitude: number, when: Date): Astronomy.HorizontalCoordinates {
+  const eqd = gcEquatorOfDate(when);
+  return Astronomy.Horizon(when, observer(latitude, longitude), eqd.ra, eqd.dec);
+}
+
 export function gcAltitude(latitude: number, longitude: number, when: Date): number {
-  const obs = observer(latitude, longitude);
-  return Astronomy.Horizon(when, obs, GC_RA_HOURS, GC_DEC_DEG).altitude;
+  return gcHorizon(latitude, longitude, when).altitude;
 }
 
 export function gcAzimuth(latitude: number, longitude: number, when: Date): number {
-  const obs = observer(latitude, longitude);
-  return Astronomy.Horizon(when, obs, GC_RA_HOURS, GC_DEC_DEG).azimuth;
+  return gcHorizon(latitude, longitude, when).azimuth;
 }
 
 export function gcVisibility(
