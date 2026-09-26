@@ -4,13 +4,24 @@ import SwiftUI
 @main
 struct DarkSkyApp: App {
     @State private var state = AppState()
+    @Environment(\.scenePhase) private var scenePhase
+    /// One container for the scene and the background refresh (same default store as before).
+    private let container: ModelContainer = {
+        do { return try ModelContainer(for: Spot.self, Gear.self) } catch { fatalError("SwiftData store: \(error)") }
+    }()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(state)
         }
-        .modelContainer(for: [Spot.self, Gear.self])
+        .modelContainer(container)
+        .backgroundTask(.appRefresh(SpotRefresh.taskIdentifier)) {
+            await SpotRefresh.runInBackground(container)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { SpotRefresh.schedule(container) }
+        }
     }
 }
 
