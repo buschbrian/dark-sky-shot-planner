@@ -456,6 +456,184 @@ public enum SkyEvents {
         return out.stableSorted { $0.at < $1.at }
     }
 
+    // MARK: eclipses (ADR-0008 §6)
+
+    public enum EclipseKind: String, Sendable, Hashable {
+        case penumbral, partial, annular, total
+
+        init?(_ k: astro_eclipse_kind_t) {
+            switch k {
+            case ECLIPSE_PENUMBRAL: self = .penumbral
+            case ECLIPSE_PARTIAL: self = .partial
+            case ECLIPSE_ANNULAR: self = .annular
+            case ECLIPSE_TOTAL: self = .total
+            default: return nil
+            }
+        }
+
+        public var capitalised: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+    }
+
+    public struct LunarEclipse: Sendable, Hashable {
+        public let kind: EclipseKind
+        public let peak: Date
+        /// Fraction of the lunar disc in the umbra at peak (0 for penumbral).
+        public let obscuration: Double
+        public let penumbralBegin: Date
+        public let penumbralEnd: Date
+        public let partialBegin: Date?
+        public let partialEnd: Date?
+        public let totalBegin: Date?
+        public let totalEnd: Date?
+        /// Moon altitude here at peak and at both ends of the main (umbral, else penumbral) phase.
+        public let moonAltitudeAtPeakDeg: Double
+        public let moonAltitudeAtBeginDeg: Double
+        public let moonAltitudeAtEndDeg: Double
+    }
+
+    /// Lunar eclipses peaking inside the window, judged by the Moon's altitude here.
+    public static func lunarEclipses(_ site: Observer, _ window: TimeWindow) -> [LunarEclipse] {
+        var out: [LunarEclipse] = []
+        var e = Astronomy_SearchLunarEclipse(AstroTime.from(window.start))
+        for _ in 0..<6 {
+            guard e.status == ASTRO_SUCCESS, let kind = EclipseKind(e.kind) else { break }
+            let peak = AstroTime.date(e.peak)
+            if peak > window.end { break }
+            let peakMs = JSTime.ms(peak)
+            func at(_ minutes: Double) -> Date { JSTime.date(peakMs + minutes * 60_000) }
+            let main = e.sd_partial > 0 ? e.sd_partial : e.sd_penum
+            out.append(LunarEclipse(
+                kind: kind, peak: peak, obscuration: round3(e.obscuration),
+                penumbralBegin: at(-e.sd_penum), penumbralEnd: at(e.sd_penum),
+                partialBegin: e.sd_partial > 0 ? at(-e.sd_partial) : nil,
+                partialEnd: e.sd_partial > 0 ? at(e.sd_partial) : nil,
+                totalBegin: e.sd_total > 0 ? at(-e.sd_total) : nil,
+                totalEnd: e.sd_total > 0 ? at(e.sd_total) : nil,
+                moonAltitudeAtPeakDeg: round1(altitudeDeg(site, .moon, at: peak)),
+                moonAltitudeAtBeginDeg: round1(altitudeDeg(site, .moon, at: at(-main))),
+                moonAltitudeAtEndDeg: round1(altitudeDeg(site, .moon, at: at(main)))))
+            e = Astronomy_NextLunarEclipse(e.peak)
+        }
+        return out
+    }
+
+    /// Grazing partial eclipses covering less than this are not listed.
+    public static let solarEclipseMinObscuration = 0.01
+
+    public struct SolarEclipse: Sendable, Hashable {
+        /// What this observer sees.
+        public let kind: EclipseKind
+        public let obscuration: Double
+        public let begin: Date
+        public let peak: Date
+        public let end: Date
+        public let sunAltitudeAtBeginDeg: Double
+        public let sunAltitudeAtPeakDeg: Double
+        public let sunAltitudeAtEndDeg: Double
+    }
+
+    /// Solar eclipses seen from here with the Sun up for part of them.
+    public static func solarEclipses(_ site: Observer, _ window: TimeWindow) -> [SolarEclipse] {
+        var out: [SolarEclipse] = []
+        var e = Astronomy_SearchLocalSolarEclipse(AstroTime.from(window.start), site.c)
+        for _ in 0..<6 {
+            guard e.status == ASTRO_SUCCESS, let kind = EclipseKind(e.kind) else { break }
+            let peak = AstroTime.date(e.peak.time)
+            if peak > window.end { break }
+            let visible = e.partial_begin.altitude > 0 || e.peak.altitude > 0 || e.partial_end.altitude > 0
+            if visible && e.obscuration >= solarEclipseMinObscuration {
+                out.append(SolarEclipse(
+                    kind: kind, obscuration: round3(e.obscuration),
+                    begin: AstroTime.date(e.partial_begin.time), peak: peak, end: AstroTime.date(e.partial_end.time),
+                    sunAltitudeAtBeginDeg: round1(e.partial_begin.altitude),
+                    sunAltitudeAtPeakDeg: round1(e.peak.altitude),
+                    sunAltitudeAtEndDeg: round1(e.partial_end.altitude)))
+            }
+            e = Astronomy_NextLocalSolarEclipse(e.peak.time, site.c)
+        }
+        return out
+    }
+
+    // MARK: supermoons
+
+    /// A full moon closer than this (geocentric km) is a supermoon (ADR-0008 §6).
+    public static let supermoonMaxDistanceKm = 360_000.0
+    public static let moonMeanDistanceKm = 384_400.0
+
+    public struct Supermoon: Sendable, Hashable {
+        public let at: Date
+        public let distanceKm: Int
+        /// Apparent diameter and brightness against a full moon at the mean distance.
+        public let sizeRatio: Double
+        public let brightnessRatio: Double
+    }
+
+    public static func supermoons(_ window: TimeWindow) -> [Supermoon] {
+        moonPhases(window).filter { $0.angle == 180 }.compactMap { p in
+            let v = Astronomy_GeoMoon(AstroTime.from(p.at))
+            let km = jsRound((v.x * v.x + v.y * v.y + v.z * v.z).squareRoot() * kmPerAU)
+            guard km <= supermoonMaxDistanceKm else { return nil }
+            let size = moonMeanDistanceKm / km
+            return Supermoon(at: p.at, distanceKm: Int(km), sizeRatio: round3(size), brightnessRatio: round3(size * size))
+        }
+    }
+
+    // MARK: Milky Way core season
+
+    public struct CoreNight: Sendable, Hashable {
+        public let eveningUtc: Date
+        /// Highest GC altitude in astronomical darkness, Moon ignored (0.1°).
+        public let maxAltitudeDeg: Double
+        public let maxAltitudeAt: Date
+    }
+
+    public struct CoreSeasonRange: Sendable, Hashable {
+        public var first: CoreNight
+        public var last: CoreNight
+        public var nights: Int
+        /// The night before `first` was scanned and did not qualify.
+        public var opens: Bool
+        /// The night after `last` was scanned and did not qualify.
+        public var closes: Bool
+    }
+
+    /// Nights the GC clears `minAltitudeDeg` in astronomical darkness, whatever
+    /// the Moon does, stepped a day at a time from the window's first evening.
+    public static func coreSeasonRanges(_ site: Observer, _ window: TimeWindow, minAltitudeDeg: Double) throws(AstronomyError) -> [CoreSeasonRange] {
+        let seaLevel = (try? Observer(latitude: site.latitude, longitude: site.longitude)) ?? site
+        var out: [CoreSeasonRange] = []
+        var isOpen = false
+        var scannedBefore = false
+        var t = JSTime.ms(window.start)
+        let endMs = JSTime.ms(window.end)
+        while t <= endMs {
+            let evening = JSTime.date(t)
+            var night: CoreNight?
+            if let dark = try Planner.darknessWindow(seaLevel, evening: evening).window {
+                let gc = Planner.gcVisibility(
+                    seaLevel, moonFree: [MoonFreeWindow(start: dark.start, end: dark.end, minutes: 0)])
+                if let alt = gc.maxAltitudeDeg, let at = gc.maxAltitudeAt, alt >= minAltitudeDeg {
+                    night = CoreNight(eveningUtc: evening, maxAltitudeDeg: alt, maxAltitudeAt: at)
+                }
+            }
+            if let night {
+                if isOpen {
+                    out[out.count - 1].last = night
+                    out[out.count - 1].nights += 1
+                } else {
+                    out.append(CoreSeasonRange(first: night, last: night, nights: 1, opens: scannedBefore, closes: false))
+                    isOpen = true
+                }
+            } else if isOpen {
+                out[out.count - 1].closes = true
+                isOpen = false
+            }
+            scannedBefore = true
+            t += JSTime.day
+        }
+        return out
+    }
+
     // MARK: internals
 
     static let deg = Double.pi / 180

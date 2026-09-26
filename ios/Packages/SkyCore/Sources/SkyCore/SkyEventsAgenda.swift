@@ -8,8 +8,9 @@ public import Foundation
 /// written from (`detail`) so the app can show the best time and the Moon.
 public struct SkyEventItem: Sendable, Hashable, Identifiable {
     public enum Category: String, Sendable, Hashable, CaseIterable {
-        case moon, planet, conjunction
+        case moon, planet, conjunction, eclipse
         case meteorShower = "meteor_shower"
+        case milkyWay = "milky_way"
         case zodiacal, season, place
     }
 
@@ -30,7 +31,11 @@ public struct SkyEventItem: Sendable, Hashable, Identifiable {
     /// The numbers behind the line.
     public enum Detail: Sendable, Hashable {
         case moonPhase(SkyEvents.MoonPhase)
+        case supermoon(SkyEvents.Supermoon)
         case apparition(SkyEvents.PlanetApparition)
+        case lunarEclipse(SkyEvents.LunarEclipse)
+        case solarEclipse(SkyEvents.SolarEclipse)
+        case coreSeason(SkyEvents.CoreSeasonRange)
         case pairing(SkyEvents.MoonPairing)
         case zodiacal(SkyEvents.ZodiacalRange)
         case season(SkyEvents.SeasonMarker)
@@ -93,16 +98,23 @@ public struct SkyEventFormatters: Sendable {
 public enum SkyEventsAgenda {
     public static func build(
         _ site: Observer, centre: Date, windowDays: Double = SkyEvents.defaultWindowDays,
-        formatters fmt: SkyEventFormatters, curated: CuratedLoadResult = CuratedEvents.bundled
+        formatters fmt: SkyEventFormatters, curated: CuratedLoadResult = CuratedEvents.bundled,
+        gcMinAltitudeDeg: Double?
     ) throws(AstronomyError) -> SkyEventsResult {
         let window = SkyEvents.window(around: centre, days: windowDays)
-        var items = moonPhaseItems(window) + planetItems(window)
+        var items = moonPhaseItems(window) + supermoonItems(window) + planetItems(window)
+        items += eclipseItems(site, window, fmt)
         items += SkyEvents.moonPlanetPairings(site, window).map { p in
             SkyEventItem(
                 at: p.at, until: nil, category: .conjunction, title: "Moon and \(p.body.displayName)",
                 verdict: pairingVerdict(p, fmt), provenance: .computed, detail: .pairing(p))
         }
         items += SkyEvents.zodiacalLightRanges(site, window).map { zodiacalItem($0, fmt) }
+        if let gcMinAltitudeDeg {
+            items += try SkyEvents.coreSeasonRanges(site, window, minAltitudeDeg: gcMinAltitudeDeg).map {
+                coreSeasonItem($0, gcMinAltitudeDeg, fmt)
+            }
+        }
         items += SkyEvents.seasonMarkers(window).map { s in
             SkyEventItem(
                 at: s.at, until: nil, category: .season, title: s.name,
@@ -128,6 +140,96 @@ public enum SkyEventsAgenda {
                 at: p.at, until: nil, category: .moon, title: p.name, verdict: moonPhaseVerdict[p.angle] ?? "",
                 provenance: .computed, detail: .moonPhase(p))
         }
+    }
+
+    /// "357,120" without the reader's locale (the web app's `grouped`).
+    static func grouped(_ n: Int) -> String {
+        let digits = Array(String(n))
+        var out = ""
+        for (i, d) in digits.enumerated() {
+            if i > 0 && (digits.count - i) % 3 == 0 { out.append(",") }
+            out.append(d)
+        }
+        return out
+    }
+
+    static func supermoonItems(_ window: TimeWindow) -> [SkyEventItem] {
+        SkyEvents.supermoons(window).map { m in
+            SkyEventItem(
+                at: m.at, until: nil, category: .moon, title: "Supermoon",
+                verdict: "Full moon at \(grouped(m.distanceKm)) km, about \(Int(jsRound((m.sizeRatio - 1) * 100)))% wider and "
+                    + "\(Int(jsRound((m.brightnessRatio - 1) * 100)))% brighter than an average full moon. "
+                    + "The brightest night of the month: moonlit landscapes, not the Milky Way.",
+                provenance: .computed, detail: .supermoon(m))
+        }
+    }
+
+    static func eclipseItems(_ site: Observer, _ window: TimeWindow, _ fmt: SkyEventFormatters) -> [SkyEventItem] {
+        let lunar = SkyEvents.lunarEclipses(site, window).map { e in
+            SkyEventItem(
+                at: e.peak, until: nil, category: .eclipse, title: "\(e.kind.capitalised) lunar eclipse",
+                verdict: lunarEclipseVerdict(e, fmt), provenance: .computed, detail: .lunarEclipse(e))
+        }
+        let solar = SkyEvents.solarEclipses(site, window).map { e in
+            SkyEventItem(
+                at: e.peak, until: nil, category: .eclipse, title: "\(e.kind.capitalised) solar eclipse from here",
+                verdict: solarEclipseVerdict(e, fmt), provenance: .computed, detail: .solarEclipse(e))
+        }
+        return lunar + solar
+    }
+
+    public static func lunarEclipseVerdict(_ e: SkyEvents.LunarEclipse, _ fmt: SkyEventFormatters) -> String {
+        var parts: [String] = []
+        switch e.kind {
+        case .total:
+            parts.append("Totality \(fmt.time(e.totalBegin!))–\(fmt.time(e.totalEnd!)), peak \(fmt.time(e.peak)).")
+        case .partial:
+            parts.append(
+                "\(Int(jsRound(e.obscuration * 100)))% of the Moon in Earth's shadow at \(fmt.time(e.peak)); "
+                    + "partial phase \(fmt.time(e.partialBegin!))–\(fmt.time(e.partialEnd!)).")
+        default:
+            parts.append("Only a subtle dimming, deepest at \(fmt.time(e.peak)): hard to see, harder to photograph.")
+        }
+        let begin = e.moonAltitudeAtBeginDeg, end = e.moonAltitudeAtEndDeg, peak = e.moonAltitudeAtPeakDeg
+        if begin < 0 && peak < 0 && end < 0 {
+            parts.append("The Moon is below the horizon here for all of it.")
+        } else if begin >= 0 && peak >= 0 && end >= 0 {
+            parts.append("Moon \(Int(jsRound(peak)))° up at peak; all of it is visible from here.")
+        } else if begin < 0 {
+            parts.append("The Moon rises during it here: \(Int(jsRound(end)))° up by the end.")
+        } else {
+            parts.append("The Moon sets during it here: \(Int(jsRound(begin)))° up at the start.")
+        }
+        return parts.joined(separator: " ")
+    }
+
+    public static func solarEclipseVerdict(_ e: SkyEvents.SolarEclipse, _ fmt: SkyEventFormatters) -> String {
+        var parts = [
+            "\(Int(jsRound(e.obscuration * 100)))% of the Sun covered at \(fmt.time(e.peak)) "
+                + "(Sun \(Int(jsRound(e.sunAltitudeAtPeakDeg)))° up); \(fmt.time(e.begin))–\(fmt.time(e.end))."
+        ]
+        if e.sunAltitudeAtBeginDeg < 0 { parts.append("Already under way at sunrise.") }
+        if e.sunAltitudeAtEndDeg < 0 { parts.append("Still under way at sunset.") }
+        parts.append("Never look at the Sun, or point a camera at it, without a certified solar filter.")
+        return parts.joined(separator: " ")
+    }
+
+    static func coreSeasonItem(_ r: SkyEvents.CoreSeasonRange, _ minAltitudeDeg: Double, _ fmt: SkyEventFormatters) -> SkyEventItem {
+        let title = r.opens && !r.closes ? "Milky Way core season opens"
+            : r.closes && !r.opens ? "Milky Way core season ends" : "Milky Way core season"
+        return SkyEventItem(
+            at: r.first.maxAltitudeAt, until: r.last.maxAltitudeAt, category: .milkyWay, title: title,
+            verdict: coreSeasonVerdict(r, minAltitudeDeg, fmt), provenance: .computed, detail: .coreSeason(r))
+    }
+
+    public static func coreSeasonVerdict(_ r: SkyEvents.CoreSeasonRange, _ minAltitudeDeg: Double, _ fmt: SkyEventFormatters) -> String {
+        let nights = "\(r.nights) night\(r.nights == 1 ? "" : "s")"
+        let last = r.nights > 1
+            ? ", \(JSFormat.number(r.last.maxAltitudeDeg))° at \(fmt.time(r.last.maxAltitudeAt)) on the last" : ""
+        return "The Galactic Center clears \(JSFormat.number(minAltitudeDeg))° in astronomical darkness on \(nights), "
+            + "\(fmt.date(r.first.eveningUtc)) – \(fmt.date(r.last.eveningUtc)); highest "
+            + "\(JSFormat.number(r.first.maxAltitudeDeg))° at \(fmt.time(r.first.maxAltitudeAt)) on the first night\(last). "
+            + "Moon not counted: the night report gives the moon-free part."
     }
 
     static func planetItems(_ window: TimeWindow) -> [SkyEventItem] {

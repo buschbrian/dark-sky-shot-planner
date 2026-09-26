@@ -40,6 +40,19 @@ struct SkyEventsGolden: Decodable {
     struct Shower: Decodable, Sendable {
         let id: String; let observable_here: Bool; let peak_night: Night; let better_night: Night?
     }
+    struct Lunar: Decodable, Sendable {
+        let kind: String; let peak: String; let obscuration: Double
+        let penumbral_begin: String; let penumbral_end: String
+        let partial_begin: String?; let partial_end: String?; let total_begin: String?; let total_end: String?
+        let moon_altitude_at_peak_deg: Double; let moon_altitude_at_begin_deg: Double; let moon_altitude_at_end_deg: Double
+    }
+    struct Solar: Decodable, Sendable {
+        let kind: String; let obscuration: Double; let begin: String; let peak: String; let end: String
+        let sun_altitude_at_begin_deg: Double; let sun_altitude_at_peak_deg: Double; let sun_altitude_at_end_deg: Double
+    }
+    struct Supermoon: Decodable, Sendable { let at: String; let distance_km: Int; let size_ratio: Double; let brightness_ratio: Double }
+    struct CoreNight: Decodable, Sendable { let evening_utc: String; let max_altitude_deg: Double; let max_altitude_at: String }
+    struct Core: Decodable, Sendable { let first: CoreNight; let last: CoreNight; let nights: Int; let opens: Bool; let closes: Bool }
     struct Provenance: Decodable, Sendable { let kind: String; let sourceUrl: String?; let verifiedOn: String? }
     struct Item: Decodable, Sendable {
         let at: String; let until: String?; let category: String; let title: String
@@ -52,6 +65,10 @@ struct SkyEventsGolden: Decodable {
         let pairings: [Pairing]
         let zodiacal: [Zodiacal]
         let seasons: [Season]
+        let lunar_eclipses: [Lunar]
+        let solar_eclipses: [Solar]
+        let supermoons: [Supermoon]
+        let core_season: [Core]
         let showers: [Shower]
         let items: [Item]
         let problems: [String]
@@ -73,6 +90,7 @@ struct SkyEventsGolden: Decodable {
 
     let astronomy_engine: String
     let window_days: Double
+    let gc_min_altitude_deg: Double
     let tolerance: Tolerance
     let cases: [Case]
 
@@ -147,10 +165,11 @@ struct Near {
 struct SkyEventsParityTests {
     static var cases: [SkyEventsGolden.Case] { SkyEventsGolden.shared?.cases ?? [] }
 
-    @Test("the golden file loads, has its 7 cases, and was written by the vendored astronomy-engine")
+    @Test("the golden file loads, has its 9 cases, and was written by the vendored astronomy-engine")
     func fileLoads() throws {
         let file = try SkyEventsGolden.load()
-        #expect(file.cases.count == 7)
+        #expect(file.cases.count == 9)
+        #expect(file.gc_min_altitude_deg == (try AppConfig.bundled().gcMinUsefulAltitudeDeg))
         #expect(file.window_days == SkyEvents.defaultWindowDays)
         #expect(file.astronomy_engine == (try VendoredAstronomy.version()))
     }
@@ -186,6 +205,61 @@ struct SkyEventsParityTests {
         let seasons = SkyEvents.seasonMarkers(window)
         #expect(seasons.map(\.name) == c.expected.seasons.map(\.name))
         for (a, e) in zip(seasons, c.expected.seasons) { try near.time(a.at, e.at, e.name) }
+
+        let supermoons = SkyEvents.supermoons(window)
+        #expect(supermoons.count == c.expected.supermoons.count)
+        for (a, e) in zip(supermoons, c.expected.supermoons) {
+            try near.time(a.at, e.at, "supermoon")
+            #expect(abs(a.distanceKm - e.distance_km) <= 1, "supermoon distance \(a.distanceKm) vs \(e.distance_km)")
+            #expect(abs(a.sizeRatio - e.size_ratio) <= 0.001 && abs(a.brightnessRatio - e.brightness_ratio) <= 0.001)
+        }
+    }
+
+    @Test("eclipses and the Milky Way core season match", arguments: cases)
+    func eclipsesAndCore(_ c: SkyEventsGolden.Case) throws {
+        let file = try SkyEventsGolden.load()
+        let near = Near(tol: file.tolerance)
+        let site = try c.site()
+        let window = SkyEvents.window(around: try ISO.date(c.centre_utc))
+
+        let lunar = SkyEvents.lunarEclipses(site, window)
+        #expect(lunar.map(\.kind.rawValue) == c.expected.lunar_eclipses.map(\.kind))
+        for (a, e) in zip(lunar, c.expected.lunar_eclipses) {
+            try near.time(a.peak, e.peak, "lunar peak")
+            near.illum(a.obscuration, e.obscuration, "lunar obscuration")
+            try near.time(a.penumbralBegin, e.penumbral_begin, "penumbral begin")
+            try near.time(a.penumbralEnd, e.penumbral_end, "penumbral end")
+            try near.time(a.partialBegin, e.partial_begin, "partial begin")
+            try near.time(a.partialEnd, e.partial_end, "partial end")
+            try near.time(a.totalBegin, e.total_begin, "total begin")
+            try near.time(a.totalEnd, e.total_end, "total end")
+            near.angle(a.moonAltitudeAtPeakDeg, e.moon_altitude_at_peak_deg, "moon alt at peak")
+            near.angle(a.moonAltitudeAtBeginDeg, e.moon_altitude_at_begin_deg, "moon alt at begin")
+            near.angle(a.moonAltitudeAtEndDeg, e.moon_altitude_at_end_deg, "moon alt at end")
+        }
+
+        let solar = SkyEvents.solarEclipses(site, window)
+        #expect(solar.map(\.kind.rawValue) == c.expected.solar_eclipses.map(\.kind))
+        for (a, e) in zip(solar, c.expected.solar_eclipses) {
+            near.illum(a.obscuration, e.obscuration, "solar obscuration")
+            try near.time(a.begin, e.begin, "solar begin")
+            try near.time(a.peak, e.peak, "solar peak")
+            try near.time(a.end, e.end, "solar end")
+            near.angle(a.sunAltitudeAtBeginDeg, e.sun_altitude_at_begin_deg, "sun alt at begin")
+            near.angle(a.sunAltitudeAtPeakDeg, e.sun_altitude_at_peak_deg, "sun alt at peak")
+            near.angle(a.sunAltitudeAtEndDeg, e.sun_altitude_at_end_deg, "sun alt at end")
+        }
+
+        let core = try SkyEvents.coreSeasonRanges(site, window, minAltitudeDeg: file.gc_min_altitude_deg)
+        #expect(core.count == c.expected.core_season.count)
+        for (a, e) in zip(core, c.expected.core_season) {
+            #expect(a.nights == e.nights && a.opens == e.opens && a.closes == e.closes, "core range shape")
+            for (n, x) in [(a.first, e.first), (a.last, e.last)] {
+                try near.time(n.eveningUtc, x.evening_utc, "core evening")
+                near.angle(n.maxAltitudeDeg, x.max_altitude_deg, "core max altitude")
+                try near.time(n.maxAltitudeAt, x.max_altitude_at, "core max at")
+            }
+        }
     }
 
     @Test("moon–planet pairings and occultations match", arguments: cases)
@@ -239,10 +313,11 @@ struct SkyEventsParityTests {
 
     @Test("the agenda's lines, order, provenance and wording match", arguments: cases)
     func agenda(_ c: SkyEventsGolden.Case) throws {
-        let near = Near(tol: try SkyEventsGolden.load().tolerance)
+        let file = try SkyEventsGolden.load()
+        let near = Near(tol: file.tolerance)
         let result = try SkyEventsAgenda.build(
             try c.site(), centre: try ISO.date(c.centre_utc),
-            formatters: .fixedOffset(hours: c.utc_offset_hours))
+            formatters: .fixedOffset(hours: c.utc_offset_hours), gcMinAltitudeDeg: file.gc_min_altitude_deg)
         #expect(result.problems == c.expected.problems)
         #expect(result.items.map(\.title) == c.expected.items.map(\.title))
         #expect(result.items.map(\.category.rawValue) == c.expected.items.map(\.category))
