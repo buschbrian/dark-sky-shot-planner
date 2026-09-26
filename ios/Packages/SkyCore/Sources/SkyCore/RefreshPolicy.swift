@@ -72,7 +72,7 @@ public enum RefreshPolicy {
         for (model, run) in runs(in: snapshot.response).sorted(by: { $0.key < $1.key }) {
             if let meta = metaIDs[model], let info = latest[meta], info.run > run { return .newerRun(model: model) }
         }
-        if now.timeIntervalSince(snapshot.fetchedUTC) >= maxAge { return .tooOld }
+        if now.timeIntervalSince(snapshot.confirmedUTC) >= maxAge { return .tooOld }
         return nil
     }
 

@@ -6,20 +6,29 @@ public import Foundation
 public struct ConditionsSnapshot: Sendable, Hashable, Codable {
     public let response: ConditionsResponse
     /// When this device received the response (not when the Worker fetched upstream).
+    /// A 304 never rewrites it: the body is still the one received then.
     public let fetchedUTC: Date
+    /// The Worker's `ETag` for this body, sent back as `If-None-Match` (M11).
+    public var etag: String? = nil
+    /// Last time the Worker confirmed this body unchanged (a 304's `Date`).
+    public var checkedUTC: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case response
         case fetchedUTC = "fetched_utc"
+        case etag
+        case checkedUTC = "checked_utc"
     }
 
-    public init(response: ConditionsResponse, fetchedUTC: Date) {
+    public init(response: ConditionsResponse, fetchedUTC: Date, etag: String? = nil, checkedUTC: Date? = nil) {
         self.response = response
         self.fetchedUTC = fetchedUTC
+        self.etag = etag
+        self.checkedUTC = checkedUTC
     }
 
-    public init(workerJSON: Data, fetchedUTC: Date) throws {
-        self.init(response: try ConditionsResponse.decode(workerJSON), fetchedUTC: fetchedUTC)
+    public init(workerJSON: Data, fetchedUTC: Date, etag: String? = nil) throws {
+        self.init(response: try ConditionsResponse.decode(workerJSON), fetchedUTC: fetchedUTC, etag: etag)
     }
 
     public func age(at now: Date) -> TimeInterval {
