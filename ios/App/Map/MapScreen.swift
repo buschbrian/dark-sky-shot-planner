@@ -11,7 +11,6 @@ struct MapScreen: View {
     @Query(sort: \Spot.createdAt) private var spots: [Spot]
 
     @State private var data = MapData()
-    @State private var offline = OfflineRegions()
     @State private var plan: MapPlan?
     @State private var darkness: TimeWindow?
     @State private var time = Date.now
@@ -28,6 +27,13 @@ struct MapScreen: View {
     @FocusState private var coordFocused: Bool
     @State private var eventFeatures: [MapLineFeature] = []
     @AppStorage("map.visibleLayers") private var visibleRaw = MapLayer.defaultVisible.map(\.rawValue).sorted().joined(separator: ",")
+
+    init() {
+        // UI tests start from the default layers, whatever a previous run left on.
+        if ProcessInfo.processInfo.arguments.contains("-resetMapState") {
+            UserDefaults.standard.removeObject(forKey: "map.visibleLayers")
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -48,7 +54,6 @@ struct MapScreen: View {
                     .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
-                .accessibilityIdentifier("map.panel")
             }
             .background(palette.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -167,8 +172,14 @@ struct MapScreen: View {
             rows.append(data.smokeAnalysis.end.map { "Smoke analysis \(MapData.utc($0, withDate: false))Z · \(MapData.age($0, now: now)) old" }
                 ?? "Smoke unavailable")
         }
-        let fixtures = [MapLayer.lightPollution, .land].filter { visible.contains($0) && data.isFixture($0) }
-        if !fixtures.isEmpty { rows.append("Sample fixture: \(fixtures.map { $0 == .land ? "PAD-US" : "light pollution" }.joined(separator: ", "))") }
+        for layer in [MapLayer.lightPollution, .land, .places] where visible.contains(layer) {
+            let name = layer == .land ? "PAD-US" : layer == .places ? "dark-sky places" : "light pollution"
+            switch data.origin(layer) {
+            case .real: break
+            case .fixture: rows.append("Sample fixture: \(name)")
+            case .unknown: rows.append("Unconfirmed origin: \(name)")
+            }
+        }
         return VStack(alignment: .leading, spacing: 2) {
             ForEach(rows, id: \.self) { Text($0) }
         }
@@ -242,7 +253,11 @@ struct MapScreen: View {
     @ViewBuilder private var landAtPin: some View {
         if visible.contains(.land) {
             let text: String = {
-                if data.isFixture(.land) { return "Land manager: not shown, the PAD-US layer is a sample fixture." }
+                switch data.origin(.land) {
+                case .real: break
+                case .fixture: return "Land manager: withheld, the PAD-US layer is a sample fixture."
+                case .unknown: return "Land manager: withheld, the PAD-US layer's origin is not confirmed (data-status.json not loaded)."
+                }
                 guard let keys = pinLand else { return "Land manager: move the map so the pin is in view to read it." }
                 if keys.isEmpty { return "Land manager: no PAD-US boundary here (private or undetermined)." }
                 let labels = Array(Set(keys.map { ManagerTaxonomy.bundled.label(for: $0) })).sorted()
@@ -286,9 +301,10 @@ struct MapScreen: View {
                     switch item {
                     case let .place(name, designation, verified, _):
                         Text("\(name), \(designation)") + Text(verified.map { " (verified \($0))" } ?? "")
+                            + Text(data.origin(.places).caveat.map { " \($0)" } ?? "")
                     case let .land(key):
-                        if data.isFixture(.land) {
-                            Text("PAD-US: sample fixture, land manager withheld.")
+                        if data.origin(.land) != .real {
+                            Text("PAD-US: \(data.origin(.land) == .fixture ? "sample fixture" : "origin not confirmed"), land manager withheld.")
                         } else {
                             Text("Managed by \(ManagerTaxonomy.bundled.label(for: key)) (PAD-US). Check the manager's rules for camping and night access.")
                         }
@@ -344,31 +360,28 @@ struct MapScreen: View {
         }
     }
 
+    /// PMTiles archives are single AOI-wide files, so a whole copy on the phone
+    /// covers every saved spot. MapLibre offline packs can't take them: its
+    /// offline downloader rejects `pmtiles://` sources ("unsupported URL").
     private var offlineSection: some View {
-        MapSection(title: "Offline areas") {
-            Text("Saves the published layers (light pollution, PAD-US, dark-sky places) within \(String(format: "%.2f", OfflineRegions.radiusDeg))° of a spot, zoom \(Int(OfflineRegions.zooms.lowerBound))–\(Int(OfflineRegions.zooms.upperBound)), about \(OfflineRegions.estimatedTiles(latitude: state.place?.latitude ?? 39)) tiles per layer. Smoke and IR are live and are not saved.")
+        MapSection(title: "Offline") {
+            Text("Published layers are kept on the phone as whole files and work at every saved spot without signal. Smoke and the IR loop are live; offline they show the last copy with its age.")
                 .font(.caption2).foregroundStyle(palette.secondary)
-            let targets: [(String, Double, Double)] = spots.map { ($0.name, $0.latitude, $0.longitude) }
-                + (state.place.map { [("Pin \(CoordinateText.format(latitude: $0.latitude, longitude: $0.longitude))", $0.latitude, $0.longitude)] } ?? [])
-            if targets.isEmpty {
-                Text("Save a spot or set a place first.").font(.footnote).foregroundStyle(palette.secondary)
-            }
-            ForEach(targets, id: \.0) { name, lat, lon in
+            ForEach([MapLayer.lightPollution, .land, .places]) { layer in
+                let a = data.archive(layer)
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.callout).foregroundStyle(palette.primary)
-                        if let r = offline.regions[name] {
-                            Text(r.error ?? (r.done ? "Saved: \(r.completed) resources, \(ByteCountFormatter.string(fromByteCount: Int64(r.bytes), countStyle: .file))"
-                                : "Downloading \(r.completed)/\(r.expected)"))
-                                .font(.caption.monospacedDigit()).foregroundStyle(r.error == nil ? palette.secondary : palette.poor)
-                        }
+                        Text(layer.title).font(.callout).foregroundStyle(palette.primary)
+                        Text(a.onPhone ? "On this phone\(a.bytes.map { ", " + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "")"
+                            : "Not saved\(a.bytes.map { " (" + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) + ")" } ?? "")")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(a.onPhone ? palette.secondary : palette.marginal)
+                            .accessibilityIdentifier("offline.\(layer.rawValue)")
                     }
                     Spacer()
-                    if offline.regions[name] != nil {
-                        PaletteButton(systemImage: "trash", label: "Delete offline area \(name)") { offline.remove(name: name) }
-                    } else if let styleURL {
-                        PaletteButton(systemImage: "arrow.down.circle", label: "Download offline area \(name)") {
-                            offline.download(name: name, latitude: lat, longitude: lon, styleURL: styleURL)
+                    if !a.onPhone {
+                        PaletteButton(systemImage: "arrow.down.circle", label: "Keep \(layer.title) offline") {
+                            Task { await data.keepOffline(layer) }
                         }
                     }
                 }

@@ -8,7 +8,7 @@ struct LayerProvenance: Equatable {
     let license: String
     let freshness: Freshness
     let detail: String
-    let fixture: Bool
+    let origin: PagesOrigin?
 }
 
 extension MapData {
@@ -34,7 +34,7 @@ extension MapData {
             }
             return LayerProvenance(
                 source: HMSSmoke.source, license: "Public domain (NOAA)", freshness: smoke == nil ? .unavailable : fresh,
-                detail: parts.joined(separator: " "), fixture: false)
+                detail: parts.joined(separator: " "), origin: nil)
         case .infrared:
             let newest = irFrames.last
             let fresh = Self.freshnessConfig.flatMap { try? $0.conditionsWindow() }?.freshness(since: newest, now: now) ?? .unavailable
@@ -47,7 +47,7 @@ extension MapData {
             parts.append(GIBSTimeDomain.attribution)
             return LayerProvenance(
                 source: "NASA GIBS: GOES-West ABI band 13 clean IR", license: "NASA open data",
-                freshness: newest == nil ? .unavailable : fresh, detail: parts.joined(separator: " "), fixture: false)
+                freshness: newest == nil ? .unavailable : fresh, detail: parts.joined(separator: " "), origin: nil)
         }
     }
 
@@ -56,19 +56,19 @@ extension MapData {
         let manifest = manifests[p.layerId]
         let window = Self.freshnessConfig?.layers[p.layerId]
         let fresh = window?.freshness(publicationDate: manifest?.publication_date, today: now) ?? .unavailable
-        let fixture = isFixture(layer)
+        let origin = origin(layer)
         var parts: [String] = []
         parts.append("Published \(manifest?.publication_date ?? "date not given")")
         if layer == .places { parts.append("Manually curated, not exhaustive.") }
         if layer == .land {
             parts.append("Shows who manages the land, not what is allowed there: check the manager's rules for camping and night access.")
         }
-        if fixture { parts.append("SAMPLE FIXTURE — not real coverage.") }
+        if let caveat = origin.caveat { parts.append(caveat) }
         if manifest == nil { parts.append("Manifest not downloaded yet.") }
         if let t = fetched["\(p.dir)/manifest.json"] { parts.append("Checked \(Self.age(t, now: now)) ago.") }
         return LayerProvenance(
             source: manifest?.source_name ?? "Pages site data/out/\(p.dir)", license: manifest?.license ?? "—",
-            freshness: fresh, detail: parts.joined(separator: " "), fixture: fixture)
+            freshness: fresh, detail: parts.joined(separator: " "), origin: origin)
     }
 
     static func utc(_ date: Date, withDate: Bool) -> String {

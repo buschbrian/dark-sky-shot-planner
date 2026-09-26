@@ -1,4 +1,5 @@
 import Foundation
+import MapLibre
 import Observation
 import SkyCore
 
@@ -15,14 +16,6 @@ struct LayerManifest: Codable, Equatable {
     let license: String
     let publication_date: String?
     let artifacts: [Artifact]?
-}
-
-/// `data/out/data-status.json`: which published layers are real and which are fixtures (ADR-0007).
-struct DataStatus: Codable, Equatable {
-    let built_utc: String
-    let layers: [String: String]
-
-    func isFixture(_ layerId: String) -> Bool { layers[layerId] == "fixture" }
 }
 
 /// The map's layers, in the order the list shows them.
@@ -62,12 +55,14 @@ final class MapData {
     static let pagesBase = URL(string: "https://buschbrian.github.io/dark-sky-shot-planner/")!
     /// Whole archives above this stay remote (range requests, MapLibre's own cache).
     static let maxCachedArchiveBytes = 64 << 20
-    static let aoi = (west: -120.0, south: 31.3, east: -102.0, north: 49.1)
+    /// MapLibre's HTTP cache (IR frames, remote PMTiles ranges); set before any map loads.
+    static let ambientCacheBytes: UInt = 128 << 20
     static let irFrameCount = 6
     static let irFrameSpacing: TimeInterval = 20 * 60
 
     private(set) var manifests: [String: LayerManifest] = [:]
-    private(set) var dataStatus: DataStatus?
+    /// Empty (every layer `unknown`) until data-status.json has been read.
+    private(set) var dataStatus = PagesDataStatus(data: nil)
     private(set) var smoke: Data?
     private(set) var smokeAnalysis: (start: Date?, end: Date?) = (nil, nil)
     private(set) var irFrames: [Date] = []
@@ -88,6 +83,7 @@ final class MapData {
         config.waitsForConnectivity = false
         session = URLSession(configuration: config)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        MLNOfflineStorage.shared.setMaximumAmbientCacheSize(Self.ambientCacheBytes) { _ in }
         loadFromDisk()
     }
 
@@ -100,9 +96,25 @@ final class MapData {
         return cachedFile(rel) ?? Self.pagesBase.appending(path: rel)
     }
 
-    func isFixture(_ layer: MapLayer) -> Bool {
-        guard let id = layer.pages?.layerId else { return false }
-        return dataStatus?.isFixture(id) ?? false
+    func origin(_ layer: MapLayer) -> PagesOrigin {
+        guard let id = layer.pages?.layerId else { return .unknown }
+        return dataStatus.origin(id)
+    }
+
+    /// Bytes of the whole archive per the manifest, and whether a full copy is on the phone.
+    func archive(_ layer: MapLayer) -> (bytes: Int?, onPhone: Bool) {
+        guard let p = layer.pages else { return (nil, false) }
+        let bytes = manifests[p.layerId]?.artifacts?.first { $0.path == p.artifact }?.bytes
+        let rel = "\(p.dir)/\(p.artifact)"
+        return (bytes, cachedFile(rel) != nil && (bytes == nil || fileSize(rel) == bytes))
+    }
+
+    /// Saves one archive whole, whatever its size (the owner asked for it).
+    func keepOffline(_ layer: MapLayer) async {
+        guard let p = layer.pages else { return }
+        let rel = "\(p.dir)/\(p.artifact)"
+        let hadCopy = cachedFile(rel) != nil
+        if await fetch(Self.pagesBase.appending(path: rel), to: rel), !hadCopy { styleRevision += 1 }
     }
 
     // MARK: Refresh
@@ -150,7 +162,7 @@ final class MapData {
     }
 
     func refreshSmoke() async {
-        let a = Self.aoi
+        guard let a = (try? AppConfig.bundled())?.aoi.bbox else { return }
         let gotPolygons = await fetch(HMSSmoke.queryURL(west: a.west, south: a.south, east: a.east, north: a.north), to: "hms/smoke.geojson")
         let gotStats = await fetch(HMSSmoke.statsURL, to: "hms/stats.json")
         if gotPolygons || gotStats { loadFromDisk() }
@@ -165,7 +177,7 @@ final class MapData {
 
     private func loadFromDisk() {
         let dec = JSONDecoder()
-        dataStatus = read("data-status.json").flatMap { try? dec.decode(DataStatus.self, from: $0) }
+        dataStatus = PagesDataStatus(data: read("data-status.json"))
         var m: [String: LayerManifest] = [:]
         for layer in MapLayer.allCases {
             guard let p = layer.pages,
