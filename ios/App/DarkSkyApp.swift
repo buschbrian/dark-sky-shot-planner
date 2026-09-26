@@ -34,6 +34,9 @@ struct RootView: View {
         .tint(palette.accent)
         .environment(\.palette, palette)
         .preferredColorScheme(palette.colorScheme)
+        // Field mode's guarantee: whatever a view or system control draws,
+        // multiplying by pure red leaves no green or blue light.
+        .colorMultiply(state.fieldMode ? Color(red: 1, green: 0, blue: 0) : .white)
     }
 }
 

@@ -4,7 +4,7 @@ import SkyCore
 
 /// A place the owner is planning for. Precise coordinates stay on the device;
 /// anything sent to the Worker is rounded to 0.05° first (ADR-0010).
-struct Place: Hashable, Codable, Sendable {
+nonisolated struct Place: Hashable, Codable, Sendable {
     var name: String
     var latitude: Double
     var longitude: Double
@@ -24,7 +24,8 @@ final class AppState {
     var place: Place?
     /// nil means "tonight" in the place's zone, recomputed as time passes.
     var chosenNight: NightDate?
-    var fieldMode = false
+    /// `-FieldMode YES` at launch starts in field mode (UI tests, screenshots).
+    var fieldMode = UserDefaults.standard.bool(forKey: "FieldMode")
 
     func night(at now: Date = .now) -> NightDate {
         if let chosenNight { return chosenNight }
