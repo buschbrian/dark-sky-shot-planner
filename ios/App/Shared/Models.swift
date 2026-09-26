@@ -1,4 +1,5 @@
 import Foundation
+import SkyCore
 import SwiftData
 
 /// A saved place. Owned by the Spots screen (M8); other screens only read it.
@@ -13,6 +14,21 @@ final class Spot {
     var horizonCSV: String?
     var createdAt: Date
 
+    // M8/M9 additions. Every one has a default so SwiftData migrates lightweight.
+    /// Where the profile came from (measured, imported file, computed from terrain tiles).
+    var horizonSource: String? = nil
+    var horizonUpdatedAt: Date? = nil
+    /// The one spot the widget shows.
+    var isPinned: Bool = false
+    /// JSON `SpotWeek`: the last 7-night check, shown with its age.
+    var weekData: Data? = nil
+    var lastCheckedAt: Date? = nil
+    var lastCheckedInBackground: Bool = false
+    /// "Alert me when a night this week is Go at this spot."
+    var alertGoThisWeek: Bool = false
+    /// Night ISO dates already notified, so a Go night alerts once.
+    var alertNotifiedNights: [String] = []
+
     init(name: String, latitude: Double, longitude: Double, timeZoneID: String,
          notes: String = "", horizonCSV: String? = nil, createdAt: Date = .now) {
         self.name = name
@@ -26,6 +42,15 @@ final class Spot {
 
     var place: Place {
         Place(name: name, latitude: latitude, longitude: longitude, timeZoneID: timeZoneID)
+    }
+
+    var horizonProfile: HorizonProfile? {
+        horizonCSV.flatMap { try? HorizonProfile.parse(csv: $0) }
+    }
+
+    var week: SpotWeek? {
+        get { weekData.flatMap { try? SpotWeek.decode($0) } }
+        set { weekData = try? newValue?.encoded() }
     }
 }
 

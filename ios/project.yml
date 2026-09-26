@@ -34,10 +34,17 @@ targets:
   DarkSky:
     type: application
     platform: iOS
-    sources: [App]
+    sources:
+      - App
+      - Widgets/Shared
+    entitlements:
+      path: App/DarkSky.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(BUNDLE_ID_PREFIX)]
     info:
       path: App/Info.plist
       properties:
+        DSAppGroupIdentifier: group.$(BUNDLE_ID_PREFIX)
         NSLocationWhenInUseUsageDescription: Dark Sky uses your location to plan tonight's darkness where you are. Precise coordinates never leave the phone.
         NSCameraUsageDescription: The Sky view draws the Milky Way and moon over the camera picture.
         NSMotionUsageDescription: The Sky view uses the compass and motion sensors to know where the phone is pointing.
@@ -72,9 +79,14 @@ targets:
       - package: SkyCore
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+    entitlements:
+      path: Widgets/DarkSkyWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(BUNDLE_ID_PREFIX)]
     info:
       path: Widgets/Info.plist
       properties:
+        DSAppGroupIdentifier: group.$(BUNDLE_ID_PREFIX)
         CFBundleDisplayName: Dark Sky
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
