@@ -423,8 +423,11 @@ nights here, newest first.
   simulator passes (211 SkyCore tests + the launch UI test), and the
   placeholder shows "0 min moon-free darkness" for Canyonlands on the
   2026-09-26 full moon (99.8%, up all night: correct). Free space 31 GB.
-  **Pending:** launch on the owner's iPhone (needs the signing certificate
-  and `Local.xcconfig`).
+  **M1b done:** signed with automatic provisioning (team in the gitignored
+  `ios/Config/Local.xcconfig`), installed with `xcrun devicectl` and
+  launched on the owner's iPhone 18 Pro Max (app + widget extension
+  running). Command-line signing needed a one-time keychain "Always Allow"
+  for codesign (`errSecInternalComponent` until then).
 - 2026-09-26 (Mac, local only, branch `local/ios-integration`): the owner
   asked to keep all iOS and Worker work local (no push, PRs, CI or deploys)
   until the local build is solid. Merged here: SkyCore M0+M1 and the Worker
