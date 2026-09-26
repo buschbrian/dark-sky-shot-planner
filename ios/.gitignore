@@ -2,6 +2,7 @@
 *.xcodeproj/
 *.xcworkspace/
 Widgets/Info.plist
+App/Info.plist
 DerivedData/
 .build/
 .swiftpm/

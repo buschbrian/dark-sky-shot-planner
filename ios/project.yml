@@ -35,6 +35,16 @@ targets:
     type: application
     platform: iOS
     sources: [App]
+    info:
+      path: App/Info.plist
+      properties:
+        NSLocationWhenInUseUsageDescription: Dark Sky uses your location to plan tonight's darkness where you are. Precise coordinates never leave the phone.
+        NSCameraUsageDescription: The Sky view draws the Milky Way and moon over the camera picture.
+        NSMotionUsageDescription: The Sky view uses the compass and motion sensors to know where the phone is pointing.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [$(PRODUCT_BUNDLE_IDENTIFIER).refresh]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     dependencies:
       - package: SkyCore
       - package: MapLibre
