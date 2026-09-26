@@ -227,5 +227,105 @@
         }
       }
     }
+  ],
+  "horizon_cases": [
+    {
+      "id": "candlestick-2026-05-06",
+      "note": "Waning gibbous: the skyline delays moonrise, the GC clears the skyline mid-night, and its moon-free peak reaches 12° only with terrain",
+      "latitude": 38.374031,
+      "longitude": -109.965416,
+      "evening_utc": "2026-05-07T03:00:00Z",
+      "horizon_profile": "config/horizon-profiles/candlestick-camp.csv",
+      "expected": {
+        "darkness": {
+          "start": "2026-05-07T03:58:49.626Z",
+          "end": "2026-05-07T10:33:34.779Z"
+        },
+        "no_astronomical_darkness": false,
+        "moon_illum_fraction": 0.742,
+        "moonset": null,
+        "moonrise": "2026-05-07T07:37:00.230Z",
+        "moon_free_windows": [
+          {
+            "start": "2026-05-07T03:58:49.626Z",
+            "end": "2026-05-07T07:37:00.230Z",
+            "minutes": 218
+          }
+        ],
+        "moon_free_minutes": 218,
+        "gc": {
+          "max_altitude_deg": 14.1,
+          "max_altitude_at": "2026-05-07T07:37:00.230Z",
+          "rises_during_darkness": true
+        },
+        "terrain": {
+          "gc_above_skyline": [
+            {
+              "start": "2026-05-07T06:15:44.176Z",
+              "end": "2026-05-07T10:33:34.779Z"
+            }
+          ],
+          "gc_clears_skyline": "2026-05-07T06:15:44.176Z",
+          "gc_drops_behind_skyline": null,
+          "gc_windows": [
+            {
+              "start": "2026-05-07T06:15:44.176Z",
+              "end": "2026-05-07T07:37:00.230Z",
+              "minutes": 81
+            }
+          ],
+          "gc_minutes": 81
+        }
+      }
+    },
+    {
+      "id": "candlestick-2026-06-24",
+      "note": "Waxing gibbous: the skyline brings moonset forward",
+      "latitude": 38.374031,
+      "longitude": -109.965416,
+      "evening_utc": "2026-06-25T03:00:00Z",
+      "horizon_profile": "config/horizon-profiles/candlestick-camp.csv",
+      "expected": {
+        "darkness": {
+          "start": "2026-06-25T04:44:33.344Z",
+          "end": "2026-06-25T10:00:28.980Z"
+        },
+        "no_astronomical_darkness": false,
+        "moon_illum_fraction": 0.812,
+        "moonset": "2026-06-25T08:14:48.167Z",
+        "moonrise": null,
+        "moon_free_windows": [
+          {
+            "start": "2026-06-25T08:14:48.167Z",
+            "end": "2026-06-25T10:00:28.980Z",
+            "minutes": 106
+          }
+        ],
+        "moon_free_minutes": 106,
+        "gc": {
+          "max_altitude_deg": 20,
+          "max_altitude_at": "2026-06-25T08:14:48.167Z",
+          "rises_during_darkness": true
+        },
+        "terrain": {
+          "gc_above_skyline": [
+            {
+              "start": "2026-06-25T04:44:33.344Z",
+              "end": "2026-06-25T10:00:28.980Z"
+            }
+          ],
+          "gc_clears_skyline": null,
+          "gc_drops_behind_skyline": null,
+          "gc_windows": [
+            {
+              "start": "2026-06-25T08:14:48.167Z",
+              "end": "2026-06-25T10:00:28.980Z",
+              "minutes": 106
+            }
+          ],
+          "gc_minutes": 106
+        }
+      }
+    }
   ]
 }

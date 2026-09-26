@@ -9,6 +9,8 @@
 
 import * as Astronomy from "astronomy-engine";
 
+import type { HorizonProfile } from "./horizon";
+
 /** Sgr A*, J2000 (ICRS). Precessed to the date before any horizon math. */
 export const GC_RA_HOURS = 17.7611222; // 17h 45m 40.04s
 export const GC_DEC_DEG = -29.0078056; // −29° 00′ 28.1″
@@ -21,6 +23,8 @@ export interface NightInput {
   longitude: number;
   /** Any instant during the local evening whose night we plan (UTC). */
   eveningUtc: Date;
+  /** Terrain skyline (M9). Omitted: the mathematical horizon, as before. */
+  horizon?: HorizonProfile;
 }
 
 export interface Interval {
@@ -51,6 +55,24 @@ export interface NightReport {
   /** Minutes of moon-free astronomical darkness (headline number). */
   moonFreeMinutes: number;
   gc: GcVisibility;
+  /**
+   * Present only when a horizon profile was given; the fields above are then
+   * judged against the terrain, not the mathematical horizon.
+   */
+  terrain?: TerrainReport;
+}
+
+export interface TerrainReport {
+  /** The GC above the skyline, clipped to astronomical darkness. */
+  gcAboveSkyline: Interval[];
+  /** First moment in darkness the GC climbs over the skyline; null if already clear at dusk or never. */
+  gcClearsSkyline: Date | null;
+  /** First moment in darkness the GC drops behind the skyline. */
+  gcDropsBehindSkyline: Date | null;
+  /** Moon-free darkness with the GC above the skyline. */
+  gcWindows: MoonFreeWindow[];
+  /** Longest of `gcWindows`, in minutes (the same rule as `moonFreeMinutes`). */
+  gcMinutes: number;
 }
 
 const observer = (latitude: number, longitude: number): Astronomy.Observer =>
@@ -235,6 +257,7 @@ function findMoonEvent(
 }
 
 export function planNight(input: NightInput): NightReport {
+  if (input.horizon) return planNightOverTerrain(input, input.horizon);
   const { window: darkness, noDarkness } = darknessWindow(
     input.latitude,
     input.longitude,
@@ -260,5 +283,181 @@ export function planNight(input: NightInput): NightReport {
     moonFreeWindows: moonFree,
     moonFreeMinutes,
     gc: gcVisibility(input.latitude, input.longitude, moonFree),
+  };
+}
+
+/**
+ * Terrain crossings are found by sampling every 2 minutes, then bisecting to
+ * 0.1 s. A skyline notch crossed in under 2 minutes can be missed; SkyCore
+ * misses it identically.
+ */
+const TERRAIN_SCAN_MS = 2 * 60_000;
+const TERRAIN_BISECT_MS = 100;
+/** astronomy-engine's MOON_EQUATORIAL_RADIUS_KM (not exported by the npm build). */
+const MOON_EQUATORIAL_RADIUS_KM = 1738.1;
+
+/**
+ * Degrees the moon's top limb stands above the skyline. The limb test and
+ * standard refraction follow `SearchRiseSet` (ADR-0002 amendment), with
+ * refraction evaluated at the moon's altitude instead of the fixed 34′ a flat
+ * horizon uses, because the skyline is usually degrees up.
+ */
+function moonClearanceDeg(obs: Astronomy.Observer, horizon: HorizonProfile, when: Date): number {
+  const eq = Astronomy.Equator(Astronomy.Body.Moon, when, obs, true, true);
+  const hor = Astronomy.Horizon(when, obs, eq.ra, eq.dec, "normal");
+  const topLimb =
+    hor.altitude + Astronomy.RAD2DEG * (MOON_EQUATORIAL_RADIUS_KM / Astronomy.KM_PER_AU / eq.dist);
+  return topLimb - horizon.altitudeAt(hor.azimuth);
+}
+
+/** Degrees the GC stands above the skyline; geometric like every GC number. */
+function gcClearanceDeg(latitude: number, longitude: number, horizon: HorizonProfile, when: Date): number {
+  const p = gcHorizon(latitude, longitude, when);
+  return p.altitude - horizon.altitudeAt(p.azimuth);
+}
+
+interface Crossings {
+  above: Interval[];
+  rises: Date[];
+  sets: Date[];
+}
+
+/** Intervals in [from, to] where `clearance` > 0, with the crossing times. */
+function scanCrossings(from: Date, to: Date, clearance: (when: Date) => number): Crossings {
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
+  const date = (ms: number): Date => (ms === fromMs ? from : ms === toMs ? to : new Date(ms));
+  const isUp = (ms: number): boolean => clearance(date(ms)) > 0;
+
+  const out: Crossings = { above: [], rises: [], sets: [] };
+  let t0 = fromMs;
+  let up0 = isUp(t0);
+  let openedAt: number | null = up0 ? t0 : null;
+  while (t0 < toMs) {
+    const t1 = Math.min(t0 + TERRAIN_SCAN_MS, toMs);
+    const up1 = isUp(t1);
+    if (up1 !== up0) {
+      let lo = t0;
+      let hi = t1;
+      while (hi - lo > TERRAIN_BISECT_MS) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (isUp(mid) === up1) hi = mid;
+        else lo = mid;
+      }
+      if (up1) {
+        openedAt = hi;
+        out.rises.push(date(hi));
+      } else {
+        out.above.push({ start: date(openedAt ?? fromMs), end: date(hi) });
+        openedAt = null;
+        out.sets.push(date(hi));
+      }
+    }
+    t0 = t1;
+    up0 = up1;
+  }
+  if (openedAt !== null) out.above.push({ start: date(openedAt), end: to });
+  return out;
+}
+
+/** Moon above the terrain skyline within [from, to]. */
+export function moonUpIntervalsOverTerrain(
+  latitude: number,
+  longitude: number,
+  horizon: HorizonProfile,
+  from: Date,
+  to: Date,
+): Interval[] {
+  const obs = observer(latitude, longitude);
+  return scanCrossings(from, to, (when) => moonClearanceDeg(obs, horizon, when)).above;
+}
+
+function intersectWindows(windows: MoonFreeWindow[], intervals: Interval[]): MoonFreeWindow[] {
+  const out: MoonFreeWindow[] = [];
+  for (const w of windows) {
+    for (const iv of intervals) {
+      if (iv.end > w.start && iv.start < w.end) pushWindow(out, maxDate(w.start, iv.start), minDate(w.end, iv.end));
+    }
+  }
+  return out;
+}
+
+/** `gcVisibility`, counting only samples where the GC clears the skyline. */
+export function gcVisibilityOverTerrain(
+  latitude: number,
+  longitude: number,
+  moonFree: MoonFreeWindow[],
+  horizon: HorizonProfile,
+): GcVisibility {
+  let best: { alt: number; at: Date } | null = null;
+  for (const win of moonFree) {
+    const stepMs = GC_SAMPLE_MINUTES * 60_000;
+    for (let t = win.start.getTime(); ; t += stepMs) {
+      const when = new Date(Math.min(t, win.end.getTime()));
+      const p = gcHorizon(latitude, longitude, when);
+      if (p.altitude > horizon.altitudeAt(p.azimuth) && (!best || p.altitude > best.alt)) {
+        best = { alt: p.altitude, at: when };
+      }
+      if (t >= win.end.getTime()) break;
+    }
+  }
+  return {
+    maxAltitudeDeg: best ? Math.round(best.alt * 10) / 10 : null,
+    maxAltitudeAt: best?.at ?? null,
+    risesDuringDarkness: best !== null,
+  };
+}
+
+/**
+ * `planNight` against a terrain skyline: moonrise/moonset are when the moon's
+ * top limb crosses the skyline, the moon-free windows are darkness with the
+ * moon behind or below terrain, and the GC only counts while above the skyline.
+ */
+function planNightOverTerrain(input: NightInput, horizon: HorizonProfile): NightReport {
+  const { latitude, longitude } = input;
+  const { window: darkness, noDarkness } = darknessWindow(latitude, longitude, input.eveningUtc);
+  const midDark = darkness
+    ? new Date((darkness.start.getTime() + darkness.end.getTime()) / 2)
+    : input.eveningUtc;
+
+  let moonFree: MoonFreeWindow[] = [];
+  let moonrise: Date | null = null;
+  let moonset: Date | null = null;
+  let terrain: TerrainReport = {
+    gcAboveSkyline: [],
+    gcClearsSkyline: null,
+    gcDropsBehindSkyline: null,
+    gcWindows: [],
+    gcMinutes: 0,
+  };
+  if (darkness) {
+    const obs = observer(latitude, longitude);
+    const moon = scanCrossings(darkness.start, darkness.end, (when) => moonClearanceDeg(obs, horizon, when));
+    moonFree = moonFreeWindows(darkness, moon.above);
+    moonrise = moon.rises[0] ?? null;
+    moonset = moon.sets[0] ?? null;
+    const gc = scanCrossings(darkness.start, darkness.end, (when) =>
+      gcClearanceDeg(latitude, longitude, horizon, when),
+    );
+    const gcWindows = intersectWindows(moonFree, gc.above);
+    terrain = {
+      gcAboveSkyline: gc.above,
+      gcClearsSkyline: gc.rises[0] ?? null,
+      gcDropsBehindSkyline: gc.sets[0] ?? null,
+      gcWindows,
+      gcMinutes: Math.max(0, ...gcWindows.map((w) => w.minutes)),
+    };
+  }
+
+  return {
+    darkness,
+    noAstronomicalDarkness: noDarkness,
+    moonIllumFraction: Math.round(moonIllumination(midDark) * 1000) / 1000,
+    moonset,
+    moonrise,
+    moonFreeWindows: moonFree,
+    moonFreeMinutes: Math.max(0, ...moonFree.map((w) => w.minutes)),
+    gc: gcVisibilityOverTerrain(latitude, longitude, moonFree, horizon),
+    terrain,
   };
 }
