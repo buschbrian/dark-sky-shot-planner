@@ -59,6 +59,40 @@ struct WorkerContractTests {
         #expect(icon.values.isEmpty)
     }
 
+    @Test("refresh hints: next run per series and the soonest for the response")
+    func refreshHints() throws {
+        let r = try Self.conditions()
+        let hrrrNext = WorkerJSON.parse("2026-09-26T00:45:21Z")
+        #expect(r.nextUpdateExpectedUTC == hrrrNext)
+        let cloud = try #require(r.fields["cloud_cover_total"])
+        #expect(cloud.series[0].nextRunExpectedUTC == hrrrNext)
+        for s in cloud.series {
+            let run = try #require(s.modelRunUTC)
+            let next = try #require(s.nextRunExpectedUTC, "\(s.model)")
+            #expect(next > run, "\(s.model)")
+        }
+        let smoke = try #require(r.fields["smoke_column"])
+        #expect(smoke.series[0].nextRunExpectedUTC == WorkerJSON.parse("2026-09-26T04:23:01Z"))
+        // 7Timer! publishes no schedule.
+        #expect(r.fields["seeing"]?.series[0].nextRunExpectedUTC == nil)
+    }
+
+    @Test("15-minute HRRR series sit beside the hourly ones, never inside them")
+    func fifteenMinute() throws {
+        let r = try Self.conditions()
+        for key in ["temperature", "dew_point", "wind_speed", "wind_gust", "visibility"] {
+            let f = try #require(r.fields[key])
+            let near = try #require(f.series15Min?.first, "\(key)")
+            #expect(near.model == "hrrr")
+            #expect(near.resolutionMinutes == 15)
+            #expect(near.values.count == 57)
+            #expect(near.values[1].t.timeIntervalSince(near.values[0].t) == 15 * 60)
+            #expect(f.series.map(\.model) == ["hrrr", "gfs", "icon", "ecmwf"])
+            #expect(f.series.allSatisfy { $0.resolutionMinutes == nil })
+        }
+        #expect(r.fields["cloud_cover_total"]?.series15Min == nil)
+    }
+
     @Test("source extras: AirNow observations, smoke calibration, 7Timer terms")
     func extras() throws {
         let r = try Self.conditions()
