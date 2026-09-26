@@ -57,11 +57,39 @@ nonisolated struct NightSummary: Codable, Hashable, Sendable, Identifiable {
     var headlineMinutes: Int? { skylineMoonFreeMinutes ?? moonFreeMinutes }
 }
 
+/// How a check went. Only `checked`, `partial` and `astronomyOnly` count as
+/// checked; the others must never read as "checked: no Go night".
+nonisolated enum CheckOutcome: String, Codable, Sendable {
+    /// Conditions for every forecast window that needed them.
+    case checked
+    /// Conditions for some windows; the other nights read unavailable.
+    case partial
+    /// No night had moon-free darkness, so no conditions were needed.
+    case astronomyOnly
+    /// No conditions at all (offline, Worker down, or no client).
+    case noConditions
+    /// Cancelled before it finished (iOS ended the background time).
+    case interrupted
+
+    var counts: Bool { self == .checked || self == .partial || self == .astronomyOnly }
+}
+
 /// The last 7-night check of one spot.
 nonisolated struct SpotWeek: Codable, Hashable, Sendable {
     let checkedAt: Date
     let terrainAware: Bool
     let nights: [NightSummary]
+    /// Conditions requests (≤ 48 h windows) needed, and how many answered.
+    let requestedWindows: Int
+    let fetchedWindows: Int
+    let interrupted: Bool
+
+    var outcome: CheckOutcome {
+        if interrupted { return .interrupted }
+        if requestedWindows == 0 { return .astronomyOnly }
+        if fetchedWindows == 0 { return .noConditions }
+        return fetchedWindows < requestedWindows ? .partial : .checked
+    }
 
     func night(_ date: NightDate) -> NightSummary? { nights.first { $0.night == date.iso } }
 

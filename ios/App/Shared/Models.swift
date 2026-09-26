@@ -22,8 +22,12 @@ final class Spot {
     var isPinned: Bool = false
     /// JSON `SpotWeek`: the last 7-night check, shown with its age.
     var weekData: Data? = nil
+    /// Last check that got usable results (`CheckOutcome.counts`).
     var lastCheckedAt: Date? = nil
     var lastCheckedInBackground: Bool = false
+    /// Last attempt of any outcome, and that outcome (`CheckOutcome` raw value).
+    var lastAttemptAt: Date? = nil
+    var lastAttemptOutcome: String? = nil
     /// "Alert me when a night this week is Go at this spot."
     var alertGoThisWeek: Bool = false
     /// Night ISO dates already notified, so a Go night alerts once.
@@ -47,6 +51,8 @@ final class Spot {
     var horizonProfile: HorizonProfile? {
         horizonCSV.flatMap { try? HorizonProfile.parse(csv: $0) }
     }
+
+    var lastOutcome: CheckOutcome? { lastAttemptOutcome.flatMap(CheckOutcome.init(rawValue:)) }
 
     var week: SpotWeek? {
         get { weekData.flatMap { try? SpotWeek.decode($0) } }
