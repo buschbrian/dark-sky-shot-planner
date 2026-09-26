@@ -166,3 +166,82 @@ struct JSFormatTests {
         #expect(JSFormat.fixed(0, 2) == "0.00")
     }
 }
+
+@Suite("Sky events tonight and this week")
+struct SkyEventHighlightTests {
+    let millcreek = try! Observer(latitude: 40.687, longitude: -111.824)
+    let denver = TimeZone(identifier: "America/Denver")!
+
+    func week(from first: String, nights: Int = 7) throws -> [SkyEventHighlight] {
+        let night = try #require(NightDate(iso: first))
+        let result = try SkyEventsAgenda.build(
+            millcreek, centre: night.evening(in: denver), formatters: .local(denver), gcMinAltitudeDeg: 12)
+        return SkyEventHighlights.highlights(result, first: night, nights: nights, timeZone: denver, site: millcreek)
+    }
+
+    @Test("a total lunar eclipse tops its week, on the night it starts")
+    func eclipseFirst() throws {
+        let h = try week(from: "2026-02-28")
+        let top = try #require(h.first)
+        #expect(top.item.title == "Total lunar eclipse")
+        #expect(top.night.iso == "2026-03-02")
+        #expect(top.bestWindow != nil)
+        #expect(SkyEventHighlights.badges(h, on: top.night).first?.badge == "Total lunar eclipse")
+    }
+
+    @Test("the Moon–Jupiter occultation is placed on the evening before the morning it happens")
+    func occultation() throws {
+        let h = try week(from: "2026-10-03")
+        let occ = try #require(h.first { $0.badge == "Jupiter occultation" })
+        #expect(occ.night.iso == "2026-10-05")
+        #expect(occ.bestTime != nil)
+        let saturn = try #require(h.first { $0.badge == "Saturn at opposition" })
+        #expect(saturn.night.iso == "2026-10-03")
+        #expect(saturn.bestWhen == "All night")
+    }
+
+    @Test("a moonlit shower peak points to the better night inside the run, with the Moon judged")
+    func betterNight() throws {
+        let h = try week(from: "2026-10-16")
+        let orionids = try #require(h.first { $0.item.title == "Orionids" })
+        #expect(orionids.night.iso == "2026-10-17")
+        #expect(orionids.badge == "Orionids: best night")
+        if case .clear = orionids.moon {} else if case .partial = orionids.moon {} else {
+            Issue.record("expected a usable moon note, got \(orionids.moon)")
+        }
+        #expect(orionids.bestWindow != nil)
+    }
+
+    @Test("a shower running but peaking elsewhere stays out of the section and the badges")
+    func runningShower() throws {
+        let h = try week(from: "2026-10-03")
+        let taurids = try #require(h.first { $0.item.title == "Southern Taurids" })
+        #expect(taurids.significance < SkyEventHighlights.sectionThreshold)
+        for n in 0..<7 {
+            let night = NightDate(iso: "2026-10-03")!.adding(days: n)
+            #expect(!SkyEventHighlights.badges(h, on: night).contains { $0.item.title == "Southern Taurids" })
+        }
+    }
+
+    @Test("every highlight falls inside the run and keeps its provenance")
+    func insideRun() throws {
+        let first = NightDate(iso: "2026-09-06")!
+        for h in try week(from: first.iso) {
+            #expect(h.night >= first && h.night <= first.adding(days: 6), "\(h.item.title) on \(h.night)")
+            if h.item.category == .meteorShower || h.item.category == .place {
+                if case .computed = h.item.provenance { Issue.record("\(h.item.title) lost its curated provenance") }
+            }
+        }
+    }
+
+    @Test("radiant rows for the Sky view come from the curated file, unaltered")
+    func radiantRows() throws {
+        let rows = ShowerRadiantRow.all()
+        #expect(rows.count == CuratedEvents.bundled.events.filter { $0.kind == .meteorShower }.count)
+        let orionids = try #require(rows.first { $0.id == "orionids-2026" })
+        #expect(abs(orionids.raDeg - 6.33 * 15) < 1e-9 && orionids.decDeg == 16)
+        #expect(orionids.verified)
+        #expect(orionids.isActive(at: try ISO.date("2026-10-21T18:28:00Z")))
+        #expect(!(rows.first { $0.id == "leonids-2026" }!.verified))
+    }
+}
