@@ -41,6 +41,11 @@ Verified on 2026-09-25, as above. A row moves up when code starts using it.
 | Terrain for horizon profiles | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (3DEP/NED, SRTM) and [USGS 3DEP](https://www.usgs.gov/3d-elevation-program) services | Public domain sources; credit per the tiles' attribution file | OK | OK |
 | Terrain (alternative) | Mapterhorn hosted tiles | Terms for the hosted tiles not stated | Avoid | Avoid (self-host its PMTiles if ever needed) |
 
+SkyCore's horizon ray march reads terrarium tiles through a protocol and does
+not fetch them yet. Its test suite commits 25 unmodified z12 AWS Terrain Tiles
+around Candlestick Camp as an offline fixture, with the required attribution
+in `ios/Packages/SkyCore/Tests/Fixtures/terrarium-candlestick/README.md`.
+
 Ephemeris code, not data: the iOS app vendors the astronomy-engine C port
 (MIT), the same library and version as the web app (ADR-0009).
 
