@@ -508,6 +508,19 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-26: **Worker deployed** (owner decision; the rest stays local):
+  `https://dark-sky-conditions.brisk-delta-c382.workers.dev`, from
+  `local/ios-integration` with `wrangler deploy`. Pre-deploy decisions:
+  workers.dev route; rate limit 120/min, namespace `10010` (the owner's
+  western-water Worker uses `1001`); KV `SPACE_WEATHER` auto-provisioned;
+  no AirNow key yet (observed AQI unavailable). Checked live: `/health` OK;
+  `/v1/conditions` for 38.35, −109.95 returned all 20 fields `ok` except
+  AirNow, cold 1.8 s, warm 0.12 s, `If-None-Match` → 304 in 0.12 s, so the
+  Cache API does work on `*.workers.dev`. The app reads the URL from the
+  gitignored `Local.xcconfig`. Merged into integration today: Sky (M7),
+  Week/Tools (M5/M10), Map (M6), Tonight + conditions (M2/M4), Spots,
+  alerts and widget (M8/M9), web Worker client (M3), Worker freshness.
+  The App Group signs on the owner's team.
 - 2026-09-26: **M1b build checks green** (local). Xcode 27.0 (27A266a) on
   macOS 27.2, iOS 27.0 platform + simulator runtime (7.5 GB); DerivedData on
   the internal disk until an SSD is connected. `xcodegen generate` and
