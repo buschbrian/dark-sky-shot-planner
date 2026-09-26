@@ -99,7 +99,7 @@ enum Sky {
 
     static func evaluate(
         night: NightReport = night(), conditions: ConditionsResponse? = response(),
-        aurora: AuroraOutlook? = nil, config: VerdictConfig = config, now: Date = now,
+        aurora: AuroraSignal? = nil, config: VerdictConfig = config, now: Date = now,
         galacticCoreIsTarget: Bool = false
     ) throws -> Verdict {
         try Verdict.evaluate(

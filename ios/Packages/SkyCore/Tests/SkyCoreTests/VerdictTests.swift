@@ -262,40 +262,125 @@ struct VerdictTests {
         #expect(dust.rating == nil)
     }
 
-    // MARK: Aurora
+    // MARK: Aurora (M5's AuroraRule is the one rule; the verdict only carries its flag)
+
+    static let outlooks: [AuroraOutlook] = [
+        .possible(kp: 8, visibleKp: 7.67, basis: .forecastInWindow),
+        .possible(kp: 8, visibleKp: 7.67, basis: .observedNow),
+        .notExpected(maxKp: 3, visibleKp: 7.67),
+        .unavailable(.noKpData),
+        .unavailable(.kpDoesNotCoverNight),
+        .outOfRange(geomagneticLatDeg: 30),
+    ]
 
     @Test("aurora adds a flag and never changes the level",
           arguments: zip([0.05, 0.2, 0.5], [VerdictLevel.go, .marginal, .noGo]))
     func auroraFlag(_ aod: Double, _ level: VerdictLevel) throws {
         let conditions = Sky.response { $0["aerosol_optical_depth"] = Sky.cams("", Sky.flat(aod)) }
         let without = try Sky.evaluate(conditions: conditions)
-        for possible in [true, false] {
-            let aurora = AuroraOutlook(possible: possible, maxKp: possible ? 7 : 1, source: "SWPC", asOfUTC: Sky.now)
-            let with = try Sky.evaluate(conditions: conditions, aurora: aurora)
+        for outlook in Self.outlooks {
+            let signal = AuroraSignal(outlook: outlook, source: "SWPC", asOfUTC: Sky.at(0.5))
+            let with = try Sky.evaluate(conditions: conditions, aurora: signal)
             #expect(with.level == level)
             #expect(with.level == without.level)
             #expect(with.limiting.key == without.limiting.key)
-            #expect(with.flags.contains(.auroraPossible) == possible)
+            #expect(with.cause == without.cause)
+            #expect(with.flags.contains(.auroraPossible) == outlook.isPossible)
             #expect(with.flags.subtracting([.auroraPossible]) == without.flags)
+            #expect(with.aurora?.source == "SWPC")
+            #expect(with.aurora?.age(at: Sky.now) == Sky.now.timeIntervalSince(Sky.at(0.5)))
+            #expect(without.withAurora(signal) == with)
         }
+    }
+
+    @Test("withAurora swaps only the flag")
+    func withAurora() throws {
+        let possible = AuroraSignal(outlook: Self.outlooks[0], source: "SWPC", asOfUTC: Sky.now)
+        let v = try Sky.evaluate(aurora: possible)
+        #expect(v.flags == [.auroraPossible])
+        let cleared = v.withAurora(nil)
+        #expect(cleared.flags.isEmpty && cleared.aurora == nil)
+        #expect(cleared.level == v.level && cleared.limiting == v.limiting && cleared.factors == v.factors)
     }
 
     @Test("missing space weather is no flag and not incomplete data")
     func auroraMissing() throws {
         let v = try Sky.evaluate(aurora: nil)
         #expect(v.level == .go && v.flags.isEmpty)
+        let none = AuroraSignal(
+            spaceWeather: nil, rule: try AuroraRule.bundled(), observer: try observer(38.35, -109.95),
+            darkness: Sky.night().darkness, now: Sky.now, isNextDarkWindow: true)
+        #expect(none.outlook == .unavailable(.noKpData))
+        #expect(none.asOfUTC == nil)
+        #expect(try Sky.evaluate(aurora: none).flags.isEmpty)
     }
 
-    @Test("aurora outlook from the recorded space-weather response")
+    @Test("the recorded space-weather response runs through AuroraRule")
     func auroraFromSpaceWeather() throws {
         let sw = try WorkerContractTests.spaceWeather()
-        let windows = Sky.night([(3, 9)]).moonFreeWindows
-        let inWindow = sw.kpForecast.values.filter { $0.t < windows[0].end && $0.t.addingTimeInterval(3 * 3600) > windows[0].start }
-        let expected = try #require(inWindow.map(\.v).max())
-        let at = AuroraOutlook(spaceWeather: sw, windows: windows, visibleKp: expected)
-        #expect(at.maxKp == expected && at.possible)
-        #expect(!AuroraOutlook(spaceWeather: sw, windows: windows, visibleKp: expected + 0.01).possible)
-        #expect(!AuroraOutlook(spaceWeather: sw, windows: [], visibleKp: 0).possible)
+        let rule = try AuroraRule.bundled()
+        let obs = try observer(38.35, -109.95)
+        let darkness = Sky.night().darkness
+        #expect(sw.kpReadings.count == sw.kpObserved.values.count + sw.kpForecast.values.count)
+        #expect(sw.kpReadings.filter { $0.kind == .predicted }.count == sw.kpForecast.values.filter { $0.kind == "predicted" }.count)
+        let signal = AuroraSignal(spaceWeather: sw, rule: rule, observer: obs, darkness: darkness, now: sw.generatedUTC, isNextDarkWindow: true)
+        #expect(signal.outlook == rule.outlook(obs, darkness: darkness, readings: sw.kpReadings, now: sw.generatedUTC, isNextDarkWindow: true))
+        #expect(!signal.isPossible)
+        #expect(signal.source == "NOAA Space Weather Prediction Center")
+        #expect(signal.asOfUTC == WorkerJSON.parse("2026-09-25T23:39:36Z"))
+    }
+
+    @Test("a storm in the Worker's last-good copy never raises the flag")
+    func auroraLastGood() throws {
+        let sw = try WorkerContractTests.spaceWeather()
+        let rule = try AuroraRule.bundled()
+        let obs = try observer(38.35, -109.95)
+        let darkness = try #require(Sky.night().darkness)
+        let storm = [SpaceWeatherResponse.KpPoint(t: darkness.start, v: 9, kind: "predicted", noaaScale: "G5")]
+        func response(_ status: WorkerStatus) -> SpaceWeatherResponse {
+            let f = sw.kpForecast
+            let block = SpaceWeatherResponse.KpBlock(
+                source: f.source, unit: f.unit, status: status, reason: status == .ok ? nil : "HTTP 503",
+                fetchedUTC: status == .ok ? f.fetchedUTC : nil, lastGoodUTC: status == .ok ? nil : f.fetchedUTC,
+                values: storm)
+            return SpaceWeatherResponse(generatedUTC: sw.generatedUTC, cache: sw.cache, kpObserved: sw.kpObserved, kpForecast: block, aurora: sw.aurora)
+        }
+        func signal(_ status: WorkerStatus) -> AuroraSignal {
+            AuroraSignal(spaceWeather: response(status), rule: rule, observer: obs, darkness: darkness, now: Sky.now, isNextDarkWindow: false)
+        }
+        #expect(signal(.ok).isPossible)
+        #expect(!signal(.unavailable).isPossible)
+    }
+
+    // MARK: Week outlook (M5) driven by this verdict
+
+    @Test("WeekOutlook.build rates each night with this verdict; aurora stays out of it")
+    func weekOutlookWiring() throws {
+        let conditions = try WorkerContractTests.conditions()
+        let now = conditions.generatedUTC
+        let obs = try observer(conditions.cell.lat, conditions.cell.lon)
+        let denver = try #require(TimeZone(identifier: "America/Denver"))
+        let first = try #require(NightDate(iso: "2026-09-25"))
+        let sw = try WorkerContractTests.spaceWeather()
+        let rater = Verdict.weekRater(conditions: conditions, config: Sky.config, now: now)
+        func build(_ kp: [KpReading]?) throws -> [WeekRow<Result<Verdict, Verdict.EvaluationError>>] {
+            try WeekOutlook.build(
+                observer: obs, timeZone: denver, now: now, first: first, count: 3,
+                clouds: [], kp: kp, auroraRule: AuroraRule.bundled(), verdict: rater)
+        }
+        let rows = try build(sw.kpReadings)
+        #expect(rows.count == 3)
+        #expect(rows.map(\.verdict) == (try build(nil)).map(\.verdict))
+        for row in rows {
+            let direct = try Verdict.evaluate(row.night, conditions: conditions, config: Sky.config, now: now)
+            #expect(try row.verdict.get() == direct)
+            #expect(try direct == Verdict.evaluate(night: row.night.report, conditions: conditions, config: Sky.config, now: now))
+            let shown = row.verdict.map {
+                $0.withAurora(AuroraSignal(outlook: row.aurora, source: sw.kpForecast.source, asOfUTC: sw.kpAsOfUTC))
+            }
+            #expect(try shown.get().level == direct.level)
+            #expect(try shown.get().flags.contains(.auroraPossible) == row.aurora.isPossible)
+        }
     }
 
     // MARK: Driven by the thresholds file

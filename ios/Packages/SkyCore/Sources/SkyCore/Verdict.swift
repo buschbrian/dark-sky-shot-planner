@@ -99,38 +99,6 @@ extension FactorReading {
     }
 }
 
-/// The aurora input. Never lowers the verdict; `possible` only adds a flag.
-public struct AuroraOutlook: Sendable, Hashable {
-    public let possible: Bool
-    public let maxKp: Double?
-    public let source: String
-    public let asOfUTC: Date?
-
-    public init(possible: Bool, maxKp: Double?, source: String, asOfUTC: Date?) {
-        self.possible = possible
-        self.maxKp = maxKp
-        self.source = source
-        self.asOfUTC = asOfUTC
-    }
-
-    /// Highest forecast Kp over the 3-hour Kp intervals that overlap the windows.
-    /// `visibleKp` is the caller's latitude-dependent threshold; an unavailable
-    /// forecast is never "possible".
-    public init(spaceWeather: SpaceWeatherResponse, windows: [MoonFreeWindow], visibleKp: Double) {
-        let block = spaceWeather.kpForecast
-        let kpInterval: TimeInterval = 3 * 3600
-        let overlapping = block.status == .ok
-            ? block.values.filter { p in windows.contains { p.t < $0.end && p.t.addingTimeInterval(kpInterval) > $0.start } }
-            : []
-        let maxKp = overlapping.map(\.v).max()
-        self.init(
-            possible: maxKp.map { $0 >= visibleKp } ?? false,
-            maxKp: maxKp,
-            source: block.source,
-            asOfUTC: block.status == .ok ? block.fetchedUTC : nil)
-    }
-}
-
 public struct VerdictConfig: Sendable, Hashable {
     public let thresholds: ConditionsThresholds
     public let freshness: FreshnessWindow
@@ -166,7 +134,7 @@ public struct Verdict: Sendable, Hashable {
     /// Every factor in the thresholds file, sorted by key.
     public let factors: [FactorAssessment]
     public let windows: [MoonFreeWindow]
-    public let aurora: AuroraOutlook?
+    public let aurora: AuroraSignal?
     public let evaluatedAt: Date
 
     /// Non-gating factors rated below good (dew, PM2.5, observed AQI, …).
@@ -181,7 +149,7 @@ public struct Verdict: Sendable, Hashable {
     public static func evaluate(
         night: NightReport,
         conditions: ConditionsResponse?,
-        aurora: AuroraOutlook? = nil,
+        aurora: AuroraSignal? = nil,
         config: VerdictConfig,
         now: Date,
         galacticCoreIsTarget: Bool = false
@@ -217,11 +185,21 @@ public struct Verdict: Sendable, Hashable {
         var flags = Set<VerdictFlag>()
         if !unrated.isEmpty { flags.insert(.incompleteData) }
         if !stale.isEmpty { flags.insert(.staleData) }
-        if aurora?.possible == true { flags.insert(.auroraPossible) }
+        if aurora?.isPossible == true { flags.insert(.auroraPossible) }
 
         return Verdict(
             level: level, limiting: limiting, cause: cause, flags: flags, factors: factors,
             windows: night.moonFreeWindows, aurora: aurora, evaluatedAt: now)
+    }
+
+    /// The same verdict with M5's aurora result attached: the level, limiting
+    /// factor and cause never change; only the flag follows `signal`.
+    public func withAurora(_ signal: AuroraSignal?) -> Verdict {
+        var flags = flags
+        if signal?.isPossible == true { flags.insert(.auroraPossible) } else { flags.remove(.auroraPossible) }
+        return Verdict(
+            level: level, limiting: limiting, cause: cause, flags: flags, factors: factors,
+            windows: windows, aurora: signal, evaluatedAt: evaluatedAt)
     }
 
     /// Lower rating first, then further past the edges, then key order.
