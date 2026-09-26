@@ -4,7 +4,13 @@ import SwiftUI
 @main
 struct DarkSkyApp: App {
     @State private var state = AppState()
-    private let conditions: any ConditionsProviding = ConditionsClient.live()
+    /// The one conditions client, for the views (`\.conditions`) and the background refresh.
+    private let conditions: any ConditionsProviding = DebugConditions.override ?? ConditionsClient.live()
+    @Environment(\.scenePhase) private var scenePhase
+    /// One container for the scene and the background refresh (same default store as before).
+    private let container: ModelContainer = {
+        do { return try ModelContainer(for: Spot.self, Gear.self) } catch { fatalError("SwiftData store: \(error)") }
+    }()
 
     var body: some Scene {
         WindowGroup {
@@ -12,7 +18,13 @@ struct DarkSkyApp: App {
                 .environment(state)
                 .environment(\.conditions, conditions)
         }
-        .modelContainer(for: [Spot.self, Gear.self])
+        .modelContainer(container)
+        .backgroundTask(.appRefresh(SpotRefresh.taskIdentifier)) {
+            await SpotRefresh.runInBackground(container, conditions: conditions)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { SpotRefresh.schedule(container) }
+        }
     }
 }
 
