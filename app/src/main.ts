@@ -15,6 +15,8 @@ import { tonightIso } from "./state/tonight";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
 import { buildSkyEvents, type SkyEventsResult } from "./events/agenda";
 import { renderSkyEvents, renderSkyEventsMessage } from "./ui/skyevents";
+import { workerBaseUrl, fetchConditions, ConditionsFetchError } from "./weather/conditions";
+import { renderConditionsPanel, renderConditionsFallback } from "./ui/conditions";
 import type { AppConfigJson, DataStatusJson, ManifestJson } from "./config";
 
 interface AppData {
@@ -193,6 +195,11 @@ async function computeAndRender(): Promise<void> {
   // Weather is fetched on demand and updates the answer when it arrives.
   void fetchWeatherAndUpdate(state.lat, state.lon, report);
 
+  // Multi-model conditions from the Worker are opt-in (VITE_WORKER_URL) and
+  // fall back to the direct Open-Meteo path above when unset, unreachable,
+  // or slow — the direct path never depends on this succeeding.
+  void fetchConditionsAndRender(state.lat, state.lon, report);
+
   // The ±30-day sweep is 0.1–0.4 s of ephemeris; it is deferred until the
   // answer above has painted, so the number the user came for never waits.
   await updateSkyEvents(eventsEl, state.lat, state.lon, dateIso);
@@ -274,6 +281,39 @@ async function fetchWeatherAndUpdate(
   dt.textContent = "Cloud cover forecast";
   document.querySelector(".answer-grid")?.append(dt, dd);
   void forecast;
+}
+
+/**
+ * Opt-in Worker path (ADR-0010, PLAN.md M3). Unset VITE_WORKER_URL: the
+ * `#conditions` panel stays empty and the direct Open-Meteo path above is
+ * the only cloud forecast, exactly as before this feature existed. Set: try
+ * the Worker's multi-model forecast for tonight's dark window; on any
+ * failure (down, slow, malformed), say so in the UI and leave the direct
+ * path as the only forecast shown.
+ */
+async function fetchConditionsAndRender(
+  lat: number,
+  lon: number,
+  report: NightReport,
+): Promise<void> {
+  const el = document.getElementById("conditions");
+  if (!el) return;
+  if (!workerBaseUrl()) {
+    el.replaceChildren();
+    return;
+  }
+  if (!report.darkness) {
+    el.replaceChildren();
+    return;
+  }
+  const freshnessCfg = appData?.config?.freshness_hours?.weather_forecast ?? undefined;
+  try {
+    const response = await fetchConditions(lat, lon, report.darkness.start, report.darkness.end);
+    renderConditionsPanel(el, { response, freshnessCfg });
+  } catch (err) {
+    const reason = err instanceof ConditionsFetchError ? err.message : String(err);
+    renderConditionsFallback(el, reason);
+  }
 }
 
 function lookupLandManager(
