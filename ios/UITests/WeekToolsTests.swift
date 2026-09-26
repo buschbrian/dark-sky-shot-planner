@@ -115,7 +115,7 @@ final class WeekToolsTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "missing field \(id)")
         field.tap()
         XCTAssertTrue(app.keys["keypad.done"].waitForExistence(timeout: 5))
-        for _ in 0..<10 { app.keys["keypad.delete"].tap() }
+        for _ in 0..<(field.value as? String ?? "").count { app.keys["keypad.delete"].tap() }
         for ch in value {
             let key = switch ch {
             case ".": "keypad.point"
@@ -180,6 +180,7 @@ final class WeekToolsTests: XCTestCase {
 
         app.buttons["Use Galactic Center"].tap()
         enter(app, "tools.fNumber", "2.8")
+        XCTAssertEqual(app.textFields["tools.fNumber"].value as? String, "2.8")
         XCTAssertTrue(npf.label.contains("7.5 s"), npf.label)
         snapshot("tools-npf-standard")
 
@@ -188,7 +189,8 @@ final class WeekToolsTests: XCTestCase {
         app.textFields["tools.fNumber"].tap()
         snapshot("tools-keypad-field")
         app.keys["keypad.done"].tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["tools.calc.starExposure"].waitForExistence(timeout: 5))
         snapshot("tools-field")
     }
 
