@@ -49,8 +49,10 @@ public struct ConditionsSnapshot: Sendable, Hashable, Codable {
             .min()
     }
 
+    /// Newest by the last confirmation: a copy the Worker confirmed with a 304
+    /// is as current as its check time.
     public static func newest(_ snapshots: some Sequence<ConditionsSnapshot>) -> ConditionsSnapshot? {
-        snapshots.max { $0.fetchedUTC < $1.fetchedUTC }
+        snapshots.max { $0.confirmedUTC < $1.confirmedUTC }
     }
 
     public func encoded() throws -> Data {

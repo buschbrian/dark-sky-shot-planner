@@ -154,4 +154,15 @@ struct ConditionsRevalidationTests {
         #expect(RefreshPolicy.reason(snapshot: s, latest: [:], now: later) == .tooOld)
         #expect(RefreshPolicy.reason(snapshot: s.confirmed(at: later.addingTimeInterval(-60)), latest: [:], now: later) == nil)
     }
+
+    @Test("a copy confirmed by a 304 ranks as current as its check, and is not expired")
+    func newestByConfirmation() throws {
+        let r = try Self.golden()
+        let a = ConditionsSnapshot(response: r, fetchedUTC: Self.received).confirmed(at: Self.received.addingTimeInterval(7200))
+        let b = ConditionsSnapshot(response: r, fetchedUTC: Self.received.addingTimeInterval(3600))
+        #expect(ConditionsSnapshot.newest([a, b]) == a)
+        let nineDays = Self.received.addingTimeInterval(9 * 86_400)
+        #expect(ConditionsSnapshot.expired([a], now: nineDays).isEmpty == false)
+        #expect(ConditionsSnapshot.expired([a.confirmed(at: nineDays.addingTimeInterval(-86_400))], now: nineDays).isEmpty)
+    }
 }
