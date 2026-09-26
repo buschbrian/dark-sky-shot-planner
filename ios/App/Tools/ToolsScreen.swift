@@ -34,6 +34,7 @@ struct ToolsScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     gearSection
                     calculatorSection
+                    CaptureToolsRow().padding(.top, 8)
                 }
                 .padding()
             }

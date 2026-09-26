@@ -207,13 +207,21 @@ nonisolated enum CameraProbe {
             session.beginConfiguration()
             device.activeFormat = format
             device.unlockForConfiguration()
-            if output.isAppleProRAWSupported { output.isAppleProRAWEnabled = true }
+            output.isAppleProRAWEnabled = false
             session.commitConfiguration()
-            let types = output.availableRawPhotoPixelFormatTypes
+            // Bayer RAW is listed with ProRAW off, ProRAW once it is on.
+            let bayer = output.availableRawPhotoPixelFormatTypes
+            var proRaw: [OSType] = []
+            if output.isAppleProRAWSupported {
+                session.beginConfiguration()
+                output.isAppleProRAWEnabled = true
+                session.commitConfiguration()
+                proRaw = output.availableRawPhotoPixelFormatTypes
+            }
             rows.append(CameraProbeReport.RawFormat(
                 formatIndex: index,
-                bayerRaw: types.filter { AVCapturePhotoOutput.isBayerRAWPixelFormat($0) }.map(fourCC),
-                appleProRaw: types.filter { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) }.map(fourCC),
+                bayerRaw: bayer.filter { AVCapturePhotoOutput.isBayerRAWPixelFormat($0) }.map(fourCC),
+                appleProRaw: proRaw.filter { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) }.map(fourCC),
                 rawFileTypes: output.availableRawPhotoFileTypes.map(\.rawValue),
                 appleProRawSupported: output.isAppleProRAWSupported,
                 shutterSoundSuppressionSupported: output.isShutterSoundSuppressionSupported,
@@ -223,7 +231,7 @@ nonisolated enum CameraProbe {
         session.removeOutput(output)
         return CameraProbeReport.RawSupport(
             byFormat: rows,
-            note: "Listed with appleProRAWEnabled = true where supported; Bayer and ProRAW split by isBayerRAWPixelFormat / isAppleProRAWPixelFormat.")
+            note: "bayerRaw: listed with appleProRAWEnabled = false; appleProRaw: with it true (where supported). Split by isBayerRAWPixelFormat / isAppleProRAWPixelFormat.")
     }
 
     static func seconds(_ t: CMTime) -> Double {

@@ -51,6 +51,12 @@ public struct Registration: Sendable, Hashable {
     public let matchedStars: Int
     /// RMS distance, in pixels, between matched reference stars and transformed frame stars.
     public let rmsResidual: Double
+
+    public init(transform: RigidTransform, matchedStars: Int, rmsResidual: Double) {
+        self.transform = transform
+        self.matchedStars = matchedStars
+        self.rmsResidual = rmsResidual
+    }
 }
 
 public enum RegistrationError: Error, Sendable, Hashable {
