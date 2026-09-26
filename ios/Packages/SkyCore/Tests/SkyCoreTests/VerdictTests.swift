@@ -73,12 +73,15 @@ struct VerdictTests {
              },
              level: .go, limiting: "smoke_column", cause: .rating),
         Case(name: "unavailable gating factor: at best marginal, incomplete data",
+             edit: { $0["smoke_column"] = nil },
+             level: .marginal, limiting: "smoke_column", cause: .incompleteData, flags: [.incompleteData]),
+        Case(name: "7Timer down: transparency is advisory, so the verdict is not capped",
              edit: { f in
                  f["transparency"] = Sky.field("index 1–8 (1 best)", "7Timer! ASTRO", [
                      Sky.series("7timer_astro", [], run: nil, fetched: nil, status: .unavailable, reason: "disabled by configuration"),
                  ])
              },
-             level: .marginal, limiting: "transparency", cause: .incompleteData, flags: [.incompleteData]),
+             level: .go, limiting: "smoke_column", cause: .rating),
         Case(name: "gating field missing from the response",
              edit: { $0["wind_gust"] = nil },
              level: .marginal, limiting: "wind_gust", cause: .incompleteData, flags: [.incompleteData]),
@@ -86,7 +89,7 @@ struct VerdictTests {
              edit: { $0["wind_gust"] = nil; $0["aerosol_optical_depth"] = Sky.cams("", Sky.flat(0.5)) },
              level: .noGo, limiting: "aerosol_optical_depth", cause: .rating, flags: [.incompleteData]),
         Case(name: "unavailable plus marginal names the rated factor",
-             edit: { $0["transparency"] = nil; $0["cloud_cover_total"] = Sky.models("%", 30) },
+             edit: { $0["wind_gust"] = nil; $0["cloud_cover_total"] = Sky.models("%", 30) },
              level: .marginal, limiting: "cloud_cover_total", cause: .rating, flags: [.incompleteData]),
         Case(name: "a null inside the window is missing, never good",
              edit: { f in
@@ -421,10 +424,10 @@ struct VerdictTests {
         let v = try Sky.evaluate(config: config)
         #expect(v.level == .noGo && v.limiting.key == "cloud_cover_total")
 
-        let optional7Timer = try Sky.thresholds { j in Sky.editFactor(&j, "transparency") { $0["gates_verdict"] = false } }
+        let gating7Timer = try Sky.thresholds { j in Sky.editFactor(&j, "transparency") { $0["gates_verdict"] = true } }
         let noTransparency = Sky.response { $0["transparency"] = nil }
-        #expect(try Sky.evaluate(conditions: noTransparency).level == .marginal)
-        #expect(try Sky.evaluate(conditions: noTransparency, config: VerdictConfig(thresholds: optional7Timer, freshness: Sky.config.freshness)).level == .go)
+        #expect(try Sky.evaluate(conditions: noTransparency).level == .go)
+        #expect(try Sky.evaluate(conditions: noTransparency, config: VerdictConfig(thresholds: gating7Timer, freshness: Sky.config.freshness)).level == .marginal)
     }
 
     @Test("freshness windows come from config too")

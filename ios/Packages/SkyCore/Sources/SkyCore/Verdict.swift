@@ -101,15 +101,20 @@ extension FactorReading {
 
 public struct VerdictConfig: Sendable, Hashable {
     public let thresholds: ConditionsThresholds
-    public let freshness: FreshnessWindow
+    public let freshness: ConditionsFreshness
 
-    public init(thresholds: ConditionsThresholds, freshness: FreshnessWindow) {
+    public init(thresholds: ConditionsThresholds, freshness: ConditionsFreshness) {
         self.thresholds = thresholds
         self.freshness = freshness
     }
 
+    /// One window for every field.
+    public init(thresholds: ConditionsThresholds, freshness: FreshnessWindow) {
+        self.init(thresholds: thresholds, freshness: ConditionsFreshness(default: freshness))
+    }
+
     public static func bundled() throws -> VerdictConfig {
-        VerdictConfig(thresholds: try .bundled(), freshness: try FreshnessConfig.bundled().conditionsWindow())
+        VerdictConfig(thresholds: try .bundled(), freshness: try FreshnessConfig.bundled().conditionsFreshness())
     }
 }
 
@@ -246,7 +251,7 @@ struct FactorAssessor {
 
     let night: NightReport
     let conditions: ConditionsResponse?
-    let freshness: FreshnessWindow
+    let freshness: ConditionsFreshness
     let now: Date
     let galacticCoreIsTarget: Bool
 
@@ -261,7 +266,7 @@ struct FactorAssessor {
                 ?? .failure(Unavailable("no moon-free darkness"))
         case .series(let name, let aggregate):
             readings = field(name, unit: factor.unit).map { f in
-                f.series.map { reading($0, source: f.source, factor) { samples in
+                f.series.map { reading($0, field: name, source: f.source, factor) { samples in
                     aggregate == .mean
                         ? samples.values.reduce(0, +) / Double(samples.count)
                         : samples.values.reduce(samples.values.first!, factor.worse)
@@ -316,14 +321,17 @@ struct FactorAssessor {
         return .rated(rating)
     }
 
-    private func provenance(source: String, model: String?, run: Date?, fetched: Date?, asOf: Date?) -> Provenance {
+    private func provenance(
+        field: String?, source: String, model: String?, run: Date?, fetched: Date?, asOf: Date?
+    ) -> Provenance {
         Provenance(
             source: source, model: model, modelRunUTC: run, fetchedUTC: fetched, asOfUTC: asOf,
-            age: asOf.map { now.timeIntervalSince($0) }, freshness: freshness.freshness(since: asOf, now: now))
+            age: asOf.map { now.timeIntervalSince($0) },
+            freshness: freshness.window(forField: field).freshness(since: asOf, now: now))
     }
 
     private func onDevice(_ value: Double, _ factor: ConditionsThresholds.Factor) -> FactorReading {
-        let p = provenance(source: Self.onDeviceSource, model: nil, run: nil, fetched: nil, asOf: now)
+        let p = provenance(field: nil, source: Self.onDeviceSource, model: nil, run: nil, fetched: nil, asOf: now)
         return FactorReading(model: nil, value: value, status: status(value, factor, p), provenance: p, isLastGood: false)
     }
 
@@ -340,15 +348,15 @@ struct FactorAssessor {
     /// Open-Meteo's µ is Greek mu; the config uses the micro sign.
     static func unit(_ u: String) -> String { u.replacingOccurrences(of: "\u{03BC}", with: "\u{00B5}") }
 
-    private func seriesProvenance(_ s: WorkerSeries, source: String, asOf: Date?) -> Provenance {
-        provenance(source: source, model: s.model, run: s.modelRunUTC, fetched: s.fetchedUTC ?? s.lastGoodUTC, asOf: asOf)
+    private func seriesProvenance(_ s: WorkerSeries, field: String, source: String, asOf: Date?) -> Provenance {
+        provenance(field: field, source: source, model: s.model, run: s.modelRunUTC, fetched: s.fetchedUTC ?? s.lastGoodUTC, asOf: asOf)
     }
 
     private func reading(
-        _ s: WorkerSeries, source: String, _ factor: ConditionsThresholds.Factor,
+        _ s: WorkerSeries, field: String, source: String, _ factor: ConditionsThresholds.Factor,
         aggregate: ([Date: Double]) -> Double
     ) -> FactorReading {
-        let p = seriesProvenance(s, source: source, asOf: s.asOfUTC)
+        let p = seriesProvenance(s, field: field, source: source, asOf: s.asOfUTC)
         let sampled = Self.samples(s, in: night.moonFreeWindows)
         let value = (try? sampled.get()).map(aggregate)
         let st: FactorStatus
@@ -389,7 +397,7 @@ struct FactorAssessor {
                 temp.series.map { t in
                     let d = dew.series.first { $0.model == t.model }
                     let asOf = [t.asOfUTC, d?.asOfUTC].compactMap(\.self).min()
-                    let p = seriesProvenance(t, source: temp.source, asOf: d == nil ? nil : asOf)
+                    let p = seriesProvenance(t, field: "temperature", source: temp.source, asOf: d == nil ? nil : asOf)
                     guard let d else {
                         return FactorReading(model: t.model, value: nil, status: .unavailable(reason: "no dew point series"),
                                              provenance: p, isLastGood: false)
@@ -425,7 +433,7 @@ struct FactorAssessor {
                 return .failure(Unavailable("no PM2.5 monitor reporting (ozone rows are ignored)"))
             }
             let asOf = ([f.fetchedUTC] + rows.map(\.observedUTC)).compactMap(\.self).min()
-            let p = provenance(source: f.source, model: nil, run: nil, fetched: f.fetchedUTC, asOf: asOf)
+            let p = provenance(field: "aqi_observed", source: f.source, model: nil, run: nil, fetched: f.fetchedUTC, asOf: asOf)
             return .success([FactorReading(model: nil, value: worst.aqi, status: status(worst.aqi, factor, p), provenance: p, isLastGood: false)])
         }
     }

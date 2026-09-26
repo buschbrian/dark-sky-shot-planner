@@ -67,30 +67,32 @@ struct FreshnessTests {
         let original = try FreshnessConfig.decode(Repo.data("config/app-config.json"))
         let bundled = try FreshnessConfig.bundled()
         #expect(bundled == original)
-        #expect(Set(bundled.layers.keys).isSuperset(of: ["light_pollution", "land_ownership", "darksky_places", FreshnessConfig.conditionsLayer]))
-        for (key, w) in bundled.layers {
+        #expect(Set(bundled.layers.keys).isSuperset(of: ["light_pollution", "land_ownership", "darksky_places"]))
+        #expect(try bundled.conditionsWindow().unit == .hours)
+        for (key, w) in bundled.layers.merging(bundled.hourlyLayers, uniquingKeysWith: { a, _ in a }) {
             #expect(w.layerId == key)
-            #expect(w.freshMaxDays <= w.agingMaxDays && w.agingMaxDays <= w.staleMaxDays)
+            #expect(w.freshMax <= w.agingMax && w.agingMax <= w.staleMax)
         }
+        #expect(bundled.layers.values.allSatisfy { $0.unit == .days })
+        #expect(bundled.hourlyLayers.values.allSatisfy { $0.unit == .hours })
     }
 
-    /// An instant ages like a publication date whose "midnight" is that instant:
-    /// whole days elapsed, floored, against the same windows.
-    @Test("instants age by whole elapsed days against the conditions window")
+    /// Live conditions age in whole elapsed hours, floored, against the
+    /// `freshness_hours` window.
+    @Test("instants age by whole elapsed hours against the conditions window")
     func instants() throws {
         let w = try FreshnessConfig.bundled().conditionsWindow()
         let now = Self.today
         func f(_ hoursAgo: Double) -> Freshness { w.freshness(since: now.addingTimeInterval(-hoursAgo * 3600), now: now) }
-        let day = 24.0
-        let freshHours = (w.freshMaxDays + 1) * day
-        let agingHours = (w.agingMaxDays + 1) * day
+        let freshHours = w.freshMax + 1
+        let agingHours = w.agingMax + 1
         #expect(f(0) == .fresh)
         #expect(f(-5) == .fresh)
         #expect(f(freshHours - 0.01) == .fresh)
-        #expect(f(freshHours) == (w.agingMaxDays > w.freshMaxDays ? .aging : .stale))
-        #expect(f(agingHours - 0.01) == (w.agingMaxDays > w.freshMaxDays ? .aging : .stale))
+        #expect(f(freshHours) == .aging)
+        #expect(f(agingHours - 0.01) == .aging)
         #expect(f(agingHours) == .stale)
-        #expect(f((w.staleMaxDays + 30) * day) == .stale)
+        #expect(f(w.staleMax + 30) == .stale)
         #expect(w.freshness(since: nil, now: now) == .unavailable)
     }
 
@@ -107,5 +109,31 @@ struct FreshnessTests {
         #expect(Freshness.worst([.fresh, .stale, .aging]) == .stale)
         #expect(Freshness.worst([.fresh, .unavailable]) == .unavailable)
         #expect(Freshness.worst([]) == .fresh)
+    }
+}
+
+@Suite("Per-source hourly freshness for live conditions")
+struct ConditionsFreshnessTests {
+
+    @Test("each source is aged by its own schedule")
+    func perSourceWindows() throws {
+        let f = try FreshnessConfig.bundled().conditionsFreshness()
+        let smokeIssue = try ISO.date("2026-09-25T03:00:00Z")
+        let beforeNextIngest = try ISO.date("2026-09-26T04:00:00Z")
+        #expect(f.window(forField: "smoke_column").freshness(since: smokeIssue, now: beforeNextIngest) == .fresh)
+        #expect(f.window(forField: "cloud_cover_total").freshness(since: smokeIssue, now: beforeNextIngest) == .stale)
+        #expect(f.window(forField: "pm2_5").layerId == "air_quality_forecast")
+        #expect(f.window(forField: "no_such_field").layerId == FreshnessConfig.conditionsLayer)
+        #expect(f.window(forField: nil).layerId == FreshnessConfig.conditionsLayer)
+        #expect(f.byField.values.allSatisfy { $0.unit == .hours })
+    }
+
+    @Test("hourly layers list only real Worker fields, each once")
+    func fieldListsMatchTheWorker() throws {
+        let config = try FreshnessConfig.bundled()
+        let fields = try WorkerContractTests.conditions().fields.keys
+        #expect(Set(config.hourlyLayerForField.keys).isSubset(of: Set(fields)))
+        let duplicate = Data(#"{"freshness_days":{},"freshness_hours":{"a":{"layer_id":"a","fields":["x"],"fresh_max_hours":1,"aging_max_hours":2,"stale_max_hours":3},"b":{"layer_id":"b","fields":["x"],"fresh_max_hours":1,"aging_max_hours":2,"stale_max_hours":3}}}"#.utf8)
+        #expect(throws: DecodingError.self) { try FreshnessConfig.decode(duplicate) }
     }
 }

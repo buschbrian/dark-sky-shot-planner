@@ -79,7 +79,8 @@
       "better": "lower",
       "good": 3,
       "marginal": 5,
-      "gates_verdict": true
+      "gates_verdict": false,
+      "note": "Advisory, not a gate (owner decision 2026-09-26): its only source, 7Timer, is optional and non-commercial, so gating on it would cap every night at 'marginal - incomplete data' whenever 7Timer is down. AOD and the smoke column carry the haze signal."
     },
     "seeing": {
       "label": "Seeing (7Timer scale 1–8, 1 best)",

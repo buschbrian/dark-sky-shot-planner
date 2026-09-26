@@ -12,11 +12,11 @@ struct ConditionsSnapshotTests {
         let fetched = Self.received
         let snap = try ConditionsSnapshot(workerJSON: Self.golden, fetchedUTC: fetched)
         let w = try FreshnessConfig.bundled().conditionsWindow()
-        let day: TimeInterval = 86_400
+        let unit = w.unit.seconds
         #expect(snap.age(at: fetched.addingTimeInterval(5400)) == 5400)
         #expect(snap.freshness(at: fetched, window: w) == .fresh)
-        #expect(snap.freshness(at: fetched.addingTimeInterval((w.freshMaxDays + 1) * day - 1), window: w) == .fresh)
-        #expect(snap.freshness(at: fetched.addingTimeInterval((w.agingMaxDays + 1) * day), window: w) == .stale)
+        #expect(snap.freshness(at: fetched.addingTimeInterval((w.freshMax + 1) * unit - 1), window: w) == .fresh)
+        #expect(snap.freshness(at: fetched.addingTimeInterval((w.agingMax + 1) * unit), window: w) == .stale)
     }
 
     @Test("oldest data time is the oldest available series' as-of time")

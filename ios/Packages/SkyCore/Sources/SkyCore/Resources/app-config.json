@@ -42,12 +42,31 @@
       "fresh_max_days": 90,
       "aging_max_days": 180,
       "stale_max_days": 365
-    },
+    }
+  },
+  "freshness_hours": {
     "weather_forecast": {
       "layer_id": "weather_forecast",
-      "fresh_max_days": 0,
-      "aging_max_days": 1,
-      "stale_max_days": 2
+      "fresh_max_hours": 12,
+      "aging_max_hours": 24,
+      "stale_max_hours": 48,
+      "note": "Default for live conditions from the Worker (forecast models, 7Timer, AirNow, space weather): age is the older of model_run_utc and fetched_utc, in whole hours. 12 h covers the normal run lag of the 6-hourly global models (ECMWF open data arrives ~7-8 h after its run, so up to ~14 h old); HRRR is hourly. Aging never gates; stale caps the verdict at marginal (docs/ios/PLAN.md Verdict). Owner decision 2026-09-26: hours, not days. Values are proposals; tune from field nights."
+    },
+    "air_quality_forecast": {
+      "layer_id": "air_quality_forecast",
+      "fields": ["aerosol_optical_depth", "pm2_5", "dust"],
+      "fresh_max_hours": 24,
+      "aging_max_hours": 36,
+      "stale_max_hours": 48,
+      "note": "CAMS Global via Open-Meteo Air Quality runs twice a day (00Z, 12Z) and arrives hours later, so a current run is normally up to ~22 h old."
+    },
+    "smoke_forecast": {
+      "layer_id": "smoke_forecast",
+      "fields": ["smoke_surface", "smoke_column"],
+      "fresh_max_hours": 30,
+      "aging_max_hours": 48,
+      "stale_max_hours": 72,
+      "note": "RAP-Smoke via NDGD has one 03Z issue a day (docs/methods.md), ingested about 04:25Z (docs/methods.md), so the current issue is up to ~25.5 h old; 30 h leaves room for a late ingest. Past 48 h a daily issue has been missed."
     }
   },
   "radiance_mapping": {

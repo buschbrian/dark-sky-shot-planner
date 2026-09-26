@@ -30,18 +30,66 @@ public enum Freshness: String, Sendable, Hashable, Codable, CaseIterable {
     }
 }
 
-/// One layer's windows (`LayerFreshnessConfig` in the web app).
+/// One layer's windows (`LayerFreshnessConfig` in the web app), counted in
+/// whole days (`freshness_days`) or whole hours (`freshness_hours`).
 public struct FreshnessWindow: Sendable, Hashable, Codable {
-    public let layerId: String
-    public let freshMaxDays: Double
-    public let agingMaxDays: Double
-    public let staleMaxDays: Double
+    public enum Unit: String, Sendable, Hashable, Codable {
+        case days, hours
 
-    enum CodingKeys: String, CodingKey {
+        public var seconds: TimeInterval { self == .days ? 86_400 : 3_600 }
+    }
+
+    public let layerId: String
+    public let unit: Unit
+    public let freshMax: Double
+    public let agingMax: Double
+    public let staleMax: Double
+
+    public init(layerId: String, unit: Unit, freshMax: Double, agingMax: Double, staleMax: Double) {
+        self.layerId = layerId
+        self.unit = unit
+        self.freshMax = freshMax
+        self.agingMax = agingMax
+        self.staleMax = staleMax
+    }
+
+    public init(layerId: String, freshMaxDays: Double, agingMaxDays: Double, staleMaxDays: Double) {
+        self.init(layerId: layerId, unit: .days, freshMax: freshMaxDays, agingMax: agingMaxDays, staleMax: staleMaxDays)
+    }
+
+    private enum CodingKeys: String, CodingKey {
         case layerId = "layer_id"
-        case freshMaxDays = "fresh_max_days"
-        case agingMaxDays = "aging_max_days"
-        case staleMaxDays = "stale_max_days"
+        case freshMaxDays = "fresh_max_days", agingMaxDays = "aging_max_days", staleMaxDays = "stale_max_days"
+        case freshMaxHours = "fresh_max_hours", agingMaxHours = "aging_max_hours", staleMaxHours = "stale_max_hours"
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let layerId = try c.decode(String.self, forKey: .layerId)
+        if c.contains(.freshMaxHours) {
+            self.init(
+                layerId: layerId, unit: .hours,
+                freshMax: try c.decode(Double.self, forKey: .freshMaxHours),
+                agingMax: try c.decode(Double.self, forKey: .agingMaxHours),
+                staleMax: try c.decode(Double.self, forKey: .staleMaxHours))
+        } else {
+            self.init(
+                layerId: layerId, unit: .days,
+                freshMax: try c.decode(Double.self, forKey: .freshMaxDays),
+                agingMax: try c.decode(Double.self, forKey: .agingMaxDays),
+                staleMax: try c.decode(Double.self, forKey: .staleMaxDays))
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(layerId, forKey: .layerId)
+        let keys: (CodingKeys, CodingKeys, CodingKeys) = unit == .hours
+            ? (.freshMaxHours, .agingMaxHours, .staleMaxHours)
+            : (.freshMaxDays, .agingMaxDays, .staleMaxDays)
+        try c.encode(freshMax, forKey: keys.0)
+        try c.encode(agingMax, forKey: keys.1)
+        try c.encode(staleMax, forKey: keys.2)
     }
 
     /// `freshnessOf`: whole days elapsed since UTC midnight of `publicationDate`.
@@ -52,12 +100,13 @@ public struct FreshnessWindow: Sendable, Hashable, Codable {
         return freshness(since: midnight, now: today)
     }
 
-    /// The same rule for an instant such as a Worker `fetched_utc` or `model_run_utc`.
+    /// The same rule for an instant such as a Worker `fetched_utc` or
+    /// `model_run_utc`: whole units elapsed, floored.
     public func freshness(since instant: Date?, now: Date) -> Freshness {
         guard let instant else { return .unavailable }
-        let ageDays = (now.timeIntervalSince(instant) * 1000 / 86_400_000).rounded(.down)
-        if ageDays <= freshMaxDays { return .fresh }
-        if ageDays <= agingMaxDays { return .aging }
+        let age = (now.timeIntervalSince(instant) / unit.seconds).rounded(.down)
+        if age <= freshMax { return .fresh }
+        if age <= agingMax { return .aging }
         return .stale
     }
 
@@ -83,24 +132,56 @@ public struct FreshnessWindow: Sendable, Hashable, Codable {
     }
 }
 
-/// `freshness_days` from `config/app-config.json`.
+/// `freshness_days` (published map layers) and `freshness_hours` (live
+/// conditions) from `config/app-config.json`.
 public struct FreshnessConfig: Sendable, Hashable, Decodable {
-    /// The layer whose windows apply to live conditions (Worker fields).
+    /// The `freshness_hours` layer that applies to any Worker field no other
+    /// hourly layer lists.
     public static let conditionsLayer = "weather_forecast"
 
     public let layers: [String: FreshnessWindow]
+    public let hourlyLayers: [String: FreshnessWindow]
+    /// Worker field name → the hourly layer that ages it.
+    public let hourlyLayerForField: [String: String]
 
-    enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey {
         case layers = "freshness_days"
+        case hourlyLayers = "freshness_hours"
+    }
+
+    private struct FieldList: Decodable { let fields: [String]? }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        layers = try c.decode([String: FreshnessWindow].self, forKey: .layers)
+        hourlyLayers = try c.decodeIfPresent([String: FreshnessWindow].self, forKey: .hourlyLayers) ?? [:]
+        let lists = try c.decodeIfPresent([String: FieldList].self, forKey: .hourlyLayers) ?? [:]
+        var byField: [String: String] = [:]
+        for (layer, list) in lists {
+            for field in list.fields ?? [] {
+                guard byField.updateValue(layer, forKey: field) == nil else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .hourlyLayers, in: c, debugDescription: "\(field) is listed by two hourly layers")
+                }
+            }
+        }
+        hourlyLayerForField = byField
     }
 
     public func window(_ layerId: String) throws -> FreshnessWindow {
-        guard let w = layers[layerId] else { throw CocoaError(.coderValueNotFound) }
+        guard let w = layers[layerId] ?? hourlyLayers[layerId] else { throw CocoaError(.coderValueNotFound) }
         return w
     }
 
     public func conditionsWindow() throws -> FreshnessWindow {
-        try window(Self.conditionsLayer)
+        guard let w = hourlyLayers[Self.conditionsLayer] else { throw CocoaError(.coderValueNotFound) }
+        return w
+    }
+
+    public func conditionsFreshness() throws -> ConditionsFreshness {
+        ConditionsFreshness(
+            default: try conditionsWindow(),
+            byField: try hourlyLayerForField.mapValues { try window($0) })
     }
 
     public static func decode(_ data: Data) throws -> FreshnessConfig {
@@ -109,5 +190,21 @@ public struct FreshnessConfig: Sendable, Hashable, Decodable {
 
     public static func bundled() throws -> FreshnessConfig {
         try decode(SharedResources.data("app-config.json"))
+    }
+}
+
+/// Which hourly window ages each Worker field: sources update on different
+/// schedules (hourly HRRR, twice-daily CAMS, daily RAP-Smoke).
+public struct ConditionsFreshness: Sendable, Hashable {
+    public let `default`: FreshnessWindow
+    public let byField: [String: FreshnessWindow]
+
+    public init(default: FreshnessWindow, byField: [String: FreshnessWindow] = [:]) {
+        self.default = `default`
+        self.byField = byField
+    }
+
+    public func window(forField field: String?) -> FreshnessWindow {
+        field.flatMap { byField[$0] } ?? `default`
     }
 }
