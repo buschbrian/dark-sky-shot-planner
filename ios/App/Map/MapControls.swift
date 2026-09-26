@@ -87,7 +87,7 @@ struct NightScrubber: View {
 }
 
 /// A switch drawn from the palette (the system one has a white knob and grey track).
-struct PaletteToggleStyle: ToggleStyle {
+struct MapToggleStyle: ToggleStyle {
     @Environment(\.palette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {

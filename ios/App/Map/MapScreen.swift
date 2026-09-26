@@ -330,7 +330,7 @@ struct MapScreen: View {
                                 .font(.caption).foregroundStyle(p.freshness == .fresh ? palette.secondary : palette.marginal)
                         }
                     }
-                    .toggleStyle(PaletteToggleStyle())
+                    .toggleStyle(MapToggleStyle())
                     .accessibilityIdentifier("layer.\(layer.rawValue)")
                     Text(p.detail).font(.caption2).foregroundStyle(palette.secondary)
                     legend(layer)
