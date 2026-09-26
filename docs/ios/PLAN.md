@@ -154,20 +154,20 @@ dropped and never zero.
 Each milestone lists what "done" means. "Owner checks" are things only a
 real phone at a real dark site can prove. Record their outcome in §Log.
 
-### M0 — Scaffold (Mac)
-- `brew install xcodegen`; `ios/project.yml` with App, Widgets, and UI-test
-  targets; bundle ID and team set locally (not committed if personal).
+### M0 — SkyCore package (Command Line Tools only, no Xcode yet)
+Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo lives on the
+external SSD.
 - `ios/Packages/SkyCore` Swift package with `CAstronomy` (vendored
   `astronomy.c`/`astronomy.h` from cosinekitty/astronomy v2.1.19, the same
   version as the web app's npm package, with LICENSE alongside and version
   recorded) and an empty `SkyCore` target. `heirloomlogic/AstronomyKit`
   (MIT, wraps the same C code) is a useful reference for the Swift wrapper
   shape. Don't depend on it: it has a single maintainer and 7 stars.
-- Add `maplibre-gl-native-distribution` (SPM, BSD-2, ≥ 6.31; PMTiles
-  supported natively since 6.10) now, so the dependency graph is settled early.
+- Tests use **Swift Testing** (`import Testing`), never XCTest. XCTest is not
+  in the Command Line Tools, and Swift Testing is the current standard anyway.
 - `.github/workflows/ios.yml`: macOS runner, `swift test` in SkyCore.
-- **Done when:** `swift test` and `xcodebuild build` pass; app launches in
-  the simulator to a placeholder.
+- **Done when:** `swift test` passes locally **and reports a non-zero test
+  count** (see the zero-tests trap in MAC-SETUP.md), and passes in CI.
 
 ### M1 — SkyCore astronomy parity
 - Port `planner.ts` (darkness window, moon-up intervals, moon-free windows,
@@ -179,6 +179,16 @@ real phone at a real dark site can prove. Record their outcome in §Log.
 - **Done when:** a SkyCore test reads `shared/golden/night-report.json` and
   every case passes within its tolerances; alt/az spot-checks agree with the
   web app's `gcAltitude`/`gcAzimuth` within 0.1°.
+
+### M1b — App scaffold (needs Xcode, see MAC-SETUP.md Phase 4)
+- Xcode 27 (macOS Tahoe 26.6+), iOS platform only, DerivedData on the SSD.
+- `brew install xcodegen`; `ios/project.yml` with App, Widgets, and UI-test
+  targets that depend on the local SkyCore package; bundle ID and team set in a
+  gitignored `Local.xcconfig`.
+- Add `maplibre-gl-native-distribution` (SPM, BSD-2, ≥ 6.31; PMTiles
+  supported natively since 6.10) now, so the dependency graph is settled early.
+- **Done when:** `xcodegen generate && xcodebuild build` pass, and the app
+  launches **on the owner's iPhone** to a placeholder (the simulator is optional).
 
 ### M2 — Tonight, offline
 - Location: GPS, saved spot, or pasted coordinates (also accept the web app's
@@ -301,5 +311,9 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-26: Mac is 256 GB. Added `docs/ios/MAC-SETUP.md` and split the
+  scaffold so M0–M1 need only the Command Line Tools (Swift Testing), with
+  Xcode arriving at M1b. PRs checked: #9 (this plan) and #8 (docs
+  housekeeping) both green and mutually mergeable.
 - 2026-09-25: Plan written. Golden vectors for 8 nights exported from the
   web planner to `shared/golden/night-report.json`.

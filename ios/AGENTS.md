@@ -22,6 +22,7 @@ ios/
 
 | Working on | Read first |
 |---|---|
+| Mac toolchain, disk space, SSD | `../docs/ios/MAC-SETUP.md` |
 | Astronomy in SkyCore | ADR-0002, ADR-0009 §3, `../app/src/astronomy/planner.ts` (reference) |
 | Anything shown with a number | ADR-0006 (freshness), `../app/src/freshness.ts` |
 | Conditions / go-no-go verdict | `../docs/ios/PLAN.md` §Verdict, `../config/conditions-thresholds.json` |
@@ -32,13 +33,16 @@ ios/
 ## Verify
 
 ```bash
-cd ios/Packages/SkyCore && swift test                 # logic + golden parity (fast, run always)
+cd ios/Packages/SkyCore && swift test                 # logic + golden parity; test count must be > 0
 cd ios && xcodegen generate                            # after any project.yml change
 xcodebuild test -project ios/DarkSky.xcodeproj -scheme DarkSky \
   -destination 'platform=iOS Simulator,name=iPhone 17'  # app + UI tests (any sim: xcrun simctl list)
 ```
 
-Name the command you ran before calling work done. Sensor features (AR,
+Tests use Swift Testing (`import Testing`), never XCTest: SkyCore must build
+and test with the Command Line Tools alone (`docs/ios/MAC-SETUP.md`). Prefer
+the owner's iPhone over the simulator (256 GB Mac). Name the command you
+ran before calling work done. Sensor features (AR,
 compass, GPS, background refresh) cannot be proven in the simulator: say so
 explicitly and list what the owner should check on the phone.
 
