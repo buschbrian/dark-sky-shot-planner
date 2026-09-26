@@ -11,7 +11,8 @@ let swiftSettings: [SwiftSetting] = [
 
 // With only the Command Line Tools selected (no Xcode), SwiftPM does not pass
 // swift-testing's macro plugin directory, so no @Test expands. Add it there
-// only; under Xcode this is a no-op. Remove once Xcode is the toolchain.
+// only; under Xcode this is a no-op. Kept so SkyCore still tests with the
+// Command Line Tools alone (ios/AGENTS.md).
 let cltTestingPlugins = "/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing"
 let developerDir = ProcessInfo.processInfo.environment["DEVELOPER_DIR"]
     ?? (try? FileManager.default.destinationOfSymbolicLink(atPath: "/var/db/xcode_select_link"))

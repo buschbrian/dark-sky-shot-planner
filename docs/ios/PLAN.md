@@ -267,9 +267,10 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
   count** (see the zero-tests trap in MAC-SETUP.md), and passes in CI.
 - *Note 2026-09-25:* without Xcode (Command Line Tools only), `swift test`
   needs the `-plugin-path` workaround in SkyCore's `Package.swift` (the
-  Phase 1 `-F` flags in MAC-SETUP.md were not enough on this Mac); remove it
-  once Xcode is installed. `ios.yml` is deferred by the owner until the local
-  build is solid.
+  Phase 1 `-F` flags in MAC-SETUP.md were not enough on this Mac). It is a
+  no-op under Xcode (installed 2026-09-26) and stays, so SkyCore still tests
+  with the Command Line Tools alone (ios/AGENTS.md). `ios.yml` is deferred by
+  the owner until the local build is solid.
 
 ### M1 — SkyCore astronomy parity
 - Port `planner.ts` (darkness window, moon-up intervals, moon-free windows,
