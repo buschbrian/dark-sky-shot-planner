@@ -11,6 +11,7 @@ import { initMap, setLayerVisible, getMap } from "./map/mapview";
 import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
+import { tonightIso } from "./state/tonight";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
 import { buildSkyEvents, type SkyEventsResult } from "./events/agenda";
 import { renderSkyEvents, renderSkyEventsMessage } from "./ui/skyevents";
@@ -117,7 +118,7 @@ function applyState(state: UrlState): void {
     input("coord-input").value = `${state.lat}, ${state.lon}`;
   }
   if (state.date) input("date-input").value = state.date;
-  else input("date-input").value = new Date().toISOString().slice(0, 10);
+  else input("date-input").value = tonightIso();
   for (const [i, id] of LAYER_CHECKBOX_IDS.entries()) {
     check(id).checked = state.layers.includes(LAYER_VALUES[i]!);
   }
@@ -147,7 +148,7 @@ async function computeAndRender(): Promise<void> {
     );
     return;
   }
-  const dateIso = state.date ?? new Date().toISOString().slice(0, 10);
+  const dateIso = state.date ?? tonightIso();
 
   let report: NightReport;
   try {
