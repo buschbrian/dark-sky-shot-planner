@@ -4,11 +4,13 @@ import SwiftUI
 @main
 struct DarkSkyApp: App {
     @State private var state = AppState()
+    private let conditions: any ConditionsProviding = ConditionsClient.live()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(state)
+                .environment(\.conditions, conditions)
         }
         .modelContainer(for: [Spot.self, Gear.self])
     }
