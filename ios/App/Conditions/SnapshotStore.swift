@@ -32,6 +32,15 @@ actor SnapshotStore {
         ConditionsSnapshot.best(for: cell, window: window, in: all())
     }
 
+    /// The saved answer to exactly this request (same cell and hour-aligned
+    /// window), whose `ETag` may be sent back as `If-None-Match`.
+    func exact(for cell: ConditionsCell, window: DateInterval) -> ConditionsSnapshot? {
+        ConditionsSnapshot.newest(all().filter { s in
+            cell.matches(s.response.cell)
+                && s.response.window.startUTC == window.start && s.response.window.endUTC == window.end
+        })
+    }
+
     func saveSpaceWeather(_ data: Data) {
         write(data, to: "space-weather.json")
     }
