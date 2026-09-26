@@ -255,7 +255,7 @@ async function loadModel(
       // entry fetched before the sync margin ends is read again once it has.
       recheckAfter: meta?.synced_utc ?? null,
       stored,
-      timing: `${opts.variant ? `${opts.variant}-` : ""}${model.id}`,
+      timing: `om${opts.variant ?? ""}-${model.id}`,
       startedMs: t0,
     },
     async () => ({ data: await (early ?? fetchIt()), model_run_utc: run }),

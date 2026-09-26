@@ -73,6 +73,8 @@ export interface Deps {
   waitUntil?: (p: Promise<unknown>) => void;
   /** Per-request timings, filled by `cachedLoad` and sent as `Server-Timing`. */
   timings?: Timing[];
+  /** When the request started (epoch ms), for the `total` timing. */
+  startedMs?: number;
 }
 
 export const iso = (d: Date): string => d.toISOString().replace(/\.\d{3}Z$/, "Z");
