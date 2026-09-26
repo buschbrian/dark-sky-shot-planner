@@ -120,7 +120,24 @@
   "opportunities": {
     "kp_index": {
       "label": "Aurora chance (planetary Kp)",
-      "note": "Never lowers the verdict. At or above the latitude-dependent visible Kp, the verdict gets an 'aurora possible' flag."
+      "note": "Never lowers the verdict. At or above the latitude-dependent visible Kp, the verdict gets an 'aurora possible' flag.",
+      "unit": "Kp",
+      "latitude_basis": "geomagnetic_dipole",
+      "latitude_basis_note": "SWPC: the Kp-to-oval relationship 'holds true in geomagnetic latitude, not geographic' (spaceweather.gov/content/tips-viewing-aurora). Centered-dipole latitude from the pole below: Salt Lake City 47.6, Moab 45.7, St George 43.8, Glacier NP 55.2, about 7 degrees above their geographic latitudes.",
+      "geomagnetic_north_pole": {
+        "lat_deg": 80.85,
+        "lon_deg": -72.76,
+        "epoch": 2025.0,
+        "source": "NOAA NCEI, Wandering of the Geomagnetic Poles: WMM2025 geomagnetic north pole for 2025.0, 80.85 N (geodetic) 72.76 W (https://www.ncei.noaa.gov/products/wandering-geomagnetic-poles). The dipole axis moves a few hundredths of a degree a year; refresh with WMM2030."
+      },
+      "visible_kp": [
+        { "noaa_scale": "G2", "kp_min": 5.67, "geomagnetic_lat_min_deg": 55 },
+        { "noaa_scale": "G3", "kp_min": 6.67, "geomagnetic_lat_min_deg": 50 },
+        { "noaa_scale": "G4", "kp_min": 7.67, "geomagnetic_lat_min_deg": 45 },
+        { "noaa_scale": "G5", "kp_min": 9.0, "geomagnetic_lat_min_deg": 40 }
+      ],
+      "visible_kp_source": "NOAA Space Weather Scales (spaceweather.gov/noaa-scales-explanation), aurora line per G level: G2 Kp 6 'typically 55 geomagnetic lat', G3 Kp 7 '50', G4 'Kp = 8, including a 9-' '45', G5 Kp 9 '40'; G1 gives no latitude, so it has no row. kp_min is the level's lowest third: SWPC labels a Kp of 4.67 (5-) as G1, and a G level spans N-, No, N+ (Sharpe and Murray 2017, Space Weather; arXiv:1804.02985), except that NOAA puts 9- in G4, so G5 starts at 9.0. Checked 2026-09-26.",
+      "visible_kp_note": "A spot's visible Kp is the lowest kp_min whose geomagnetic_lat_min_deg is at or below the spot's absolute geomagnetic latitude; below the last row, no flag. Kp rows are 3-hour intervals starting at their time tag. The flag is raised by the latest observed Kp (its interval contains now or ended within one interval) for the next dark window, or by any observed or forecast interval overlapping the night's astronomical darkness. OVATION '% near this cell' is not used: it is an overhead probability for the 3x3 degree box around the cell with a 30-90 min lead, while SWPC notes aurora 'can be observed from as much as 1000 km away' (spaceweather.gov/products/aurora-30-minute-forecast). The G-scale latitudes describe where aurora 'has been seen'; a camera records fainter aurora, so tune against logged nights instead of loosening here."
     }
   }
 }
