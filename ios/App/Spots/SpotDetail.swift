@@ -79,7 +79,7 @@ struct SpotDetail: View {
         }
         .sheet(isPresented: $editing) { SpotEditor(spot: spot) }
         .task(id: "\(spot.latitude),\(spot.longitude),\(spot.timeZoneID)") {
-            if spot.lastCheckedAt.map({ Date.now.timeIntervalSince($0) > Self.staleAfter }) ?? true || spot.week == nil {
+            if spot.lastAttemptAt.map({ Date.now.timeIntervalSince($0) > Self.staleAfter }) ?? true || spot.week == nil {
                 await check()
             }
         }
@@ -102,14 +102,7 @@ struct SpotDetail: View {
             SectionHeader("This week")
         } footer: {
             VStack(alignment: .leading, spacing: 2) {
-                if let checked = spot.lastCheckedAt {
-                    HStack(spacing: 4) {
-                        Text(checking ? "Checking… last checked" : "Conditions checked")
-                        AgeText(date: checked)
-                        Text(spot.lastCheckedInBackground ? "(background)" : "(in app)")
-                    }
-                    .accessibilityIdentifier("week-checked")
-                }
+                CheckStatus(spot: spot).accessibilityIdentifier("week-checked")
                 Text("Moon-free minutes: astronomy-engine on this phone\(spot.week?.terrainAware == true ? ", above this spot's skyline" : ", flat horizon"). Verdict: the worst gating factor over moon-free darkness.")
             }
             .font(.caption)
@@ -121,7 +114,7 @@ struct SpotDetail: View {
     func check() async {
         guard !checking else { return }
         checking = true
-        await SpotRefresh.check(spot, conditions: conditions, background: false, notify: false)
+        await SpotRefresh.check(spot, conditions: conditions, background: false)
         try? context.save()
         checking = false
     }

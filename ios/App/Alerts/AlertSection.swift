@@ -1,3 +1,4 @@
+import SkyCore
 import SwiftData
 import SwiftUI
 import UIKit
@@ -35,29 +36,30 @@ struct AlertSection: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("Last checked:")
-                        if let last = spot.lastCheckedAt {
-                            AgeText(date: last)
-                            Text(spot.lastCheckedInBackground ? "in the background" : "in the app")
-                        } else {
-                            Text("never")
-                        }
-                    }
-                    .font(.footnote)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("alert-last-checked")
+                    CheckStatus(spot: spot)
+                        .font(.footnote)
+                        .accessibilityIdentifier("alert-last-checked")
                     HStack(spacing: 4) {
                         Text("Last background run:")
-                        if let bg = SpotRefresh.lastBackgroundRun { AgeText(date: bg) } else { Text("not yet") }
+                        if let bg = SpotRefresh.lastBackgroundRun {
+                            AgeText(date: bg)
+                            if SpotRefresh.lastBackgroundInterrupted { Text("(cut short by iOS)") }
+                        } else {
+                            Text("not yet")
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(palette.secondary)
+                    if !spot.alertNotifiedNights.isEmpty {
+                        Text("Alerted for: \(spot.alertNotifiedNights.sorted().compactMap(NightDate.init(iso:)).map { SpotRefresh.weekdayLabel($0, timeZone: spot.place.timeZone) }.joined(separator: ", "))")
+                            .font(.caption)
+                            .accessibilityIdentifier("alert-notified")
+                    }
                 }
                 Button(checking ? "Checking…" : "Check now") {
                     Task {
                         checking = true
-                        await SpotRefresh.check(spot, conditions: conditions, background: false, notify: true)
+                        await SpotRefresh.check(spot, conditions: conditions, background: false)
                         try? context.save()
                         checking = false
                     }

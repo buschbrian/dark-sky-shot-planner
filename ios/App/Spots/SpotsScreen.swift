@@ -102,9 +102,7 @@ struct SpotsScreen: View {
 
     func checkAll() async {
         checkingAll = true
-        for spot in spots {
-            await SpotRefresh.check(spot, conditions: conditions, background: false, notify: false)
-        }
+        await SpotRefresh.run(spots, conditions: conditions, background: false)
         try? context.save()
         checkingAll = false
     }

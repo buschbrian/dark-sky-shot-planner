@@ -289,3 +289,42 @@ struct SectionHeader: View {
         Text(text).font(.footnote.weight(.semibold)).foregroundStyle(palette.secondary)
     }
 }
+
+/// What the last check did. "Couldn't check" never reads as "checked, no Go".
+struct CheckStatus: View {
+    @Environment(\.palette) private var palette
+    let spot: Spot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let at = spot.lastAttemptAt, let outcome = spot.lastOutcome {
+                HStack(spacing: 4) {
+                    Text(outcome.counts ? "Checked" : outcome == .interrupted ? "Couldn't finish" : "Couldn't check")
+                    AgeText(date: at)
+                    Text(spot.lastCheckedInBackground ? "(background)" : "(in app)")
+                }
+                .foregroundStyle(outcome.counts ? palette.secondary : palette.poor)
+                if let note = note(outcome) { Text(note) }
+                if !outcome.counts {
+                    HStack(spacing: 4) {
+                        Text("Last complete check:")
+                        if let last = spot.lastCheckedAt { AgeText(date: last) } else { Text("never") }
+                    }
+                }
+            } else {
+                Text("Not checked yet")
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    func note(_ outcome: CheckOutcome) -> String? {
+        switch outcome {
+        case .checked, .astronomyOnly: nil
+        case .partial:
+            spot.week.map { "Conditions for \($0.fetchedWindows) of \($0.requestedWindows) forecast windows; other nights read unavailable." }
+        case .noConditions: "Conditions unavailable, so no night can be Go; verdicts are incomplete."
+        case .interrupted: "iOS ended the background time; showing the previous check."
+        }
+    }
+}
