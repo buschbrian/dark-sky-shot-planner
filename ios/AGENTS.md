@@ -58,9 +58,12 @@ explicitly and list what the owner should check on the phone.
    is no network. Nothing blocks on a fetch; nothing shows a spinner forever.
 4. **Missing never reads as good.** A null cloud/smoke/AQI value renders as
    "unavailable", never 0 (0% cloud and AQI 0 both read as "perfect").
-5. **Field mode is real.** In red mode, no white or blue pixel anywhere,
-   including the AR overlay, map, alerts, and keyboard-adjacent chrome, and
-   brightness controls stay reachable with one hand.
+5. **Field mode is pure red for everything the app draws** (screens, AR
+   overlay, map, sheets, in-app keypads, widget); the status bar and home
+   indicator are hidden. iOS-owned surfaces (permission prompts,
+   notification banners, the system keyboard, file pickers) can't be
+   recolored: avoid them in field mode and never promise otherwise (owner,
+   2026-09-26). Brightness controls stay reachable with one hand.
 6. **Precise coordinates stay on the device.** Anything sent to the Worker is
    rounded to 0.05° (ADR-0010). Saved spots sync only via the owner's iCloud.
 7. **No keys in the app.** Keyed sources go through the Worker.

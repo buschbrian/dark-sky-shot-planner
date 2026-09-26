@@ -434,8 +434,10 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
 ### M8 — Spots, alerts, widget
 - Saved spots with notes, horizon profile, and per-spot week verdicts.
 - "Alert me when a night this week is Go at <spot>": BGAppRefreshTask
-  re-checks, local notification. Be honest that iOS schedules this
-  opportunistically, and show "last checked" in the UI.
+  re-checks, local notification. **Best-effort by owner decision
+  (2026-09-26):** iOS schedules this opportunistically, so the UI says so and
+  shows "last checked" / "couldn't check"; no server-side push (that would
+  break ADR-0010's statelessness).
 - Home Screen / Lock Screen widget: tonight's verdict + moon-free minutes for
   the pinned spot. The astronomy is precomputed into the timeline, so only
   conditions need refreshes (Apple: a frequently viewed widget gets roughly
@@ -465,6 +467,35 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
 - NPF rule, 500 rule (labelled as the rough one), star-trail length,
   hyperfocal/DoF, stacking count for a target SNR, timelapse interval/frames.
 - Pure functions in SkyCore with published worked examples as tests.
+
+### M11 — Shot window (next focus, owner 2026-09-26)
+- One trustworthy answer for one shot: pick a target (GC, Milky Way arch, the
+  moon, a planet) at a spot, and Tonight shows when it clears that spot's
+  terrain horizon, the moon-free minutes left while it is up, and whether
+  clouds or smoke threaten those same minutes, with each model's run time,
+  age and disagreement (`docs/ios/ASTRONOMY-APP-RESEARCH-2026-09-26.md`).
+- Adopts the Worker's `next_update_expected_utc`, ETag revalidation and
+  15-minute HRRR series in `ConditionsClient`.
+- **Owner checks:** time a real go/no-go decision against the current
+  PhotoPills + weather-app routine at a dark site.
+
+### M12 — Capture (ADR-0011)
+- Capability probe on the owner's phone first; its numbers go into
+  `docs/ios/`.
+- Tripod capture: longest usable frames, locked infinity focus, RAW where
+  supported, every frame kept; star-registered, sigma-clipped average (or
+  maximum for trails) computed on device. No generative or learned
+  enhancement.
+- The iPhone's own camera is a gear profile, so NPF and trail limits apply.
+- **Owner checks:** a real stack of the Milky Way from a tripod; battery,
+  heat and storage over a 10-minute sequence.
+
+### Field validation (owner, before claiming accuracy)
+- Terrain horizon at two or three more sites of different relief (the
+  Candlestick DEM check passes 0.494° against a 0.5° bound).
+- Compass and AR alignment near the car and a metal tripod and away from them.
+- Offline forecast age after a day without signal; battery over a night.
+- Verdict against the actual sky, logged here.
 
 ### Later (each needs its own decision)
 Live Activity during a shoot (countdown to moonrise / GC set / dawn), Apple
