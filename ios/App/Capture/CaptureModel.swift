@@ -467,6 +467,10 @@ final class CaptureModel {
                 let first = pending.removeFirst()
                 if await record(first, into: &entries) == nil { failures += 1 }
             }
+            if engine.isInterrupted {
+                endRequest = endRequest ?? .interrupted("the camera was taken or cut off")
+                break
+            }
             if failures >= 3 {
                 endRequest = endRequest ?? .failures
                 break

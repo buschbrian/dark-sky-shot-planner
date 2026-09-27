@@ -398,6 +398,30 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     /// sensor has finished, so the next frame can be requested at once.
     func capture(_ request: FrameRequest, to base: URL, onExposed: (@Sendable () -> Void)? = nil) async throws -> CapturedFrame {
         guard session.isRunning else { throw CaptureError.notRunning }
+        // capturePhoto raises an Objective-C exception (which Swift cannot
+        // catch) if the output lost its camera or the request no longer fits:
+        // measured on the phone when another session took the camera.
+        guard !session.isInterrupted, !isInterrupted,
+              let connection = photoOutput.connection(with: .video), connection.isEnabled, connection.isActive
+        else {
+            setInterrupted(true)
+            throw CaptureError.captureFailed("the camera is no longer connected")
+        }
+        // Measured on the phone: right after a session (re)starts, the RAW
+        // list can be empty for a moment. Wait up to 3 s for it to return.
+        if request.format == .raw {
+            var waited = 0
+            while !photoOutput.availableRawPhotoPixelFormatTypes.contains(where: { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) || AVCapturePhotoOutput.isBayerRAWPixelFormat($0) }) {
+                guard waited < 30 else { throw CaptureError.captureFailed("RAW is not offered by the camera right now") }
+                try await Task.sleep(for: .milliseconds(100))
+                waited += 1
+            }
+            if waited > 0 { CaptureLog.event("RAW list was empty; returned after \(waited * 100) ms") }
+        }
+        let limit = photoOutput.maxPhotoDimensions
+        guard request.dimensions.width <= limit.width, request.dimensions.height <= limit.height else {
+            throw CaptureError.captureFailed("the photo size is no longer supported")
+        }
         let settings = makeSettings(request)
         let isRaw = settings.rawPhotoPixelFormatType != 0
         let url = base.appendingPathExtension(isRaw ? "dng" : "heic")

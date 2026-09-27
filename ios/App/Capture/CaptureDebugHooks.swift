@@ -142,7 +142,8 @@ nonisolated enum CaptureDebug {
     static func waitIdle(_ model: CaptureModel, timeout: TimeInterval) async {
         let end = Date().addingTimeInterval(timeout)
         try? await Task.sleep(for: .milliseconds(200))
-        while model.phase.isBusy, Date() < end { try? await Task.sleep(for: .milliseconds(100)) }
+        // Busy phase over, and the run's cleanup finished too.
+        while model.phase.isBusy || CaptureModel.runExists, Date() < end { try? await Task.sleep(for: .milliseconds(100)) }
     }
 
     @MainActor
@@ -273,6 +274,40 @@ nonisolated enum CaptureDebug {
                 say("lifecycle: deleted test folder \(saved.folder.lastPathComponent)")
             }
         }
+        // 5. A camera interruption mid-run: a second session in this app takes
+        //    the camera (as another app or a call would); the run must end
+        //    with its frames kept and stay recoverable.
+        let fifth = CaptureModel()
+        fifth.frameOverride = 8
+        fifth.timerSeconds = 0
+        fifth.iso = 800
+        fifth.frameOverride = 30
+        await fifth.appear()
+        fifth.start()
+        while !fifth.phase.isBusy { try? await Task.sleep(for: .milliseconds(50)) }
+        while !{ if case .capturing(let f, _) = fifth.phase { f >= 2 } else { false } }(), fifth.phase.isBusy {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        say("lifecycle 5: phase before taking the camera: \(fifth.phase)")
+        let thief = AVCaptureSession()
+        if fifth.phase.isAcquiring, let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+           let input = try? AVCaptureDeviceInput(device: device), thief.canAddInput(input) {
+            thief.addInput(input)
+            let t5 = Date()
+            thief.startRunning() // blocks the main thread briefly; debug scenario only
+            await waitIdle(fifth, timeout: 60)
+            say(String(format: "lifecycle 5: after another session took the camera, run ended %.2f s later: %@", Date().timeIntervalSince(t5), fifth.log.joined(separator: " | ")))
+            thief.stopRunning()
+        }
+        state("5 after interruption", fifth)
+        fifth.leave(.leftScreen)
+        await waitIdle(fifth, timeout: 30)
+        try? await Task.sleep(for: .seconds(1))
+        state("5 after leave", fifth)
+        if !UserDefaults.standard.bool(forKey: "CaptureKeepTestFrames"), let folder = fifth.lastFolder {
+            try? FileManager.default.removeItem(at: folder)
+        }
+
         // Folders from part 1 (no frames) are removed too.
         let root = URL.documentsDirectory.appending(path: "Captures")
         for folder in (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
