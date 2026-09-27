@@ -55,9 +55,20 @@ streams. The app picks this format (`CaptureEngine.bestFormat`).
   position chosen with a magnifier and a star half-flux-radius readout, and
   remembers it.
 
-## Verified capture
+## Verified capture (2026-09-27, indoors)
 
-See the PLAN.md log entry for M12. It records the on-phone self-test
-(`-CaptureSelfTest YES`): the exposure and ISO read back from each frame's
-EXIF, the frame interval, the stack timing, and the bench timing for 20
-synthetic 12 MP frames (`-CaptureBench YES -CaptureBenchFrames 20`).
+- A 5-frame main-camera sequence at 1.0 s, ISO 800 and f/1.48 gave 4032×3024
+  ProRAW DNGs whose EXIF reads 1.0000 s. Their sensor timestamps are 1.00 s
+  apart, so each is a new exposure. Zero shutter lag is off, requests are
+  paced one exposure apart, and every frame's timestamp is checked, because
+  with ZSL on the output returned five "1 s" frames in 0.6 s from its ring
+  buffer.
+- The phone stacked them in 2.8 s into a 16-bit linear-sRGB TIFF (peak
+  memory 805 MB).
+- On 20 synthetic 12 MP frames, star detection takes 0.079 s per frame,
+  registration 0.013 s for all of them, the sigma-clipped mean 6.8 s and
+  the trail maximum 0.9 s.
+- The EXIF focal length of 6.93 mm (3.46 crop, 2.48 µm pitch) gives an NPF
+  limit of 8.6 s at k = 1.
+
+Details and the remaining owner checks are in the PLAN.md log entry for M12.

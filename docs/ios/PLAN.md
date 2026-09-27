@@ -508,6 +508,56 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-27: **M12 capture, built and checked on the owner's iPhone 18 Pro
+  Max** (branch `local/ios-capture`; indoors, no night-sky test yet).
+  - **Probe** (`-CameraProbe YES`, `docs/ios/iphone18promax-camera-probe.json`,
+    summary in `docs/ios/CAPTURE-LIMITS.md`): every format of all three back
+    cameras stops at 1.0 s. Main camera ISO 55–12,320, f/1.48–4.0; ultra wide
+    ISO 15–3,600, f/2.2; telephoto ISO 15–7,680, f/2.8. No Bayer RAW anywhere;
+    ProRAW (`l64r` → DNG) only on the 48 MP formats, which the app uses.
+  - **Sequence** (`-CaptureSelfTest YES`, the real `CaptureModel` run): 5
+    ProRAW DNGs, 4032×3024, EXIF 1.0000 s, ISO 800, f/1.48, 25–28 MB each.
+    Sensor timestamps are 1.00 s apart, so each frame is a new exposure. Two
+    defects were found and fixed on the phone first: frame 1 at 1/15 s (the
+    exposure lock is now awaited), and five "1 s" frames in 0.6 s from the
+    zero-shutter-lag ring buffer (ZSL off, requests paced, timestamps
+    checked). Stacked on the phone in 2.8 s (decode 1.1, stars 0.4, combine
+    1.2 s) into a 16-bit linear-sRGB TIFF, 3024×4032, 73 MB. Peak footprint
+    163 MB while shooting, 805 MB while stacking. Thermal stayed nominal and
+    the battery was at 85 %. The frames and the stack were added to Photos
+    (add-only access granted by the owner): 6 assets, ids in the console log.
+    Indoors, fewer than half the frames aligned on "stars", so the stack fell
+    back to unaligned and says so in its metadata. EXIF gives the main camera
+    6.93 mm (3.46 crop, 2.48 µm pitch), NPF (k = 1) 8.6 s, so the 1 s ceiling
+    is the camera's, not the stars'.
+  - **Stacking bench** (`-CaptureBench YES -CaptureBenchFrames 20`, optimized
+    build): 20 synthetic 12 MP RGB frames with known rotations. Detection
+    0.079 s per frame, registration of all 20 in 0.013 s (worst corner error
+    0.007 px), sigma-clipped mean 6.77 s, maximum 0.94 s, footprint ≤ 435 MB.
+  - **Lifetime** (`-CaptureLifecycleTest YES`, headless `CaptureModel`):
+    leaving during the countdown, during acquisition (3 frames drained, run
+    ended 0.5–0.8 s later) and during stacking (stopped 0.3–0.7 s after
+    leaving). A new screen waits for the old run's cleanup. The saved frames
+    are offered again and restack to completion. After each case: no run,
+    camera off, idle timer restored. A second session taking the camera
+    ended the run with its frames kept; before a fix it raised an
+    uncatchable `capturePhoto` exception.
+  - **SkyCore:** `swift test` 318 tests (44 new). They cover recall ≥ 95 % at
+    SNR 5 (798 synthetic stars), noise detections all fainter than SNR 5,
+    shift within 0.1 px and rotation within 0.01°, a satellite streak
+    reduced below 1 % of its peak, unbroken trail arcs, and a cancelled
+    12 MP stack returning within 1 s.
+  - **Not verified:** the Back button, Home and the phone lock driven through
+    the real UI. The device UI test (`ios/UITests/CaptureLifecycleTests.swift`)
+    cannot be signed: Xcode on this Mac has no account for the xctrunner
+    profile. Also unverified: registration on a real star field, the tripod
+    stability thresholds (the phone never read "still" off a tripod: gyro
+    mean 0.005–0.038 rad/s against a 0.01 limit) and infinity focus.
+  - **Owner checks:** a Milky Way stack from a tripod, with focus set on
+    stars by the HFR readout; the stability thresholds on a tripod; lock and
+    unlock during a run; battery, heat and storage over a 10-minute
+    sequence; deleting the 16 indoor test photos in Photos from the three
+    self-test runs.
 - 2026-09-26: **M1b build checks green** (local). Xcode 27.0 (27A266a) on
   macOS 27.2, iOS 27.0 platform + simulator runtime (7.5 GB); DerivedData on
   the internal disk until an SSD is connected. `xcodegen generate` and
