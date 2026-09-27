@@ -42,11 +42,14 @@ one-off colors, cards, buttons, switches or headers.
 | `DS.Space` | xxs 2 · xs 4 · s 8 · m 12 · l 16 · xl 24 · xxl 32; `screen` 16, `cardGap` 12, `card` 16 |
 | `DS.Radius` | `control` 10 · `card` 16 · `bar` 4 (continuous corners) |
 | Type | `.dsNavTitle` headline · `.dsTitle` title3 semibold · `.dsHeadline` · `.dsBody` · `.dsCallout` · `.dsFootnote` · `.dsMetric` title3 medium tabular · `.dsData` caption mono · `.eyebrow(palette)` uppercase section label · `DisplayNumber` hero |
-| Palette | `background`, `surface` (cards), `raised` (controls on cards), `hairline`, `primary`, `secondary`, `tertiary`, `accent`, `onAccent`, `good`/`marginal`/`poor`, `isField` |
+| Palette | `background`, `surface` (cards), `raised` (controls on cards), `hairline`, `primary`, `secondary`, `tertiary`, `accent` (text, glyphs, strokes), `accentFill` + `accentEdge` + `onAccent` (filled controls), `good`/`marginal`/`poor`, `isField` |
 | `palette.data` | `sun`, `moon`, `galacticCenter`, `moonFree`, `moonlit`, `darkness`, `twilight`, `grid`, `axisLabel`, `cell` |
 
 Standard contrast on `surface`: primary 15.6:1, secondary 8.1, tertiary 5.0,
 accent 8.4. Field: primary 5.1, secondary 4.0 (pure red cannot go higher).
+In field mode no filled control is full red: `accentFill` is red 20 % with a
+60 % `accentEdge` and red 100 % text (4.6:1), so a selected pill or primary
+button is never the brightest area on the screen.
 Sun, GC and moon-free pass the dataviz validator (all pairs, CVD ΔE ≥ 8.7);
 the moon is a neutral silver and always the solid line.
 
@@ -58,7 +61,7 @@ the moon is a neutral silver and always the solid line.
 | `MetricTile` | A labelled value + unit + detail + provenance; nil value reads unavailable. |
 | `ProvenanceChip(info:)` | Source · model · run · age, with a freshness glyph; the word shows unless fresh. |
 | `SourceInfo` | Its data. `SourceInfo(provenance)` converts a SkyCore `Provenance`. |
-| `StatusBadge(level:qualifier:)` | Go / marginal / no-go / unavailable, glyph + word. The limiting factor goes in the line under it. |
+| `StatusBadge(level:qualifier:)` | Go / marginal / no-go / moon up / unavailable, glyph + word. The limiting factor goes in the line under it. Build a night's level with `StatusLevel(level, moonFreeMinutes:)`: a night with no moon-free minutes is `moonUp` (moon glyph, neutral), and the red ✕ is kept for weather no-gos. At accessibility sizes the qualifier moves under the capsule. |
 | `UnavailableValue(reason:)` | A missing value, with an optional reason. |
 | `EmptyState` | An empty screen: symbol, title, one sentence, one action. |
 | `DataStatusLine` | One line about where a screen's data came from (`ConditionsSourceStatus`). |
@@ -69,9 +72,10 @@ the moon is a neutral silver and always the solid line.
 | `PaletteToggleStyle()` | The only switch. |
 | `ChoiceRow`, `KeypadKeyStyle`, `KeypadMetrics`, `PaletteProgress`, `Disclosure` | Segmented choices, in-app keypads, progress, list chevrons. |
 | `screenChrome(title) { actions }` | Every tab screen's header: title (or a control via `principal:`), optional `leading:` context action, actions, then the field-mode toggle, always last on the right. `pushed: true` for pushed pages. |
-| `sheetChrome(title, cancel:, confirm:)` + `.sheetPresentation(palette)` | Every sheet. |
+| `sheetChrome(title, cancel:, confirm:, fieldToggle:)` + `.sheetPresentation(palette)` | Every sheet. `fieldToggle: true` for a sheet someone works in (the gear editor); fields that need the system keyboard go read-only in field mode and say why. |
 | `floatingSurface(palette, shape:)` | Anything floating over a map or camera. |
 | `FieldDock`, `BrightnessControl` | Field mode's palette tab bar with the one-hand brightness slider (shell only). |
+| `AboutScreen` | Settings that belong to no one tab (iCloud sync, not built yet), pushed from the bottom of Tools. |
 
 ## Status voice (`Voice.swift`)
 

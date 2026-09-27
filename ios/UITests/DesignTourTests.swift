@@ -113,9 +113,20 @@ final class DesignTourTests: XCTestCase {
             let m = field ? "field" : "std"
             tab(app, "Spots", field: field)
             XCTAssertTrue(app.buttons["spot-row-Candlestick Camp"].waitForExistence(timeout: 5))
+            XCTAssertFalse(el(app, "icloud-sync").exists, "sync lives in Tools > About, not the Spots list")
             try shot(app, "spots-\(m)", field: field)
             app.buttons["spot-row-Candlestick Camp"].tap()
             XCTAssertTrue(el(app, "night-minutes").waitForExistence(timeout: 30))
+            // Review B-7: field mode toggles from the pushed spot page, last on the right.
+            let toggle = app.buttons["Field mode"].firstMatch
+            XCTAssertTrue(toggle.exists, "field-mode toggle on the pushed spot page")
+            XCTAssertGreaterThan(toggle.frame.midX, app.frame.midX, "toggle on the right")
+            XCTAssertEqual(toggle.value as? String, field ? "On" : "Off")
+            // A moon-limited night shows the moon, not the red cross.
+            let nights = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'night-2' AND label CONTAINS ': ' AND label CONTAINS ', 0 minutes moon-free'"))
+            for i in 0..<nights.count {
+                XCTAssertTrue(nights.element(boundBy: i).label.contains("moon up"), nights.element(boundBy: i).label)
+            }
             try shot(app, "spot-detail-1-\(m)", field: field)
             app.swipeUp()
             try shot(app, "spot-detail-2-\(m)", field: field)
@@ -144,6 +155,14 @@ final class DesignTourTests: XCTestCase {
             enter(setup, id, v)
         }
         try shot(setup, "gear-editor-std", field: false)
+        // The sheet has the field-mode toggle; in field mode names are read-only (system keyboard).
+        let sheetToggle = setup.buttons["Field mode"].firstMatch
+        XCTAssertTrue(sheetToggle.exists, "field-mode toggle in the gear sheet")
+        sheetToggle.tap()
+        XCTAssertFalse(camera.isEnabled, "names are read-only in field mode")
+        try shot(setup, "gear-editor-field", field: true)
+        sheetToggle.tap()
+        XCTAssertTrue(camera.isEnabled)
         setup.buttons["gear.save"].tap()
         setup.terminate()
 
@@ -153,8 +172,19 @@ final class DesignTourTests: XCTestCase {
             tab(app, "Tools", field: field)
             XCTAssertTrue(app.buttons["tools.calc.starExposure"].waitForExistence(timeout: 5))
             try shot(app, "tools-\(m)", field: field)
+            if !field {
+                // The not-yet-built iCloud sync lives on the About page.
+                let about = app.buttons["tools.about"]
+                about.swipeUpUntilVisible(in: app)
+                about.tap()
+                XCTAssertTrue(el(app, "icloud-sync").waitForExistence(timeout: 5))
+                try shot(app, "about-\(m)", field: field)
+                app.navigationBars.buttons.element(boundBy: 0).tap()
+                app.swipeDown()
+            }
             app.buttons["tools.calc.starExposure"].tap()
             XCTAssertTrue(el(app, "tools.result.npf").waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["Field mode"].firstMatch.exists, "field-mode toggle on the pushed calculator")
             try shot(app, "tools-npf-\(m)", field: field)
             app.textFields["tools.fNumber"].tap()
             XCTAssertTrue(app.keys["keypad.done"].waitForExistence(timeout: 5))
@@ -181,6 +211,14 @@ final class DesignTourTests: XCTestCase {
         let app = launch(field: false, extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"])
         let headline = el(app, "tonight.headline")
         XCTAssertTrue(headline.waitForExistence(timeout: 20))
+        for id in ["tonight.factors", "tonight.refresh"] {
+            let b = app.buttons[id]
+            b.swipeUpUntilVisible(in: app)
+            XCTAssertTrue(b.exists, id)
+            XCTAssertLessThanOrEqual(b.frame.maxX, app.frame.maxX - 16, "\(id) stays inside the card")
+        }
+        app.swipeDown(velocity: .slow)
+        app.swipeDown(velocity: .slow)
         XCTAssertTrue(headline.label.contains("minutes of moon-free darkness"), headline.label)
         XCTAssertTrue(headline.frame.minX >= 0 && headline.frame.maxX <= app.frame.maxX + 1, "headline fits the width")
         try shot(app, "ax-tonight-1", field: false)
