@@ -79,19 +79,28 @@ struct TonightScreen: View {
         }
         .sheet(isPresented: $showFactors) {
             if let verdict = model.verdict {
-                FactorsSheet(verdict: verdict, now: now, workerConfigured: workerConfigured)
+                FactorsSheet(verdict: verdict, now: now, workerConfigured: workerConfigured,
+                             moonFreeMinutes: moonFreeMinutes)
             }
         }
     }
 
+    /// Answer first (product review 2026-09-27 §1): the shot window for the
+    /// remembered target, then the night's moon-free darkness and verdict,
+    /// the sky facts, what else is in the sky, and the charts. Each block
+    /// keeps its height while it loads, so nothing above the fold moves.
     @ViewBuilder
     private func answer(place: Place, night: NightDate, now: Date) -> some View {
+        ShotWindowSection(place: place, night: night, snapshot: model.snapshot, status: conditionsStatus,
+                          refreshing: model.refreshing, now: now)
         switch model.astronomy {
         case nil:
-            Text("Working out the night…")
-                .font(.dsCallout)
-                .foregroundStyle(palette.secondary)
-                .frame(maxWidth: .infinity, minHeight: 160)
+            SectionCard("Moon-free darkness") {
+                Text("Working out the night…")
+                    .font(.dsCallout)
+                    .foregroundStyle(palette.secondary)
+            }
+            .frame(minHeight: answerHeight, alignment: .top)
         case .failure(let failure):
             SectionCard {
                 StatusBadge(level: .unavailable)
@@ -109,13 +118,31 @@ struct TonightScreen: View {
                     if !showDetails { Task { showDetails = true } }
                 }
             AstronomyDetails(report: astro.report, timeZone: tz, config: model.appConfig)
+            SkyEventsSection(place: place, night: night)
             if showDetails {
                 NightStripChart(strip: astro.strip, timeZone: tz, now: now, gcThreshold: model.appConfig?.gcMinUsefulAltitudeDeg)
                 ConditionsStripChart(
                     rows: StripRow.rows(from: model.snapshot?.response), span: astro.strip.span,
                     darkness: astro.strip.darkness, timeZone: tz, now: now, loading: isLoading)
+            } else {
+                // The charts' own heights, until they join a frame later.
+                SectionCard("Altitude tonight") { Color.clear.frame(height: chartHeight) }
+                SectionCard("Conditions by hour") { Color.clear.frame(height: stripHeight) }
             }
         }
+    }
+
+    @ScaledMetric(relativeTo: .body) private var answerHeight = 420.0
+    @ScaledMetric(relativeTo: .caption) private var chartHeight = 214.0
+    @ScaledMetric(relativeTo: .caption) private var stripHeight = 260.0
+
+    private var moonFreeMinutes: Int? {
+        guard case .success(let a)? = model.astronomy, !a.report.noAstronomicalDarkness else { return nil }
+        return a.report.moonFreeMinutes
+    }
+
+    private var conditionsStatus: ConditionsStatus? {
+        if case .loaded(_, let status) = model.conditions { status } else { nil }
     }
 
     /// Where the conditions came from, in the one voice (`Voice`).
@@ -126,14 +153,7 @@ struct TonightScreen: View {
         case .none(let reason):
             return .none(reason: reason)
         case .loaded(let s, let status):
-            switch status {
-            case .offlineCache: return .lastGood(fetched: s.fetchedUTC, refreshing: model.refreshing)
-            case .workerSilentDirect: return .direct(serviceConfigured: true)
-            case .notSetUp: return .direct(serviceConfigured: false)
-            case .liveWorker(let checked, let revalidated):
-                return revalidated ? .confirmed(fetched: s.fetchedUTC, checked: checked) : .service(fetched: s.fetchedUTC)
-            case .nothing: return .none(reason: "No conditions yet.")
-            }
+            return ConditionsSourceStatus(status, snapshot: s, refreshing: model.refreshing)
         }
     }
 
@@ -215,5 +235,40 @@ struct PlaceHeader: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint("Changes the location")
         .accessibilityIdentifier("tonight.place")
+    }
+}
+
+extension ConditionsSourceStatus {
+    /// The status line for a `ConditionsStatus` (review B-4): offline only for
+    /// a saved copy, a 304 reads as confirmed. nil status means still checking.
+    init(_ status: ConditionsStatus?, snapshot: ConditionsSnapshot?, refreshing: Bool) {
+        guard let status else {
+            self = .checking
+            return
+        }
+        switch status {
+        case .offlineCache(let at): self = .lastGood(fetched: snapshot?.fetchedUTC ?? at, refreshing: refreshing)
+        case .workerSilentDirect: self = .direct(serviceConfigured: true)
+        case .notSetUp: self = .direct(serviceConfigured: false)
+        case .liveWorker(let checked, let revalidated):
+            let fetched = snapshot?.fetchedUTC ?? checked
+            self = revalidated ? .confirmed(fetched: fetched, checked: checked) : .service(fetched: fetched)
+        case .nothing: self = .none(reason: "No conditions yet.")
+        }
+    }
+}
+
+extension View {
+    /// At least `lines` lines of `font` tall, so text that changes as data
+    /// arrives does not move what is below it.
+    func reservingLines(_ lines: Int, font: Font) -> some View {
+        ZStack(alignment: .topLeading) {
+            Text(String(repeating: "\n", count: max(lines - 1, 0)) + " ")
+                .font(font)
+                .hidden()
+                .accessibilityHidden(true)
+            self
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
