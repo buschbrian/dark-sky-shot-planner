@@ -1,9 +1,8 @@
 # Any astrophotography: owner decisions
 
-These are the calls that only the owner can make before ADR-0013 moves from
-Proposed to Accepted. Each has options and a recommendation, and none of them
-is decided here. Record each answer, with its date, in
-`PLAN-ANY-ASTRO.md` §Log.
+**All nine decisions below (D1–D9) are recorded, dated 2026-09-27.** ADR-0013
+is Accepted on the strength of them. This file is kept as the record of each
+call, its options and its recommendation — not as an open question list.
 
 ## D1. Bundle OpenNGC (CC BY-SA 4.0)?
 
