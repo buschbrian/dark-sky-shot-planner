@@ -81,8 +81,9 @@ nonisolated enum SpotWeekPlanner {
         }
         let plan = requests(needs)
         var snapshots: [Int: ConditionsSnapshot] = [:]
+        var statuses: [ConditionsStatus] = []
         var fetched = 0
-        await withTaskGroup(of: (Request, ConditionsSnapshot?).self) { group in
+        await withTaskGroup(of: (Request, ConditionsFetch?).self) { group in
             var next = 0
             func enqueue() {
                 guard next < plan.count else { return }
@@ -90,14 +91,15 @@ nonisolated enum SpotWeekPlanner {
                 next += 1
                 group.addTask {
                     await limiter?.acquire()
-                    let snapshot = Task.isCancelled ? nil : await conditions.conditions(for: input.place, window: request.window)
+                    let result = Task.isCancelled ? nil : await conditions.fetchWithStatus(for: input.place, window: request.window)
                     await limiter?.release()
-                    return (request, snapshot)
+                    return (request, result)
                 }
             }
             for _ in 0..<min(perSpotRequests, plan.count) { enqueue() }
-            for await (request, snapshot) in group {
-                if let snapshot {
+            for await (request, result) in group {
+                if let result { statuses.append(result.status) }
+                if let snapshot = result?.snapshot {
                     fetched += 1
                     for i in request.nights { snapshots[i] = snapshot }
                 }
@@ -120,7 +122,8 @@ nonisolated enum SpotWeekPlanner {
                 usableUntil: report?.moonFreeWindows.map(\.end).max())
         }
         return SpotWeek(checkedAt: now, terrainAware: input.horizon != nil, nights: nights,
-                        requestedWindows: plan.count, fetchedWindows: fetched, interrupted: interrupted)
+                        requestedWindows: plan.count, fetchedWindows: fetched, interrupted: interrupted,
+                        conditionsStatus: ConditionsStatus.combined(statuses))
     }
 
     static func summary(_ v: Verdict) -> VerdictSummary {

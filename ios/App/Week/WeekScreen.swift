@@ -214,16 +214,11 @@ private struct WeekList: View {
         switch loader.phase {
         case .computing: return "Computing the nights on this phone…"
         case .fetching:
-            guard let receipt = loader.conditions.oldestReceipt else { return "Astronomy ready. Checking conditions…" }
-            return "Conditions received \(WeekFormat.age(loader.computedAt.timeIntervalSince(receipt))). Checking for a newer run…"
+            guard let line = loader.conditions.statusLine(now: loader.computedAt) else { return "Astronomy ready. Checking conditions…" }
+            return "\(line) Checking for a newer run…"
         case .done:
-            let c = loader.conditions
-            guard let receipt = c.oldestReceipt else {
-                return "Conditions unavailable (offline, or none cached yet). Astronomy is computed on this phone."
-            }
-            let answered = c.answeredBlocks == c.blocks.count
-                ? "" : " for \(c.answeredBlocks) of \(c.blocks.count) forecast windows"
-            return "Conditions received \(WeekFormat.age(loader.computedAt.timeIntervalSince(receipt)))\(answered)."
+            return loader.conditions.statusLine(now: loader.computedAt)
+                ?? "Conditions unavailable (offline, or none cached yet). Astronomy is computed on this phone."
         }
     }
 

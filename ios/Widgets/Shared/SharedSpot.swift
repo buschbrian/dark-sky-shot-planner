@@ -86,6 +86,10 @@ nonisolated struct SpotWeek: Codable, Hashable, Sendable {
     let requestedWindows: Int
     let fetchedWindows: Int
     let interrupted: Bool
+    /// Where the check's conditions came from, the weakest window's answer
+    /// (`ConditionsStatus.combined`, review B-4); nil when none were needed,
+    /// and for weeks saved before this field existed.
+    var conditionsStatus: ConditionsStatus? = nil
 
     var outcome: CheckOutcome {
         if interrupted { return .interrupted }

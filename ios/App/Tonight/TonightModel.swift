@@ -22,9 +22,26 @@ final class TonightModel {
     enum ConditionsState {
         case idle
         case loading
-        /// `cached`: an older copy from disk, shown while (or because) a refresh failed.
-        case loaded(ConditionsSnapshot, cached: Bool)
+        /// `status`: where the copy came from (review B-4). A Worker 304 keeps
+        /// the old `fetchedUTC` but is `.liveWorker(revalidated: true)`, never
+        /// offline; `.offlineCache` is an older copy from disk.
+        case loaded(ConditionsSnapshot, status: ConditionsStatus)
         case none(reason: String)
+
+        /// The origin line under the verdict.
+        func originLine(refreshing: Bool, now: Date) -> String {
+            switch self {
+            case .idle, .loading:
+                return "Conditions: fetching…"
+            case .none(let reason):
+                return "Conditions: \(reason)"
+            case .loaded(_, let status):
+                if refreshing, case .offlineCache(let at) = status {
+                    return "Conditions: saved copy from \(ConditionsStatus.ago(at, now)), refreshing…"
+                }
+                return status.summary(now: now)
+            }
+        }
     }
 
     private(set) var key: String?
@@ -99,19 +116,18 @@ final class TonightModel {
             conditions = .loading
             if let live = provider as? any LiveConditionsProviding,
                let cached = await live.cachedConditions(for: place, window: window), key == self.key {
-                conditions = .loaded(cached, cached: true)
+                conditions = .loaded(cached, status: .offlineCache(fetchedAt: cached.fetchedUTC))
                 updateVerdict()
             }
         }
         refreshing = true
-        let asked = Date.now
         let interval = Perf.signposter.beginInterval("Conditions fetch")
-        let snapshot = await provider.conditions(for: place, window: window)
+        let result = await provider.fetchWithStatus(for: place, window: window)
         Perf.signposter.endInterval("Conditions fetch", interval)
         guard key == self.key else { return }
         refreshing = false
-        if let snapshot {
-            conditions = .loaded(snapshot, cached: snapshot.fetchedUTC < asked.addingTimeInterval(-5))
+        if let snapshot = result.snapshot {
+            conditions = .loaded(snapshot, status: result.status)
         } else if self.snapshot == nil {
             conditions = .none(reason: "Offline, and nothing cached for this place and night.")
         }

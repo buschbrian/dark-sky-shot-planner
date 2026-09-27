@@ -46,7 +46,9 @@ final class TonightTests: XCTestCase {
 
         element("tonight.previousNight").tap()
         element("tonight.previousNight").tap()
-        XCTAssertTrue(date.label.hasSuffix("last night"), date.label)
+        // Review B-2: the night before tonight says when its darkness ended.
+        expectation(for: NSPredicate(format: "label CONTAINS ', last night (ended '"), evaluatedWith: date)
+        waitForExpectations(timeout: 10)
 
         element("tonight.backToTonight").tap()
         XCTAssertEqual(date.label, tonightLabel)
@@ -105,12 +107,48 @@ final class TonightTests: XCTestCase {
         waitForExpectations(timeout: 10)
         XCTAssertFalse(element("tonight.verdict").label.hasPrefix("Go"), "missing data never reads as good")
 
+        // Review B-5: a night with no moon-free darkness is no-go on the moon alone and its
+        // factor sheet is one reason; the missing-conditions check needs a night with some.
+        var steps = 0
+        while element("tonight.verdict").label.contains("moon is up through all of darkness"), steps < 10 {
+            if steps == 0 {
+                XCTAssertFalse(element("tonight.verdict").label.contains("incomplete data"), element("tonight.verdict").label)
+                element("tonight.factors").tap()
+                let reason = app.staticTexts.matching(NSPredicate(format: "label CONTAINS \"Conditions don't matter tonight\"")).firstMatch
+                XCTAssertTrue(reason.waitForExistence(timeout: 5))
+                XCTAssertFalse(app.descendants(matching: .any).matching(
+                    NSPredicate(format: "label BEGINSWITH 'Cloud cover (mean over window)'")).firstMatch.exists)
+                element("factors.done").tap()
+            }
+            element("tonight.nextNight").tap()
+            steps += 1
+            expectation(for: offline, evaluatedWith: origin)
+            waitForExpectations(timeout: 10)
+        }
+
         element("tonight.factors").tap()
         let cloud = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Cloud cover (mean over window)'")).firstMatch
         XCTAssertTrue(cloud.waitForExistence(timeout: 5))
         XCTAssertTrue(cloud.label.contains("unavailable"), cloud.label)
         XCTAssertFalse(cloud.label.contains("0%"), cloud.label)
         element("factors.done").tap()
+    }
+
+    /// Review B-4: a Worker 304 on a copy fetched two hours ago is live and
+    /// unchanged, never "offline" (`-stubConditions revalidated`).
+    @MainActor
+    func testRevalidatedConditionsReadUnchangedNeverOffline() {
+        app.terminate()
+        app.launchArguments = ["-DarkSkyUITest", "-stubConditions", "revalidated"]
+        app.launch()
+        enterLocation("38.35, -109.95")
+        let origin = element("tonight.conditionsOrigin")
+        XCTAssertTrue(origin.waitForExistence(timeout: 10))
+        let unchanged = NSPredicate(format: "label BEGINSWITH 'Live conditions, checked' AND label ENDSWITH ', unchanged'")
+        expectation(for: unchanged, evaluatedWith: origin)
+        waitForExpectations(timeout: 20)
+        XCTAssertFalse(origin.label.localizedCaseInsensitiveContains("offline"), origin.label)
+        XCTAssertFalse(origin.label.contains("No connection"), origin.label)
     }
 
     /// Screens for the visual field-mode check, kept as test attachments.
@@ -161,7 +199,7 @@ final class TonightTests: XCTestCase {
         app.launch()
         enterLocation("38.35, -109.95")
         let origin = element("tonight.conditionsOrigin")
-        let loaded = NSPredicate(format: "label CONTAINS 'Worker' OR label CONTAINS 'Open-Meteo'")
+        let loaded = NSPredicate(format: "label BEGINSWITH 'Live conditions' OR label CONTAINS 'Open-Meteo'")
         expectation(for: loaded, evaluatedWith: origin)
         waitForExpectations(timeout: 60)
         for field in [false, true] {

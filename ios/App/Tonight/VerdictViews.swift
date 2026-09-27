@@ -79,23 +79,7 @@ struct VerdictCard: View {
     }
 
     private var originLine: String {
-        switch conditions {
-        case .idle, .loading:
-            return "Conditions: fetching…"
-        case .none(let reason):
-            return "Conditions: \(reason)"
-        case .loaded(let s, let cached):
-            let age = Format.age(now.timeIntervalSince(s.fetchedUTC)).replacingOccurrences(of: " old", with: " ago")
-            if cached {
-                return refreshing
-                    ? "Conditions: saved copy from \(age), refreshing…"
-                    : "Conditions: offline, showing the copy fetched \(age)"
-            }
-            if s.response.isDirectFallback {
-                return "Conditions: Worker unreachable, so clouds come straight from Open-Meteo; the other factors are unavailable"
-            }
-            return "Conditions: from the conditions Worker, fetched \(Format.clock(s.fetchedUTC, .current))"
-        }
+        conditions.originLine(refreshing: refreshing, now: now)
     }
 }
 

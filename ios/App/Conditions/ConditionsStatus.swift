@@ -3,7 +3,7 @@ import SkyCore
 
 /// Where the conditions on screen came from. Every case is a normal state of
 /// the app, not an error: the words are for the views to set calmly.
-nonisolated enum ConditionsStatus: Sendable, Hashable {
+nonisolated enum ConditionsStatus: Sendable, Hashable, Codable {
     /// The Worker answered: a new body, or a 304 confirming the saved one.
     case liveWorker(confirmedAt: Date, revalidated: Bool)
     /// A Worker is configured but didn't answer in time, so clouds came
@@ -39,7 +39,7 @@ nonisolated enum ConditionsStatus: Sendable, Hashable {
         switch self {
         case .liveWorker(let at, let revalidated):
             return revalidated
-                ? "Live conditions, checked \(Self.ago(at, now)) and unchanged"
+                ? "Live conditions, checked \(Self.ago(at, now)), unchanged"
                 : "Live conditions, fetched \(Self.ago(at, now))"
         case .workerSilentDirect(let at):
             return "The conditions service didn't answer, so clouds came straight from Open-Meteo \(Self.ago(at, now)); other factors show their last good copy"
@@ -49,6 +49,32 @@ nonisolated enum ConditionsStatus: Sendable, Hashable {
             return "Clouds straight from Open-Meteo, \(Self.ago(at, now)); smoke, haze and wind need the conditions service, which isn't set up"
         case .nothing:
             return "No connection, and nothing saved for this place and night yet"
+        }
+    }
+
+    /// One status for several requests (Week's windows, a spot's nights):
+    /// the least live one, and among equals the oldest, so a line never
+    /// claims more than the weakest answer behind it. nil for none.
+    static func combined(_ statuses: [ConditionsStatus]) -> ConditionsStatus? {
+        statuses.min { a, b in
+            a.rank != b.rank ? a.rank < b.rank : (a.at ?? .distantPast) < (b.at ?? .distantPast)
+        }
+    }
+
+    private var rank: Int {
+        switch self {
+        case .nothing: 0
+        case .offlineCache: 1
+        case .workerSilentDirect: 2
+        case .notSetUp: 3
+        case .liveWorker: 4
+        }
+    }
+
+    private var at: Date? {
+        switch self {
+        case .liveWorker(let at, _), .workerSilentDirect(let at), .offlineCache(let at), .notSetUp(let at): at
+        case .nothing: nil
         }
     }
 

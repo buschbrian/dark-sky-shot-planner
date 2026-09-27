@@ -68,6 +68,12 @@ import Testing
         }
         #expect(direct.isDirectFallback)
         #expect(!golden.isDirectFallback)
+
+        // Snapshots saved before the review B-4 rewording still read as a fallback.
+        let saved = try String(decoding: ConditionsSnapshot(response: direct, fetchedUTC: Self.fetched).encoded(), as: UTF8.self)
+        let legacy = saved.replacingOccurrences(of: "the conditions service didn't answer", with: "Worker unreachable")
+        #expect(legacy != saved)
+        #expect(try ConditionsSnapshot.decode(Data(legacy.utf8)).response.isDirectFallback)
     }
 
     @Test func everyOtherWorkerFieldIsUnavailableNeverZero() throws {

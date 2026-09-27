@@ -2,7 +2,9 @@ import Foundation
 import SkyCore
 
 /// UI-test conditions, chosen with the launch argument `-stubConditions go`
-/// (every gating factor good, fresh) or `-stubConditions unavailable`.
+/// (every gating factor good, fresh), `-stubConditions revalidated` (a copy
+/// fetched two hours ago that the Worker just confirmed with a 304) or
+/// `-stubConditions unavailable`.
 /// Release builds never stub.
 enum DebugConditions {
     static var override: (any ConditionsProviding)? {
@@ -11,6 +13,7 @@ enum DebugConditions {
         guard let i = args.firstIndex(of: "-stubConditions"), i + 1 < args.count else { return nil }
         switch args[i + 1] {
         case "go": return ClearSkyConditions()
+        case "revalidated": return RevalidatedConditions()
         case "unavailable": return UnavailableConditions()
         default: return nil
         }
@@ -24,6 +27,9 @@ enum DebugConditions {
 /// A Worker-shaped response with clear, calm, clean air for any window,
 /// decoded through SkyCore's own Worker models.
 struct ClearSkyConditions: ConditionsProviding {
+    /// How long ago the device received this copy (`ConditionsSnapshot.fetchedUTC`).
+    var receivedAgo: TimeInterval = 0
+
     func conditions(for place: Place, window: DateInterval) async -> ConditionsSnapshot? {
         let now = Date.now
         let iso = ISO8601DateFormatter()
@@ -58,7 +64,37 @@ struct ClearSkyConditions: ConditionsProviding {
             ],
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: json) else { return nil }
-        return try? ConditionsSnapshot(workerJSON: data, fetchedUTC: now)
+        return try? ConditionsSnapshot(workerJSON: data, fetchedUTC: now.addingTimeInterval(-receivedAgo))
+    }
+
+    func spaceWeather(near place: Place?) async -> SpaceWeatherResponse? { nil }
+}
+
+/// Review B-4's case: the saved copy is two hours old and the Worker answers
+/// 304, so the body and its `fetchedUTC` stay old while the status is live.
+struct RevalidatedConditions: LiveConditionsProviding {
+    let copy = ClearSkyConditions(receivedAgo: 2 * 3600)
+    var workerConfigured: Bool { true }
+
+    func conditions(for place: Place, window: DateInterval) async -> ConditionsSnapshot? {
+        await fetch(for: place, window: window).snapshot
+    }
+
+    func cachedConditions(for place: Place, window: DateInterval) async -> ConditionsSnapshot? {
+        await copy.conditions(for: place, window: window)
+    }
+
+    func latestRuns() async -> [String: ModelRunInfo] { [:] }
+
+    func fetch(for place: Place, window: DateInterval) async -> ConditionsFetch {
+        ConditionsFetch(
+            snapshot: await copy.conditions(for: place, window: window),
+            status: .liveWorker(confirmedAt: .now, revalidated: true),
+            nextRefresh: .now.addingTimeInterval(15 * 60), workerHTTPStatus: 304)
+    }
+
+    func nextRefresh(for place: Place, window: DateInterval, now: Date) async -> Date {
+        now.addingTimeInterval(15 * 60)
     }
 
     func spaceWeather(near place: Place?) async -> SpaceWeatherResponse? { nil }
