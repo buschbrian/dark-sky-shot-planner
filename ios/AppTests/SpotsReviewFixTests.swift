@@ -5,6 +5,7 @@ import Testing
 
 /// Review 2026-09-26 (docs/ios/PERIODIC-REVIEW-2026-09-26.md): alerts only for
 /// windows still ahead; the measured skyline belongs to its surveyed observer.
+@MainActor
 struct SpotsReviewFixTests {
     static let now = Date(timeIntervalSince1970: 1_790_500_000)
 

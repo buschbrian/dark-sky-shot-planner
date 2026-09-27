@@ -14,8 +14,8 @@ extension ConditionsSnapshot {
     }
 
     /// Snapshots old enough to delete: the Worker keeps last-good values a
-    /// week, so an older copy is never the best answer.
+    /// week, so an older copy is never the best answer. A 304 renews a copy.
     public static func expired(_ snapshots: [ConditionsSnapshot], now: Date, keep: TimeInterval = 8 * 86_400) -> [ConditionsSnapshot] {
-        snapshots.filter { now.timeIntervalSince($0.fetchedUTC) > keep }
+        snapshots.filter { now.timeIntervalSince($0.confirmedUTC) > keep }
     }
 }

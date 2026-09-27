@@ -52,6 +52,9 @@ public struct FactorReading: Sendable, Hashable {
     public let provenance: Provenance
     /// The value is the Worker's last good copy after a failed fetch: shown, not rated.
     public let isLastGood: Bool
+    /// Which cadence the value came from when a 15-minute series was involved
+    /// (`ForecastCadence`): used, and to when, or why not.
+    public var cadence: String? = nil
 }
 
 public struct FactorAssessment: Sendable, Hashable {
@@ -266,11 +269,13 @@ struct FactorAssessor {
                 ?? .failure(Unavailable("no moon-free darkness"))
         case .series(let name, let aggregate):
             readings = field(name, unit: factor.unit).map { f in
-                f.series.map { reading($0, field: name, source: f.source, factor) { samples in
-                    aggregate == .mean
-                        ? samples.values.reduce(0, +) / Double(samples.count)
-                        : samples.values.reduce(samples.values.first!, factor.worse)
-                } }
+                f.series.map { s in
+                    reading(s, fine: f.series15Min?.first { $0.model == s.model }, field: name, source: f.source, factor) { samples in
+                        aggregate == .mean
+                            ? ForecastCadence.timeWeightedMean(samples, over: night.moonFreeWindows.map { TimeWindow(start: $0.start, end: $0.end) })
+                            : samples.values.reduce(samples.values.first!, factor.worse)
+                    }
+                }
             }
         case .dewPointSpread: readings = dewPointSpread(factor)
         case .observedAQI: readings = observedAQI(factor)
@@ -352,30 +357,41 @@ struct FactorAssessor {
         provenance(field: field, source: source, model: s.model, run: s.modelRunUTC, fetched: s.fetchedUTC ?? s.lastGoodUTC, asOf: asOf)
     }
 
+    /// One model's value over the windows, from `ForecastCadence`'s points:
+    /// 15-minute where the Worker sent a complete native series, hourly elsewhere.
     private func reading(
-        _ s: WorkerSeries, field: String, source: String, _ factor: ConditionsThresholds.Factor,
-        aggregate: ([Date: Double]) -> Double
+        _ s: WorkerSeries, fine: WorkerSeries?, field: String, source: String, _ factor: ConditionsThresholds.Factor,
+        aggregate: ([Date: Double]) -> Double?
     ) -> FactorReading {
-        let p = seriesProvenance(s, field: field, source: source, asOf: s.asOfUTC)
-        let sampled = Self.samples(s, in: night.moonFreeWindows)
-        let value = (try? sampled.get()).map(aggregate)
+        let selection = ForecastCadence.select(hourly: s, fine: fine)
+        let p = seriesProvenance(s, field: field, source: source, asOf: selection.asOfUTC)
+        let sampled = Self.samples(selection.points, in: night.moonFreeWindows)
+        let value = (try? sampled.get()).flatMap(aggregate)
         let st: FactorStatus
         if s.status != .ok {
             st = .unavailable(reason: s.reason ?? "unavailable")
         } else if case .failure(let u) = sampled {
             st = .unavailable(reason: u.reason)
+        } else if let value {
+            st = status(value, factor, p)
         } else {
-            st = status(value!, factor, p)
+            st = .unavailable(reason: "no value in the window")
         }
-        return FactorReading(model: s.model, value: value, status: st, provenance: p, isLastGood: s.status != .ok && value != nil)
+        return FactorReading(
+            model: s.model, value: value, status: st, provenance: p, isLastGood: s.status != .ok && value != nil,
+            cadence: selection.note)
     }
 
     /// Every sample inside each moon-free window plus the one at or before its start
     /// and the one at or after its end, so the whole window is covered at any cadence.
     /// A series that does not reach both edges, or has a gap (null) inside, is unavailable.
     static func samples(_ s: WorkerSeries, in windows: [MoonFreeWindow]) -> Result<[Date: Double], Unavailable> {
+        samples(s.values, in: windows)
+    }
+
+    static func samples(_ values: [WorkerPoint], in windows: [MoonFreeWindow]) -> Result<[Date: Double], Unavailable> {
         guard !windows.isEmpty else { return .failure(Unavailable("no moon-free darkness")) }
-        let points = s.values.sorted { $0.t < $1.t }
+        let points = values.sorted { $0.t < $1.t }
         var out: [Date: Double] = [:]
         for w in windows {
             guard let first = points.last(where: { $0.t <= w.start }),
@@ -390,7 +406,7 @@ struct FactorAssessor {
         return .success(out)
     }
 
-    /// Temperature minus dew point per hour, per model; worst hour.
+    /// Temperature minus dew point at matching times, per model; the worst time.
     private func dewPointSpread(_ factor: ConditionsThresholds.Factor) -> Result<[FactorReading], Unavailable> {
         field("temperature", unit: factor.unit).flatMap { temp in
             field("dew_point", unit: factor.unit).map { dew in
@@ -407,17 +423,36 @@ struct FactorAssessor {
                                              status: .unavailable(reason: (t.status == .ok ? d : t).reason ?? "unavailable"),
                                              provenance: p, isLastGood: false)
                     }
-                    switch (Self.samples(t, in: night.moonFreeWindows), Self.samples(d, in: night.moonFreeWindows)) {
-                    case (.success(let ts), .success(let ds)):
-                        let spreads = ts.compactMap { time, tv in ds[time].map { tv - $0 } }
-                        guard spreads.count == ts.count, spreads.count == ds.count, let worst = spreads.min() else {
+                    // Paired at matching times: both at 15 minutes where both have a complete
+                    // native series over the same times, otherwise both hourly.
+                    let tf = temp.series15Min?.first { $0.model == t.model }
+                    let df = dew.series15Min?.first { $0.model == t.model }
+                    var ts = ForecastCadence.select(hourly: t, fine: tf)
+                    var ds = ForecastCadence.select(hourly: d, fine: df)
+                    var cadence = ts.note ?? ds.note
+                    if ts.fineSpan != ds.fineSpan || (ts.fineSpan != nil && ts.points.map(\.t) != ds.points.map(\.t)) {
+                        if ts.fineSpan != nil || ds.fineSpan != nil {
+                            cadence = "15-min temperature and dew point not at matching times; hourly used"
+                        }
+                        ts = ForecastCadence.select(hourly: t, fine: nil)
+                        ds = ForecastCadence.select(hourly: d, fine: nil)
+                    }
+                    let paired = seriesProvenance(
+                        t, field: "temperature", source: temp.source,
+                        asOf: [ts.asOfUTC, ds.asOfUTC].compactMap(\.self).min())
+                    switch (Self.samples(ts.points, in: night.moonFreeWindows), Self.samples(ds.points, in: night.moonFreeWindows)) {
+                    case (.success(let tv), .success(let dv)):
+                        let spreads = tv.compactMap { time, t in dv[time].map { t - $0 } }
+                        guard spreads.count == tv.count, spreads.count == dv.count, let worst = spreads.min() else {
                             return FactorReading(model: t.model, value: nil,
                                                  status: .unavailable(reason: "temperature and dew point hours differ"),
-                                                 provenance: p, isLastGood: false)
+                                                 provenance: paired, isLastGood: false)
                         }
-                        return FactorReading(model: t.model, value: worst, status: status(worst, factor, p), provenance: p, isLastGood: false)
+                        return FactorReading(
+                            model: t.model, value: worst, status: status(worst, factor, paired), provenance: paired,
+                            isLastGood: false, cadence: cadence)
                     case (.failure(let u), _), (_, .failure(let u)):
-                        return FactorReading(model: t.model, value: nil, status: .unavailable(reason: u.reason), provenance: p, isLastGood: false)
+                        return FactorReading(model: t.model, value: nil, status: .unavailable(reason: u.reason), provenance: paired, isLastGood: false)
                     }
                 }
             }

@@ -61,6 +61,9 @@ public enum OpenMeteoDirect {
     /// Shown as the cloud fields' source, so the screen says where they came from.
     public static let source = "Open-Meteo (direct; Worker unreachable)"
     public static let otherFieldsReason = "Worker unreachable; only cloud cover is fetched directly"
+    /// With no Worker configured the direct fetch is the normal mode, not a fallback, so it says so calmly.
+    public static let directSource = "Open-Meteo (direct)"
+    public static let notSetUpReason = "no conditions Worker set up; only cloud cover is fetched directly"
     public static let attribution = ["Weather data by Open-Meteo.com (CC BY 4.0)"]
 
     public static func forecastURL(_ model: Model, _ request: ConditionsRequest) -> URL {
@@ -158,8 +161,10 @@ public enum OpenMeteoDirect {
     /// Maps what came back into the Worker's response shape. Clouds keep one
     /// series per model (never averaged); everything else is unavailable.
     public static func response(
-        request: ConditionsRequest, fetches: [ModelFetch], fetchedUTC: Date
+        request: ConditionsRequest, fetches: [ModelFetch], fetchedUTC: Date, workerConfigured: Bool = true
     ) -> ConditionsResponse {
+        let source = workerConfigured ? source : directSource
+        let otherFieldsReason = workerConfigured ? otherFieldsReason : notSetUpReason
         let parsed: [(ModelFetch, Result<Hourly, FactorAssessor.Unavailable>)] = fetches.map { f in
             guard let forecast = f.forecast else { return (f, .failure(.init(f.forecastError ?? "no response"))) }
             return (f, parseHourly(status: forecast.status, body: forecast.body))
@@ -250,6 +255,7 @@ extension OpenMeteoDirect {
 extension ConditionsResponse {
     /// Built by `OpenMeteoDirect` rather than received from the Worker.
     public var isDirectFallback: Bool {
-        fields["cloud_cover_total"]?.source == OpenMeteoDirect.source
+        let source = fields["cloud_cover_total"]?.source
+        return source == OpenMeteoDirect.source || source == OpenMeteoDirect.directSource
     }
 }
