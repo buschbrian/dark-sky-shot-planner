@@ -32,9 +32,13 @@ Add capture to the app as its own milestone, deterministic-first:
    frames on stars (translation, and rotation for longer spans) and averaging
    with outlier rejection (for example sigma clipping, which also removes
    satellites and aircraft). Star trails are the maximum instead of the mean.
-3. **No generative or learned enhancement.** The stack is signal averaging,
-   reproducible from the saved frames. No AI denoise, sky replacement or
-   "enhance". This matches the owner's rule for Dust & Starlight photographs.
+3. **No generative AI.** The stack itself is signal averaging, reproducible
+   from the saved frames. *Amended 2026-09-27 by the owner:* non-generative
+   AI enhancement is allowed as an optional, labelled step (AI denoise,
+   sky/foreground masking, Lightroom-like develop presets, including Python
+   or JSON edit recipes). Purely generative AI that invents content (sky
+   replacement, added stars, "enhance" that fabricates detail) is not.
+   Originals are always kept.
 4. **Planning feeds capture.** The iPhone's own sensor and lens are a gear
    profile (M10), so NPF and trail limits apply to it. The target and time
    come from Tonight and Sky, and the frame count comes from the stacking
