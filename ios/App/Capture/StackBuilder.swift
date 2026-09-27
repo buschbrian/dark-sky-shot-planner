@@ -167,6 +167,15 @@ nonisolated struct StackBuilder: Sendable {
             }
         }
         report.registerSeconds = Date().timeIntervalSince(t2)
+        // Fewer than half the frames aligned: probably not a star field
+        // (indoors, cloud, foreground lights). On a tripod the frames are
+        // already aligned for a short span, so stack them as shot and say so.
+        let sameSize = rasters.filter { $0.width == size.0 && $0.height == size.1 }
+        if alignOnStars, keptRasters.count * 2 < sameSize.count, sameSize.count >= minimumAligned {
+            report.unalignedReason = "Only \(keptRasters.count) of \(sameSize.count) frames aligned on stars (not a star field?): stacked unaligned (tripod assumed)."
+            keptRasters = sameSize
+            transforms = Array(repeating: .identity, count: sameSize.count)
+        }
         guard keptRasters.count >= minimumAligned else { throw Failure.tooFewRegistered(keptRasters.count) }
         report.used = keptRasters.count
         progress(0.7, "Combining \(keptRasters.count) frames")

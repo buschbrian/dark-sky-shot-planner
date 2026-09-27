@@ -391,7 +391,8 @@ final class CaptureModel {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             if stability.isStable != true, !shouldEnd() {
-                note("The phone did not settle within 15 s; shooting anyway (frames that moved are flagged).")
+                note(String(format: "The phone did not settle within 15 s (gyro mean %.4f rad/s, variance %.2g; still is ≤ %.3f and ≤ %.2g); shooting anyway, frames that moved are flagged.",
+                            stability.meanRate ?? -1, stability.variance ?? -1, stability.maxMeanRate, stability.maxVariance))
             }
         }
 
@@ -573,8 +574,13 @@ final class CaptureModel {
     }
 
     private func stack(log sequence: SequenceLog, folder: URL) async {
-        let usable = sequence.frames.filter { !$0.moved }
-        if usable.count < sequence.frames.count {
+        var usable = sequence.frames.filter { !$0.moved }
+        if usable.count < 2 {
+            // Every frame (or all but one) moved: stack them all rather than
+            // nothing, and say so; the originals are kept either way.
+            usable = sequence.frames
+            note("Nearly every frame was flagged as moving, so all \(usable.count) are stacked; expect blur if the phone really moved.")
+        } else if usable.count < sequence.frames.count {
             note("\(sequence.frames.count - usable.count) frame(s) moved or repeated and are left out of the stack (still saved).")
         }
         let frames = usable.map { StackBuilder.Frame(url: folder.appending(path: $0.file), exposure: $0.exposure, iso: $0.iso) }
@@ -614,8 +620,8 @@ final class CaptureModel {
             note(String(format: "Stacked %d of %d frames in %.1f s (decode %.1f, stars %.1f, align %.2f, combine %.1f, write %.1f s), peak memory %d MB%@.",
                         report.used, report.frames, seconds, report.decodeSeconds, report.detectSeconds,
                         report.registerSeconds, report.combineSeconds, report.writeSeconds, Int(peak.value / 1_000_000),
-                        report.unalignedReason.map { "; \($0)" } ?? ""))
-            for (i, r) in report.registrations.enumerated() where r == nil {
+                        report.unalignedReason.map { "; " + $0.trimmingCharacters(in: CharacterSet(charactersIn: ".")) } ?? ""))
+            for (i, r) in report.registrations.enumerated() where r == nil && report.unalignedReason == nil {
                 note("Frame \(i + 1) could not be aligned on stars and was left out (still saved).")
             }
             phase = .finished("\(report.used) frames \(trails ? "combined" : "stacked"). Saved in Files › Dark Sky › Captures.")
