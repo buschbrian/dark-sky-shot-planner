@@ -47,6 +47,9 @@ struct MapSheet<Peek: View, Content: View>: View {
                 grabber
                 peek
             }
+            // Its ideal height, whatever the sheet's current height: measuring a
+            // squeezed peek would shrink the next frame's sheet in a loop.
+            .fixedSize(horizontal: false, vertical: true)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { peekHeight = $0.rounded(.up) }
             .contentShape(Rectangle())
             .gesture(dragGesture(rest: rest))

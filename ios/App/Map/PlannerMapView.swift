@@ -105,7 +105,7 @@ struct PlannerMapView: UIViewRepresentable {
         map.prefetchesTiles = true
         map.tileCacheEnabled = true
         map.compassViewPosition = .topRight
-        map.scaleBarPosition = .topLeft
+        map.scaleBarPosition = .bottomLeft
         map.automaticallyAdjustsContentInset = false
         map.backgroundColor = snapshot.colors.background
         map.tintColor = snapshot.colors.accent
@@ -172,9 +172,14 @@ struct PlannerMapView: UIViewRepresentable {
             }
             if map.contentInset != s.insets {
                 map.setContentInset(s.insets, animated: applied != nil, completionHandler: nil)
-                map.scaleBarMargins = CGPoint(x: 8, y: s.insets.top + 44)
-                map.compassViewMargins = CGPoint(x: 8, y: s.insets.top + 8)
             }
+            // MapLibre adds the view's safe area to the content inset for its
+            // ornaments, counting it twice here: keep the scale bar just above
+            // the credit and the compass under the bar.
+            let scale = CGPoint(x: 8, y: 40 - map.safeAreaInsets.bottom)
+            if map.scaleBarMargins != scale { map.scaleBarMargins = scale }
+            let compass = CGPoint(x: 8, y: 8 - map.safeAreaInsets.top)
+            if map.compassViewMargins != compass { map.compassViewMargins = compass }
             if s.pin != lastPin {
                 if let pin = s.pin, pin != droppedPin {
                     let c = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
