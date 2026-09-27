@@ -10,6 +10,12 @@ struct SkyOverlayInput {
     let style: OverlayStyle
     let timeZone: TimeZone
     var crosshair = false
+    /// Stars, figures, trails, radiants and the find target (nil: none drawn).
+    var realism: SkyRealismFrame?
+    /// The simulated sky is drawn behind (not the camera): the Milky Way
+    /// comes from the backdrop, so the overlay skips its band stroke.
+    var planetarium = false
+    var showsMilkyWayBand = true
 }
 
 /// A labelled target the overlay places on screen or points to at the edge.
@@ -73,6 +79,7 @@ extension SkyOverlayInput {
         }
         if milkyWayOnScreen { parts.append("Milky Way band on screen.") }
         if horizon != nil { parts.append("Terrain horizon shown.") }
+        if let realism { parts += realismSummary(realism) }
         return parts.joined(separator: " ")
     }
 
@@ -81,6 +88,47 @@ extension SkyOverlayInput {
             guard point.altitudeDeg > 0, case .inFrame = projector.project(point) else { return false }
             return true
         }
+    }
+
+    private func realismSummary(_ r: SkyRealismFrame) -> [String] {
+        var parts: [String] = []
+        if let find = r.find { parts.insert("Finding \(find.name): \(find.guidance.spoken).", at: 0) }
+        if !r.constellationsOnScreen.isEmpty {
+            parts.append("Constellations on screen: " + r.constellationsOnScreen.prefix(6).joined(separator: ", ") + ".")
+        }
+        if !r.namedStarsOnScreen.isEmpty {
+            parts.append("Bright stars on screen: " + r.namedStarsOnScreen.prefix(6).joined(separator: ", ") + ".")
+        }
+        if let t = r.trails { parts.append(Self.trailSummary(t)) }
+        for radiant in r.radiants {
+            var s = "\(radiant.name) radiant \(Int(radiant.position.altitudeDeg.rounded()))° up in the \(CompassPoint.name(forAzimuth: radiant.position.azimuthDeg))"
+            if let rate = radiant.hourlyRate { s += rate > 0 ? ", about \(Int(rate.rounded())) meteors an hour" : ", below the horizon" }
+            parts.append(s + ".")
+        }
+        return parts
+    }
+
+    static func trailSummary(_ t: SkyRealismFrame.Trails) -> String {
+        let minutes = Int((t.sequence.duration / 60).rounded())
+        var s = String(format: "Star trails over %d h %02d min: arcs of %.0f°", minutes / 60, minutes % 60, t.sequence.arcDeg)
+        switch t.framing {
+        case .inFrame(let x, let y):
+            s += String(format: ", celestial pole in frame %d%% across, %d%% down", Int((x * 100).rounded()), Int((y * 100).rounded()))
+        case .outsideFrame(let dir), .behindCamera(let dir?):
+            s += ", celestial pole off screen to the " + direction(dir)
+        case .behindCamera(nil):
+            s += ", celestial pole behind you"
+        }
+        if let d = t.polarisOffsetDeg { s += String(format: "; Polaris %.2f° from the pole", d) }
+        return s + "."
+    }
+
+    static func direction(_ dir: Double) -> String {
+        let (dx, dy) = (cos(dir), sin(dir))
+        var words: [String] = []
+        if dx > 0.38 { words.append("right") } else if dx < -0.38 { words.append("left") }
+        if dy > 0.38 { words.append("bottom") } else if dy < -0.38 { words.append("top") }
+        return words.joined(separator: " and ")
     }
 
     private func describe(_ t: OverlayTarget) -> String {
@@ -119,7 +167,9 @@ struct SkyOverlayView: View {
     /// `input.accessibilitySummary`, possibly throttled by the caller.
     let summary: String
     var meter: FrameMeter?
-    @Environment(\.palette) private var palette
+    @Environment(\.palette) var palette
+
+    var isFieldMode: Bool { palette == .field }
 
     var body: some View {
         Canvas { context, size in
@@ -139,13 +189,15 @@ struct SkyOverlayView: View {
 
     private func draw(in context: inout GraphicsContext, size: CGSize) {
         let p = input.projector
-        drawMilkyWay(&context, p)
+        if !input.planetarium && input.showsMilkyWayBand { drawMilkyWay(&context, p) }
+        if let realism = input.realism { drawRealism(&context, realism, size: size) }
         drawHorizons(&context, p)
         drawCardinals(&context, p)
         drawTrack(&context, p)
         let targets = input.targets
         for t in targets where t.isOnScreen { drawTarget(&context, t) }
         for t in targets where !t.isOnScreen { drawEdgeArrow(&context, t, size: size) }
+        if let find = input.realism?.find { drawFind(&context, find, size: size) }
         if input.crosshair { drawCrosshair(&context, p) }
     }
 

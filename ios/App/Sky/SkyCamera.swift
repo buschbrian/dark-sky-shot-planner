@@ -211,31 +211,6 @@ struct CameraPreview: UIViewRepresentable {
     }
 }
 
-/// Stand-in for the camera picture in the simulated view: a plain dusk
-/// gradient, deliberately blue and white-ish so field mode's tint is testable.
-struct SimulatedBackdrop: UIViewRepresentable {
-    func makeUIView(context: Context) -> GradientView { GradientView() }
-    func updateUIView(_ view: GradientView, context: Context) {}
-
-    final class GradientView: UIView {
-        override class var layerClass: AnyClass { CAGradientLayer.self }
-
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            let gradient = layer as! CAGradientLayer
-            gradient.colors = [
-                UIColor(red: 0.02, green: 0.03, blue: 0.12, alpha: 1).cgColor,
-                UIColor(red: 0.10, green: 0.16, blue: 0.35, alpha: 1).cgColor,
-                UIColor(red: 0.55, green: 0.60, blue: 0.75, alpha: 1).cgColor,
-                UIColor(red: 0.05, green: 0.05, blue: 0.06, alpha: 1).cgColor,
-            ]
-            gradient.locations = [0, 0.55, 0.74, 0.76]
-        }
-
-        required init?(coder: NSCoder) { fatalError("not used") }
-    }
-}
-
 extension AVCaptureVideoPreviewLayer {
     /// Portrait (the UI never rotates) and unstabilized: stabilization crops
     /// and shifts the picture frame to frame, which no fixed pinhole model follows.
