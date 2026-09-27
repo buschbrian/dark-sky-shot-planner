@@ -8,17 +8,17 @@ import SwiftUI
 struct SkyEventBadge: View {
     let place: Place
     let night: NightDate
+    /// The first night of the list the row sits in; every row of one list
+    /// passes the same value so they share one precomputed run. Defaults to tonight.
+    var weekStart: NightDate?
 
     @Environment(\.palette) private var palette
     private let store = SkyEventsStore.shared
 
     var body: some View {
         Group {
-            if case .loaded(let result)? = store.entry(place: place, night: night),
-               let site = try? place.observer() {
-                let badges = SkyEventHighlights.badges(
-                    SkyEventHighlights.highlights(result, first: night, nights: 1, timeZone: place.timeZone, site: site),
-                    on: night)
+            if let all = store.highlights(place: place, first: runStart) {
+                let badges = SkyEventHighlights.badges(all, on: night)
                 if let first = badges.first {
                     HStack(spacing: 5) {
                         Image(systemName: SkyEventsFormat.symbol(first.item)).accessibilityHidden(true)
@@ -35,8 +35,13 @@ struct SkyEventBadge: View {
                 }
             }
         }
-        .task(id: SkyEventsStore.key(place: place, night: night)) {
-            await store.load(place: place, night: night)
+        .task(id: SkyEventsStore.RunKey(key: SkyEventsStore.key(place: place, night: runStart), first: runStart)) {
+            await store.load(place: place, night: runStart)
         }
+    }
+
+    private var runStart: NightDate {
+        let start = weekStart ?? NightDate.containing(.now, in: place.timeZone)
+        return night < start ? night : start
     }
 }

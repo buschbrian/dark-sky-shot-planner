@@ -26,29 +26,27 @@ struct SkyEventsSection: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
-        .task(id: SkyEventsStore.key(place: place, night: night)) {
+        .task(id: SkyEventsStore.RunKey(key: SkyEventsStore.key(place: place, night: night), first: night)) {
             await store.load(place: place, night: night)
         }
+        .onAppear { store.viewAppeared("section") }
         .accessibilityIdentifier("skyEvents.section")
     }
 
     @ViewBuilder private var content: some View {
-        switch store.entry(place: place, night: night) {
-        case nil, .loading?:
+        if case .failed(let message)? = store.entry(place: place, night: night) {
+            Text(message).font(.subheadline).foregroundStyle(palette.poor)
+        } else if let all = store.highlights(place: place, first: night) {
+            VStack(alignment: .leading, spacing: 12) { rows(all) }
+                .onAppear { store.contentShown(place: place, night: night, by: "section") }
+        } else {
             Text("Working out what else is in the sky…")
                 .font(.subheadline).foregroundStyle(palette.secondary)
-        case .failed(let message)?:
-            Text(message).font(.subheadline).foregroundStyle(palette.poor)
-        case .loaded(let result)?:
-            loaded(result)
         }
     }
 
-    @ViewBuilder private func loaded(_ result: SkyEventsResult) -> some View {
-        let site = (try? place.observer())
-        let all = site.map {
-            SkyEventHighlights.highlights(result, first: night, nights: 30, timeZone: place.timeZone, site: $0)
-        } ?? []
+    /// Highlights arrive precomputed (off the main actor); this only filters.
+    @ViewBuilder private func rows(_ all: [SkyEventHighlight]) -> some View {
         let week = all.filter { $0.night <= night.adding(days: 6) && $0.significance >= SkyEventHighlights.sectionThreshold }
         let later = all.filter { $0.night > night.adding(days: 6) && $0.significance >= SkyEventHighlights.sectionThreshold }
         let tonight = NightDate.containing(.now, in: place.timeZone)
