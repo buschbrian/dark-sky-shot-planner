@@ -186,4 +186,73 @@ struct ShotWindowTests {
         #expect(Set(ids).count == ids.count)
         #expect(ShotTarget.galacticCore.id == "gc")
     }
+
+    /// Altair rises in the east-northeast around local midnight in mid-April.
+    static let altair = FixedTarget.catalog.first { $0.name == "Altair" }!
+    static let april = "2026-04-15T03:00:00Z"
+
+    /// 10° of terrain from azimuth 0 up to 180, then a step down to 0° for the west.
+    static func stepped() throws -> HorizonProfile {
+        try HorizonProfile(samples: [
+            .init(azimuthDeg: 0, altitudeDeg: 10), .init(azimuthDeg: 179.9, altitudeDeg: 10),
+            .init(azimuthDeg: 180, altitudeDeg: 0), .init(azimuthDeg: 359.9, altitudeDeg: 0),
+        ])
+    }
+
+    @Test("a synthetic target's rise: at the true 0° crossing on a flat horizon, at 10° behind an eastern step")
+    func knownRiseFlatAndStepped() throws {
+        let obs = try camp()
+        let evening = try ISO.date(Self.april)
+        let flat = try ShotWindow.compute(obs, evening: evening, horizon: nil, target: .fixed(Self.altair))
+        let step = try ShotWindow.compute(obs, evening: evening, horizon: Self.stepped(), target: .fixed(Self.altair))
+        let flatRise = try #require(flat.clears)
+        let stepRise = try #require(step.clears)
+
+        func altitude(_ d: Date) -> HorizontalPosition {
+            let eqd = ShotTarget.equatorOfDate(raHours: Self.altair.raHours, decDeg: Self.altair.decDeg, at: d)
+            return SkyPositions.fixedPosition(raHours: eqd.raHours, decDeg: eqd.decDeg, at: d, observer: obs, refraction: .normal)
+        }
+        // The crossing is where the apparent altitude meets the horizon, bracketed a minute either side.
+        #expect(abs(altitude(flatRise).altitudeDeg) < 0.01)
+        #expect(altitude(flatRise.addingTimeInterval(-60)).altitudeDeg < 0)
+        #expect(altitude(flatRise.addingTimeInterval(60)).altitudeDeg > 0)
+        let atStep = altitude(stepRise)
+        #expect(atStep.azimuthDeg < 180)
+        #expect(abs(atStep.altitudeDeg - 10) < 0.01)
+        #expect(altitude(stepRise.addingTimeInterval(-60)).altitudeDeg < 10)
+        // 10° of terrain costs about 10 / (15 cos φ-ish) h of climb: well over half an hour.
+        #expect(stepRise.timeIntervalSince(flatRise) > 45 * 60)
+        #expect(stepRise.timeIntervalSince(flatRise) < 90 * 60)
+        #expect(step.clearsOverTerrain && !flat.clearsOverTerrain)
+        #expect(try #require(step.best).opensBy == .targetClears)
+        #expect(flat.usableMinutes - step.usableMinutes == Int((stepRise.timeIntervalSince(flatRise) / 60).rounded()))
+    }
+
+    @Test("Candlestick, May 6: the core clears the skyline later than a flat horizon; usable minutes reported")
+    func candlestickClearsLater() throws {
+        let evening = try ISO.date("2026-05-07T03:00:00Z")
+        let terrain = try ShotWindow.compute(camp(), evening: evening, horizon: candlestick(), target: .galacticCore)
+        let flat = try ShotWindow.compute(camp(), evening: evening, horizon: nil, target: .galacticCore)
+        let flatStart = try #require(flat.best).start
+        let terrainStart = try #require(terrain.best).start
+        // Flat: 05:51Z. Over the measured skyline: 06:15:44Z (golden), 24 min later.
+        #expect(terrainStart > flatStart.addingTimeInterval(20 * 60))
+        #expect(terrain.clears == terrainStart && flat.clears == flatStart)
+        // The Moon also rises later behind the ridge, so the window still ends later: 81 vs 79 min.
+        #expect(try #require(terrain.best).end > #require(flat.best).end)
+        #expect(terrain.usableMinutes == 81)
+        #expect(flat.usableMinutes > 0)
+    }
+
+    @Test("Candlestick, June 24: the Moon sets behind the ridge early, and the terrain adds moon-free minutes")
+    func ridgeAddsMinutes() throws {
+        let evening = try ISO.date("2026-06-25T03:00:00Z")
+        let terrain = try ShotWindow.compute(camp(), evening: evening, horizon: candlestick(), target: .galacticCore)
+        let flat = try ShotWindow.compute(camp(), evening: evening, horizon: nil, target: .galacticCore)
+        let t = try #require(terrain.best), f = try #require(flat.best)
+        #expect(t.opensBy == .moonset && f.opensBy == .moonset)
+        #expect(t.start < f.start.addingTimeInterval(-10 * 60))
+        #expect(terrain.usableMinutes > flat.usableMinutes + 10)
+        #expect(terrain.usableMinutes == 106)
+    }
 }
