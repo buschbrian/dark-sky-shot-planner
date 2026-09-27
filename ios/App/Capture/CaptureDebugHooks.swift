@@ -322,3 +322,38 @@ private extension Double {
     var nonZeroDouble: Double? { self == 0 ? nil : self }
 }
 #endif
+
+#if DEBUG
+/// The demo's pictures: one synthetic star field (SkyCore's test renderer)
+/// as the "preview", the magnifier crop, and a real 16-bit linear TIFF
+/// written by `StackBuilder` for the results view to load. Made once, in
+/// the temporary folder, never in Captures.
+final class CaptureDemoImages: @unchecked Sendable {
+    static let shared = CaptureDemoImages()
+
+    let preview: CGImage?
+    let crop: ImagePlane
+    let folder: URL
+    let stack: URL
+
+    private init() {
+        let w = 600, h = 800
+        let stars = SyntheticStarField.stars(count: 900, width: w, height: h, seed: 7, minFlux: 4_000, maxFlux: 900_000)
+        let raster = SyntheticStarField.render(stars, width: w, height: h, channels: 3, psfSigma: 1.1,
+                                               background: 1_500, noiseSigma: 120, seed: 11)
+        folder = URL.temporaryDirectory.appending(path: "capture-demo")
+        stack = folder.appending(path: "stack.tif")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let builder = StackBuilder(frames: [], mode: .sigmaClippedMean, output: stack, workDirectory: folder)
+        var report = StackBuilder.Report(mode: .sigmaClippedMean)
+        report.used = 37
+        report.frames = 40
+        try? builder.write(raster, report: report)
+        preview = StretchedPreview.make(url: stack, maxPixel: 800)
+        let few = SyntheticStarField.stars(count: 6, width: 256, height: 256, seed: 5, minFlux: 20_000, maxFlux: 300_000)
+        let centre = SyntheticStarField.render(few, width: 256, height: 256, channels: 1, psfSigma: 1.6,
+                                               background: 1_500, noiseSigma: 120, seed: 3)
+        crop = ImagePlane.luminance(centre)
+    }
+}
+#endif

@@ -85,7 +85,8 @@ final class CaptureModel {
     var trailInterval: Double = 1
     var timerSeconds = 5
     var fileFormat: FrameRequest.FileFormat = .raw
-    var twelveMegapixels = true
+    /// The still size; nil is the default choice (12 MP where offered).
+    var resolution: CaptureResolution?
     /// Debug self-test: an exact frame count instead of the SNR plan.
     var frameOverride: Int?
 
@@ -108,7 +109,19 @@ final class CaptureModel {
     private(set) var savedSequence: SavedSequence?
     private(set) var log: [String] = []
     private(set) var lastAssetIdentifiers: [String] = []
+    /// Frames written so far in the current run, and when it started.
+    private(set) var savedFrames = 0
+    private(set) var runStarted: Date?
+    /// What the latest finished stack produced (the results view).
+    private(set) var outcome: CaptureOutcome?
+    /// Set when a run's stack finishes, so the screen can show the result once.
+    var resultReady = false
     var errorMessage: String?
+    #if DEBUG
+    /// Simulator and UI tests: a measured camera and canned states, no AVFoundation.
+    var isDemo = false
+    var demoPreview: CGImage?
+    #endif
 
     @ObservationIgnored let engine = CaptureEngine()
     @ObservationIgnored private let motion = CMMotionManager()
@@ -119,6 +132,8 @@ final class CaptureModel {
     @ObservationIgnored private var visible = false
     @ObservationIgnored private var sensorsOn = false
     @ObservationIgnored private var peakFootprint: Int64 = 0
+    /// Which size and format `measuredFrameBytes` was measured for.
+    @ObservationIgnored private var measuredKey: String?
 
     /// The one run in the app (acquisition, drain, stack and cleanup).
     private static var activeRun: Task<Void, Never>?
@@ -136,25 +151,62 @@ final class CaptureModel {
 
     var gap: TimeInterval { mode == .trails ? max(0, trailInterval - subExposure) : 0 }
 
+    /// The sizes offered as an explicit choice (12 MP and 48 MP on the iPhone 18 Pro Max).
+    var resolutionChoices: [CaptureResolution] {
+        CaptureResolution.choices(from: (camera?.photoDimensions ?? []).map { CaptureResolution(width: Int($0.width), height: Int($0.height)) })
+    }
+
+    /// The chosen size, or the first choice.
+    var selectedResolution: CaptureResolution? {
+        let choices = resolutionChoices
+        if let resolution, choices.contains(resolution) { return resolution }
+        return choices.first
+    }
+
     var frameDimensions: CMVideoDimensions? {
-        guard let dims = camera?.photoDimensions, !dims.isEmpty else { return nil }
-        let sorted = dims.sorted { $0.width * $0.height < $1.width * $1.height }
-        if twelveMegapixels, let twelve = sorted.first(where: { Int($0.width) * Int($0.height) >= 12_000_000 }) { return twelve }
-        return sorted.last
+        guard let r = selectedResolution else { return nil }
+        return CMVideoDimensions(width: Int32(r.width), height: Int32(r.height))
     }
 
     var rawAvailable: Bool { camera?.proRaw != nil }
+    /// RAW is saved as ProRAW when that is what the camera offers.
+    var rawTitle: String { camera?.rawIsProRAW == false ? "RAW (DNG)" : "ProRAW (DNG)" }
+    var usesRaw: Bool { fileFormat == .raw && rawAvailable }
+    var formatTitle: String { usesRaw ? rawTitle : "HEIC" }
+
+    /// One frame's size: measured once a frame of this size and format is
+    /// saved, estimated until then.
+    func frameBytes(_ r: CaptureResolution) -> Int64 {
+        if let measuredFrameBytes, measuredKey == Self.key(r, raw: usesRaw) { return measuredFrameBytes }
+        return r.estimatedFrameBytes(raw: usesRaw)
+    }
+
+    var frameBytesMeasured: Bool {
+        guard let r = selectedResolution else { return false }
+        return measuredFrameBytes != nil && measuredKey == Self.key(r, raw: usesRaw)
+    }
+
+    private static func key(_ r: CaptureResolution, raw: Bool) -> String { "\(r.id)-\(raw ? "raw" : "heic")" }
 
     var plan: CapturePlan? {
-        guard let d = frameDimensions else { return nil }
-        let w = Int(d.width), h = Int(d.height)
-        let perFrame = measuredFrameBytes ?? (fileFormat == .raw && rawAvailable
-            ? CapturePlan.estimatedRawBytes(width: w, height: h)
-            : Int64(Double(w * h) * 0.35)) // HEIC estimate until the first frame is measured
+        guard let r = selectedResolution else { return nil }
         return try? CapturePlan(
-            frames: frameCount, subExposure: subExposure, gap: gap, bytesPerFrame: perFrame,
-            workingBytesPerFrame: mode == .stack ? CapturePlan.rgb16Bytes(width: w, height: h) : 0,
-            stackBytes: CapturePlan.rgb16Bytes(width: w, height: h))
+            frames: frameCount, subExposure: subExposure, gap: gap, bytesPerFrame: frameBytes(r),
+            workingBytesPerFrame: mode == .stack ? CapturePlan.rgb16Bytes(width: r.width, height: r.height) : 0,
+            stackBytes: CapturePlan.rgb16Bytes(width: r.width, height: r.height))
+    }
+
+    /// Exposure per frame, total integration, sequence time and the NPF limit.
+    var durations: CaptureDurations? {
+        guard let plan, let camera else { return nil }
+        return CaptureDurations(plan: plan, cameraMaximum: camera.maxExposure, selfTimer: Double(timerSeconds), npf: npfSeconds)
+    }
+
+    /// The recommended starting preset for the camera on screen.
+    var preset: CapturePreset? {
+        guard let camera else { return nil }
+        return CapturePreset(maxExposure: camera.maxExposure, isoRange: camera.minISO...camera.maxISO,
+                             apertures: camera.apertures, rawAvailable: rawAvailable)
     }
 
     /// NPF (k = 1, the celestial equator, wide open) for this lens, once a
@@ -233,6 +285,7 @@ final class CaptureModel {
             aperture = info.apertures.first
             if !rawAvailable { fileFormat = .heic }
             measuredFrameBytes = nil
+            measuredKey = nil
             phoneGear = nil
             engine.onFocusCrop = { [weak self] crop in
                 let stars = StarDetector().detect(crop)
@@ -255,7 +308,62 @@ final class CaptureModel {
     }
 
     func autofocus() async {
+        #if DEBUG
+        if isDemo { return }
+        #endif
         do { focusPosition = try await engine.autofocusOnce() } catch { errorMessage = error.localizedDescription }
+    }
+
+    /// Moves the focus by `step` of the lens travel (positive is farther) and locks it.
+    func nudgeFocus(_ step: Float) {
+        focusPosition = min(1, max(0, focusPosition + step))
+        #if DEBUG
+        if isDemo { return }
+        #endif
+        Task { try? await applyManual() }
+    }
+
+    /// The recommended start (review §7): main camera, widest aperture, the
+    /// longest frame this camera allows, a 9-frame test, 12 MP, ProRAW where
+    /// offered, a 5 s self-timer. Focus is left where it was set.
+    func applyPreset() async {
+        guard !phase.isBusy else { return }
+        if lens != .main {
+            lens = .main
+            if !demoing { await configure() }
+        }
+        guard let preset else { return }
+        mode = .stack
+        subExposure = preset.exposure
+        iso = preset.iso
+        aperture = preset.aperture ?? aperture
+        snrGain = preset.snrGain
+        timerSeconds = preset.selfTimer
+        fileFormat = preset.raw ? .raw : .heic
+        resolution = resolutionChoices.first
+        frameOverride = nil
+        if !demoing { try? await applyManual() }
+    }
+
+    /// A Sky-view trail design: its span, shot back to back at this camera's
+    /// longest frame so the trails have no gaps.
+    @discardableResult
+    func applyTrailDesign(_ design: StarTrailSequence) -> PhoneTrailPlan {
+        let phone = PhoneTrailPlan(design: design, maxExposure: camera?.maxExposure ?? subExposure)
+        mode = .trails
+        subExposure = camera?.maxExposure ?? subExposure
+        trailMinutes = phone.minutes
+        trailInterval = phone.interval
+        return phone
+    }
+
+    /// True for the Debug demo (no camera); always false in Release.
+    var demoing: Bool {
+        #if DEBUG
+        isDemo
+        #else
+        false
+        #endif
     }
 
     // MARK: Sensors
@@ -303,6 +411,9 @@ final class CaptureModel {
     // MARK: Controls
 
     func start() {
+        #if DEBUG
+        if isDemo { demoStart(); return }
+        #endif
         guard !phase.isBusy, runTask == nil, Self.activeRun == nil, let plan, let dims = frameDimensions else { return }
         guard !engine.isInterrupted else {
             errorMessage = "The camera is interrupted (phone locked, app in the background or another app using it). Try again once the preview is live."
@@ -322,6 +433,9 @@ final class CaptureModel {
 
     /// End acquisition and stack what was shot.
     func stopAndStack() {
+        #if DEBUG
+        if isDemo { demoFinish(); return }
+        #endif
         guard phase.isAcquiring else { return }
         endRequest = endRequest ?? .stopAndStack
         CaptureLog.event("stop and stack requested")
@@ -329,6 +443,9 @@ final class CaptureModel {
 
     /// End everything: no stack (frames kept), or stop a stack in progress.
     func cancel() {
+        #if DEBUG
+        if isDemo { demoCancel(); return }
+        #endif
         endRequest = endRequest ?? .cancelled
         runTask?.cancel()
         CaptureLog.event("cancel requested in phase \(phase)")
@@ -363,6 +480,9 @@ final class CaptureModel {
         UIApplication.shared.isIdleTimerDisabled = true
         log.removeAll()
         lastAssetIdentifiers = []
+        savedFrames = 0
+        outcome = nil
+        runStarted = Date()
         peakFootprint = CaptureLog.footprint()
         let folder = URL.documentsDirectory.appending(path: "Captures/\(Self.folderName.string(from: Date()))")
         CaptureLog.event("run start: \(plan.frames) frames, \(subExposure) s, ISO \(Int(iso)), aperture \(aperture.map { "f/\($0)" } ?? "fixed"), lens position \(focusPosition), thermal \(CameraProbe.thermalName(ProcessInfo.processInfo.thermalState)), battery \(UIDevice.current.batteryLevel)")
@@ -506,7 +626,7 @@ final class CaptureModel {
             format: request.format.rawValue, width: Int(dims.width), height: Int(dims.height),
             thermalAtEnd: CameraProbe.thermalName(ProcessInfo.processInfo.thermalState),
             batteryAtEnd: Double(UIDevice.current.batteryLevel), peakMemoryMB: Int(peakFootprint / 1_000_000),
-            ended: ended?.text, frames: entries, notes: log, stack: nil)
+            ended: ended?.text, frames: entries, notes: log, stack: nil, planned: plan.frames)
         sequence.write(to: folder)
         if entries.isEmpty {
             phase = .stopped("No frame was captured\(ended.map { ": \($0.text)" } ?? ".")")
@@ -542,6 +662,8 @@ final class CaptureModel {
             }
             let frame = try result.get()
             measuredFrameBytes = frame.bytes
+            measuredKey = selectedResolution.map { Self.key($0, raw: frame.url.pathExtension.lowercased() == "dng") }
+            savedFrames += 1
             let moved = item.rate > stability.maxMeanRate * 3
             entries.append(SequenceLog.Frame(
                 index: item.index, file: frame.url.lastPathComponent, bytes: frame.bytes, exposure: frame.exposure,
@@ -628,6 +750,10 @@ final class CaptureModel {
             for (i, r) in report.registrations.enumerated() where r == nil && report.unalignedReason == nil {
                 note("Frame \(i + 1) could not be aligned on stars and was left out (still saved).")
             }
+            outcome = CaptureOutcome(kind: trails ? .trails : .stack, planned: sequence.planned ?? sequence.frames.count,
+                                     saved: sequence.frames.count, used: report.used, unalignedReason: report.unalignedReason,
+                                     integration: Double(report.used) * sequence.subExposure)
+            resultReady = true
             phase = .finished("\(report.used) frames \(trails ? "combined" : "stacked"). Saved in Files › Dark Sky › Captures.")
         case .failure(let error as CancellationError):
             _ = error
@@ -648,21 +774,55 @@ final class CaptureModel {
     /// Adds the frames and the stack to the photo library (add-only access)
     /// and returns the new assets' local identifiers.
     func saveToPhotos(_ folder: URL) async throws -> [String] {
+        try await saveToPhotos(files: Self.imageFiles(in: folder))
+    }
+
+    /// The results view's main action: the finished image only.
+    func saveImage() async throws -> Int {
+        guard let lastStack else { throw CaptureError.captureFailed("there is no finished image") }
+        return try await saveToPhotos(files: [lastStack]).count
+    }
+
+    /// The separate choice: every original frame of the latest sequence.
+    func saveOriginals(_ folder: URL? = nil) async throws -> Int {
+        #if DEBUG
+        if isDemo { return outcome?.saved ?? savedFrames }
+        #endif
+        guard let folder = folder ?? lastFolder else { throw CaptureError.captureFailed("there is no sequence") }
+        let files = Self.originals(in: folder)
+        guard !files.isEmpty else { throw CaptureError.captureFailed("no frames were found") }
+        return try await saveToPhotos(files: files).count
+    }
+
+    /// Adds these files to the photo library (add-only access).
+    func saveToPhotos(files: [URL]) async throws -> [String] {
+        #if DEBUG
+        if isDemo { return files.map { "demo/\($0.lastPathComponent)" } }
+        #endif
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         CaptureLog.event("photos add-only authorization: \(status.rawValue)")
         guard status == .authorized || status == .limited else { throw CaptureError.captureFailed("Photos access was not given") }
-        let ids = try await Self.addToPhotos(folder)
+        let ids = try await Self.addToPhotos(files)
         lastAssetIdentifiers = ids
         CaptureLog.event("saved to Photos: \(ids.count) assets \(ids)")
         return ids
     }
 
-    /// Nonisolated so the change block runs on Photos' own queue without
-    /// inheriting the main actor (it trapped on the phone when it did).
-    nonisolated static func addToPhotos(_ folder: URL) async throws -> [String] {
-        let files = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
+    /// The frames (DNG or HEIC) and any stack in a sequence folder, in name order.
+    nonisolated static func imageFiles(in folder: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
             .filter { ["dng", "heic", "tif"].contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    /// The original frames only (not the stack).
+    nonisolated static func originals(in folder: URL) -> [URL] {
+        imageFiles(in: folder).filter { $0.pathExtension.lowercased() != "tif" }
+    }
+
+    /// Nonisolated so the change block runs on Photos' own queue without
+    /// inheriting the main actor (it trapped on the phone when it did).
+    nonisolated static func addToPhotos(_ files: [URL]) async throws -> [String] {
         let box = IdentifierBox()
         try await PHPhotoLibrary.shared().performChanges {
             for url in files {
@@ -761,6 +921,8 @@ nonisolated struct SequenceLog: Codable, Sendable {
     var frames: [Frame]
     var notes: [String]
     var stack: String?
+    /// Frames the sequence planned (absent in sequences saved before it was recorded).
+    var planned: Int?
 
     func write(to folder: URL) {
         let encoder = JSONEncoder()
@@ -792,3 +954,93 @@ nonisolated struct SavedSequence: Sendable, Equatable {
         return nil
     }
 }
+
+#if DEBUG
+/// `-CaptureDemo setup|running|stacking|finished|unaligned|trails`: the
+/// simulator has no camera, so layout, screenshots and UI tests run on the
+/// iPhone 18 Pro Max main camera as measured (docs/ios/CAPTURE-LIMITS.md)
+/// and canned run states. Nothing touches AVFoundation, Photos or Captures.
+extension CaptureModel {
+    enum DemoState: String {
+        case setup, running, stacking, finished, unaligned, trails
+    }
+
+    static var launchDemo: DemoState? {
+        UserDefaults.standard.string(forKey: "CaptureDemo").flatMap(DemoState.init)
+    }
+
+    static let demoCamera = CaptureCameraInfo(
+        lens: .main, maxExposure: 1, minISO: 55, maxISO: 12_320, apertures: [1.48, 1.8, 2.8, 4.0], apertureControl: true,
+        photoDimensions: [CMVideoDimensions(width: 4032, height: 3024), CMVideoDimensions(width: 5712, height: 4284),
+                          CMVideoDimensions(width: 8064, height: 6048)],
+        proRaw: 0x6C36_3472, rawIsProRAW: true, // 'l64r'
+        shutterSoundSuppression: true, customLensPosition: true)
+
+    func loadDemo(_ state: DemoState) {
+        isDemo = true
+        access = .authorized
+        camera = Self.demoCamera
+        subExposure = 1
+        aperture = 1.48
+        batteryLevel = 0.84
+        freeBytes = 60_000_000_000
+        thermal = .nominal
+        stability.reset()
+        for _ in 0..<stability.window { stability.add(SIMD3(0.001, 0.0005, 0.0008)) }
+        phoneGear = try? PhoneGear.profiles(name: "iPhone Main", focalLengthMM: 6.93, focalLength35mmEquivalent: 24,
+                                            fNumber: 1.48, widthPx: 4032, heightPx: 3024)
+        let images = CaptureDemoImages.shared
+        demoPreview = images.preview
+        focusCrop = images.crop
+        focusHFR = 1.62
+        focusStars = 6
+        switch state {
+        case .setup:
+            phase = .idle
+        case .running:
+            frameOverride = 40
+            savedFrames = 11
+            runStarted = Date().addingTimeInterval(-17)
+            phase = .capturing(frame: 12, of: 40)
+        case .stacking:
+            frameOverride = 40
+            savedFrames = 40
+            phase = .stacking(0.45, "Aligning on stars")
+        case .finished:
+            frameOverride = 40
+            demoFinish()
+        case .unaligned:
+            frameOverride = 40
+            demoFinish(unaligned: "Only 3 of 40 frames aligned on stars (not a star field?): stacked unaligned (tripod assumed).")
+        case .trails:
+            mode = .trails
+            trailMinutes = 2
+            demoFinish()
+        }
+    }
+
+    func demoStart() {
+        savedFrames = 0
+        runStarted = Date()
+        outcome = nil
+        phase = .capturing(frame: 1, of: frameCount)
+    }
+
+    func demoFinish(unaligned: String? = nil) {
+        let n = frameCount
+        let used = mode == .trails || unaligned != nil ? n : max(1, n - 3)
+        savedFrames = n
+        outcome = CaptureOutcome(kind: mode == .trails ? .trails : .stack, planned: n, saved: n, used: used,
+                                 unalignedReason: unaligned, integration: Double(used) * subExposure)
+        lastFolder = CaptureDemoImages.shared.folder
+        lastStack = CaptureDemoImages.shared.stack
+        log = ["\(n) of \(n) frames (demo: no camera on this device)."]
+        resultReady = true
+        phase = .finished("\(used) frames \(mode == .trails ? "combined" : "stacked"). Saved in Files › Dark Sky › Captures.")
+    }
+
+    func demoCancel() {
+        phase = .stopped("\(savedFrames) frames kept, not stacked: cancelled by you. Stack them from this screen later.")
+    }
+}
+#endif
