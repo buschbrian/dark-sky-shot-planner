@@ -59,14 +59,24 @@ struct RootView: View {
         .background(palette.background.ignoresSafeArea())
         #if DEBUG
         .onAppear { DebugLaunch.apply(to: state, tab: &tab) }
+        .overlay {
+            if DebugLaunch.showsGallery {
+                DesignGallery()
+                    .environment(\.palette, palette)
+                    .colorMultiply(state.fieldMode ? Color.red(1) : .white)
+            }
+        }
         #endif
     }
 }
 
 #if DEBUG
-/// Screenshot hooks (Debug only): `-DSTab week|map|sky|spots|tools` opens
-/// that tab, and `DS_PLACE` (see `WeekDebug`) sets the place for every tab.
+/// Screenshot hooks (Debug only): `-DSTab week|map|sky|spots|tools|gallery`
+/// opens that tab (or the design gallery), and `DS_PLACE` (see `WeekDebug`)
+/// sets the place for every tab.
 enum DebugLaunch {
+    static let showsGallery = UserDefaults.standard.string(forKey: "DSTab") == "gallery"
+
     static func apply(to state: AppState, tab: inout AppTab) {
         WeekDebug.applyLaunchPlace(to: state)
         switch UserDefaults.standard.string(forKey: "DSTab") {
