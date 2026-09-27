@@ -68,12 +68,20 @@ struct ScreenChrome<Leading: View, Principal: View, Trailing: View>: ViewModifie
 extension View {
     /// A tab screen's header: title, optional context action on the left,
     /// optional actions on the right, then the field-mode toggle.
-    func screenChrome<L: View, T: View>(
+    func screenChrome<T: View>(
         _ title: String, pushed: Bool = false,
-        @ViewBuilder leading: () -> L = { EmptyView() },
         @ViewBuilder trailing: () -> T = { EmptyView() }
     ) -> some View {
-        modifier(ScreenChrome(title: title, pushed: pushed, leading: leading(), principal: EmptyView(), trailing: trailing()))
+        modifier(ScreenChrome(title: title, pushed: pushed, leading: EmptyView(), principal: EmptyView(), trailing: trailing()))
+    }
+
+    /// With a context action on the left (and optional actions on the right).
+    func screenChrome<L: View, T: View>(
+        _ title: String,
+        leading: () -> L,
+        @ViewBuilder trailing: () -> T
+    ) -> some View {
+        modifier(ScreenChrome(title: title, pushed: false, leading: leading(), principal: EmptyView(), trailing: trailing()))
     }
 
     /// The same header with a control (the Tonight/Week picker) in place of the title.
