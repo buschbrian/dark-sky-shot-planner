@@ -10,7 +10,9 @@ final class SkyTests: XCTestCase {
     @MainActor
     private func openSky(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += arguments
+        // Start in the standard palette: field mode now survives relaunch and
+        // replaces the system tab bar with the red dock.
+        app.launchArguments += ["-DarkSkyUITest", "-FieldMode", "NO"] + arguments
         app.launch()
         app.tabBars.buttons["Sky"].tap()
         return app
