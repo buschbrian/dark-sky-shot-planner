@@ -52,16 +52,28 @@ public struct ShotWindow: Sendable, Hashable {
     public let clearsOverTerrain: Bool
     /// Target up during moon-free darkness (for the Moon: during darkness), in time order.
     public let windows: [Window]
-    /// The target across the longest window, every `sampleStep` (both ends included).
-    public let track: [Sample]
-    /// GC visibility over `windows`, for the verdict's GC factor.
-    let gcInWindows: GCVisibility
+    /// The target across each window, every `sampleStep` (both ends
+    /// included), parallel to `windows`.
+    public let tracks: [[Sample]]
+    /// GC visibility in each window, parallel to `windows`, for the verdict's GC factor.
+    let gcByWindow: [GCVisibility]
+
+    /// The target across the longest window.
+    public var track: [Sample] { bestIndex.map { tracks[$0] } ?? [] }
 
     /// Longest window in minutes (the planner's rule for `moonFreeMinutes`).
     public var usableMinutes: Int { windows.map(\.minutes).max() ?? 0 }
     public var totalMinutes: Int { windows.reduce(0) { $0 + $1.minutes } }
-    public var best: Window? { windows.max { $0.minutes < $1.minutes } }
-    public var peak: Sample? { track.max { $0.position.altitudeDeg < $1.position.altitudeDeg } }
+    public var best: Window? { bestIndex.map { windows[$0] } }
+    /// The longest window's index (the first of equals): the default selection.
+    public var bestIndex: Int? { windows.indices.max { windows[$0].minutes < windows[$1].minutes } }
+    public var peak: Sample? { peak(in: bestIndex) }
+
+    /// The target's highest point across one window (nil index: none).
+    public func peak(in index: Int?) -> Sample? {
+        guard let index, tracks.indices.contains(index) else { return nil }
+        return tracks[index].max { $0.position.altitudeDeg < $1.position.altitudeDeg }
+    }
 
     public static let sampleStep: TimeInterval = 5 * 60
 
@@ -96,8 +108,8 @@ public struct ShotWindow: Sendable, Hashable {
         guard let darkness = night.darkness else {
             return ShotWindow(
                 target: target, minAltitudeDeg: minAltitudeDeg, terrainAware: horizon != nil, night: night,
-                targetUp: [], clears: nil, drops: nil, clearsOverTerrain: false, windows: [], track: [],
-                gcInWindows: GCVisibility(maxAltitudeDeg: nil, maxAltitudeAt: nil, risesDuringDarkness: false))
+                targetUp: [], clears: nil, drops: nil, clearsOverTerrain: false, windows: [], tracks: [],
+                gcByWindow: [])
         }
 
         let crossings = try Planner.scanCrossings(from: darkness.start, to: darkness.end) { (d: Date) throws(AstronomyError) in
@@ -143,51 +155,64 @@ public struct ShotWindow: Sendable, Hashable {
             Window(start: $0.start, end: $0.end, minutes: $0.minutes,
                    opensBy: edge($0.start, opening: true), closesBy: edge($0.end, opening: false))
         }
-        var track: [Sample] = []
-        if let best = windows.max(by: { $0.minutes < $1.minutes }) {
-            var t = best.start
+        var tracks: [[Sample]] = []
+        for w in windows {
+            var track: [Sample] = []
+            var t = w.start
             while true {
                 let p = try target.placement(observer, at: t, threshold: threshold)
                 track.append(Sample(date: t, position: p.position, clearanceDeg: p.clearanceDeg))
-                if t >= best.end { break }
-                t = min(t.addingTimeInterval(sampleStep), best.end)
+                if t >= w.end { break }
+                t = min(t.addingTimeInterval(sampleStep), w.end)
             }
+            tracks.append(track)
         }
-        let gc = horizon.map { Planner.gcVisibility(observer, moonFree: cut, horizon: $0) }
-            ?? Planner.gcVisibility(observer, moonFree: cut)
+        let gc = cut.map { w in
+            horizon.map { Planner.gcVisibility(observer, moonFree: [w], horizon: $0) }
+                ?? Planner.gcVisibility(observer, moonFree: [w])
+        }
         return ShotWindow(
             target: target, minAltitudeDeg: minAltitudeDeg, terrainAware: horizon != nil, night: night,
             targetUp: crossings.above, clears: clears, drops: crossings.sets.first, clearsOverTerrain: overTerrain,
-            windows: windows, track: track, gcInWindows: gc)
+            windows: windows, tracks: tracks, gcByWindow: gc)
     }
 
-    /// The night as the verdict should see it: the shot's windows are the
-    /// "moon-free window", so every factor is sampled over exactly these minutes.
+    /// The night as the verdict should see it for one window: that window is
+    /// the "moon-free window", so every factor is sampled over exactly those
+    /// minutes. nil means the longest window (`bestIndex`); with no window at
+    /// all the report has none and the verdict is no-go on astronomy alone.
     ///
-    /// Decision rule (deliberate; review 2026-09-26): the verdict covers **every**
-    /// usable window, not only `best`. The headline, the window line and the chart
-    /// show the longest window, so when there is more than one the card must say
-    /// the verdict's scope beside it (`ShotText.verdictScope`). This is the
-    /// conservative whole-set assessment, the same rule the night verdict applies
-    /// to several moon-free windows; a per-window verdict would need its own
-    /// window picker. Change both together or neither.
-    public var nightForVerdict: NightReport {
-        let mf = windows.map { MoonFreeWindow(start: $0.start, end: $0.end, minutes: $0.minutes) }
+    /// Decision rule (coordinator, 2026-09-27, from the product review; it
+    /// replaces the 2026-09-26 whole-set rule): the verdict describes the
+    /// **selected** window only, the one the card's headline, window line and
+    /// chart show. Other windows are listed beside it and can be selected,
+    /// each getting its own verdict. `ShotText.verdictScope` says so when
+    /// there is more than one. Change both together or neither.
+    public func nightForVerdict(window index: Int? = nil) -> NightReport {
+        let chosen = (index ?? bestIndex).flatMap { windows.indices.contains($0) ? $0 : nil }
+        let mf = chosen.map { i in [MoonFreeWindow(start: windows[i].start, end: windows[i].end, minutes: windows[i].minutes)] } ?? []
+        let gc = chosen.map { gcByWindow[$0] }
+            ?? GCVisibility(maxAltitudeDeg: nil, maxAltitudeAt: nil, risesDuringDarkness: false)
         return NightReport(
             darkness: night.darkness, noAstronomicalDarkness: night.noAstronomicalDarkness,
             moonIllumFraction: night.moonIllumFraction, moonset: night.moonset, moonrise: night.moonrise,
-            moonFreeWindows: mf, moonFreeMinutes: usableMinutes, gc: gcInWindows, terrain: night.terrain)
+            moonFreeWindows: mf, moonFreeMinutes: chosen.map { windows[$0].minutes } ?? 0, gc: gc, terrain: night.terrain)
     }
+
+    /// The longest window's night (`nightForVerdict(window: nil)`).
+    public var nightForVerdict: NightReport { nightForVerdict(window: nil) }
 
     static let targetNeverUp = "the target is never up in moon-free darkness"
 
-    /// PLAN.md §Verdict over the shot window rather than the whole night.
-    /// A GC shot makes the GC's altitude a gate, as the thresholds file says.
+    /// PLAN.md §Verdict over one shot window (default the longest) rather
+    /// than the whole night. A GC shot makes the GC's altitude a gate, as the
+    /// thresholds file says.
     public func verdict(
-        conditions: ConditionsResponse?, aurora: AuroraSignal? = nil, config: VerdictConfig, now: Date
+        conditions: ConditionsResponse?, aurora: AuroraSignal? = nil, config: VerdictConfig, now: Date,
+        window index: Int? = nil
     ) throws(Verdict.EvaluationError) -> Verdict {
         try Verdict.evaluate(
-            night: nightForVerdict, conditions: conditions, aurora: aurora, config: config, now: now,
+            night: nightForVerdict(window: index), conditions: conditions, aurora: aurora, config: config, now: now,
             galacticCoreIsTarget: target == .galacticCore,
             // Moon-free darkness exists, but never with the target up.
             noWindowReason: night.moonFreeWindows.isEmpty ? nil : Self.targetNeverUp)

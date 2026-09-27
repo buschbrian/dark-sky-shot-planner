@@ -175,7 +175,65 @@ struct ForecastCadenceTests {
             ]),
             target: .moon)
         try #require(many.windows.count == 2)
-        #expect(ShotText.verdictScope(many)?.hasPrefix("Verdict covers all 2 windows (") == true)
+        #expect(ShotText.verdictScope(many) == "Verdict for this window only; 1 other window below")
         #expect(many.windows[0].closesBy == .targetDrops && many.windows[1].opensBy == .targetClears)
+    }
+
+    /// The same two-window Moon night (coordinator decision 2026-09-27): each
+    /// window's verdict reads only its own minutes, so thick cloud in the
+    /// first window no longer sinks a clear second one, and vice versa.
+    @Test("the verdict describes the selected window only")
+    func perWindowVerdict() throws {
+        let shot = try ShotWindow.compute(
+            observer(38.374031, -109.965416), evening: ISO.date("2026-09-27T03:00:00Z"),
+            horizon: HorizonProfile(samples: [
+                .init(azimuthDeg: 0, altitudeDeg: 0), .init(azimuthDeg: 150, altitudeDeg: 0),
+                .init(azimuthDeg: 160, altitudeDeg: 60), .init(azimuthDeg: 200, altitudeDeg: 60),
+                .init(azimuthDeg: 210, altitudeDeg: 0),
+            ]),
+            target: .moon)
+        try #require(shot.windows.count == 2)
+        let split = shot.windows[0].end.addingTimeInterval(shot.windows[1].start.timeIntervalSince(shot.windows[0].end) / 2)
+        // Hourly cloud 00Z–14Z on 2026-09-27: 95 % before the gap, 5 % after, every model.
+        let t0 = try ISO.date("2026-09-27T00:00:00Z")
+        let hours = (0...14).map { t0.addingTimeInterval(Double($0) * 3600) }
+        func series(_ m: String, _ v: (Date) -> Double) -> WorkerSeries {
+            WorkerSeries(model: m, upstreamModel: nil, modelRunUTC: t0, fetchedUTC: t0.addingTimeInterval(1800), status: .ok,
+                         reason: nil, lastGoodUTC: nil, values: hours.map { WorkerPoint(t: $0, v: v($0)) })
+        }
+        let models = ["hrrr", "gfs", "icon", "ecmwf"]
+        func field(_ unit: String, _ v: @escaping (Date) -> Double) -> WorkerField {
+            F.field(unit, models.map { series($0, v) })
+        }
+        let response = ConditionsResponse(
+            cell: WorkerCell(lat: 38.35, lon: -109.95, roundingDeg: 0.05),
+            window: .init(startUTC: hours.first!, endUTC: hours.last!), generatedUTC: t0.addingTimeInterval(1800),
+            fields: [
+                "cloud_cover_total": field("%") { $0 < split ? 95 : 5 },
+                "wind_gust": field("km/h") { _ in 8 },
+                "temperature": field("°C") { _ in 12 },
+                "dew_point": field("°C") { _ in -2 },
+                "aerosol_optical_depth": F.field("", [series("cams_global") { _ in 0.04 }], source: "CAMS"),
+                "smoke_column": F.field("mg/m²", [series("rap_smoke") { _ in 2 }], source: "RAP-Smoke"),
+            ],
+            attribution: [])
+        let now = t0.addingTimeInterval(3600)
+        let first = try shot.verdict(conditions: response, config: .bundled(), now: now, window: 0)
+        let second = try shot.verdict(conditions: response, config: .bundled(), now: now, window: 1)
+        #expect(first.level == .noGo)
+        #expect(first.limiting.key.hasPrefix("cloud_cover"))
+        #expect(second.level != .noGo, "\(second.level) \(second.limiting.key)")
+        #expect(second.factor("cloud_cover_max_hour")?.rating == .good)
+        #expect(first.windows.count == 1 && second.windows.count == 1)
+        #expect(shot.nightForVerdict(window: 1).moonFreeMinutes == shot.windows[1].minutes)
+        // No index means the longest window, as before.
+        let longest = try #require(shot.bestIndex)
+        #expect(shot.nightForVerdict == shot.nightForVerdict(window: longest))
+        #expect(shot.tracks.count == 2)
+        #expect(shot.tracks[1].first?.date == shot.windows[1].start && shot.tracks[1].last?.date == shot.windows[1].end)
+        let clock = ShotText.clock24(F.denver)
+        let second1 = ShotText.astronomy(shot, window: 1, clock: clock)
+        #expect(second1.hasPrefix("Moon ") && second1.contains(clock(shot.windows[1].start)), "\(second1)")
+        #expect(second1.contains(ShotText.duration(minutes: shot.windows[1].minutes)), "\(second1)")
     }
 }
