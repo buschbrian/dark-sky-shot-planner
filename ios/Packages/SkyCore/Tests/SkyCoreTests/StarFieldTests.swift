@@ -181,6 +181,28 @@ struct StarFieldTests {
         #expect(stars.count > 50)
     }
 
+    @Test("the sky-cell cull finds exactly the stars a full scan finds", arguments: [(180.0, 20.0, 90.0), (0, 85, 60), (300, -5, 120), (45, 40, 20)])
+    func cellCull(_ c: (az: Double, pitch: Double, fov: Double)) throws {
+        let date = try ISO.date("2026-07-15T05:00:00Z")
+        let field = StarField(catalog: Self.catalog, epoch: date)
+        let camera = CameraIntrinsics(longSideFieldOfViewDeg: c.fov, width: 1000, height: 2000)
+        let projector = SkyProjector(attitude: .upright(facingAzimuth: c.az, pitchDeg: c.pitch), intrinsics: camera)
+        let rotation = SkyRotation.eqjToReference(at: date, observer: Self.candlestick)
+        let culled = Set(field.project(through: projector, eqjToReference: rotation, magnitudeLimit: 6.5, extinction: .typical,
+                                       horizon: HorizonLookup(nil)).map(\.index))
+        // Brute force: every catalogue star through the same per-star test.
+        var all = Set<Int>()
+        for i in field.catalog.stars.indices {
+            let pos = field.position(ofStarAt: i, at: date, observer: Self.candlestick)
+            guard pos.altitudeDeg > -2, field.catalog.stars[i].vmag + Extinction.typical.deltaMagnitude(altitudeDeg: pos.altitudeDeg) <= 6.5,
+                  pos.altitudeDeg >= 0, let px = projector.project(pos).pixel, case .inFrame = projector.project(pos),
+                  px.u > 0 else { continue }
+            all.insert(i)
+        }
+        #expect(all.isSubset(of: culled), "missing \(all.subtracting(culled).count)")
+        #expect(culled.count > 20)
+    }
+
     @Test("terrain hides stars behind it")
     func terrain() throws {
         let date = try ISO.date("2026-07-15T05:00:00Z")

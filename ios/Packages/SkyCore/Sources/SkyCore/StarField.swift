@@ -76,6 +76,16 @@ public struct StarField: Sendable {
     public let apparentEQJ: [SIMD3<Double>]
     /// Catalogue indices sorted from brightest to faintest.
     public let byBrightness: [Int]
+    /// A coarse sky grid (10° of declination × up to 36 RA cells), each cell's
+    /// stars brightest first, so a frame only visits cells near the view.
+    let cells: [SkyCell]
+
+    struct SkyCell: Sendable {
+        let centre: SIMD3<Double>
+        /// Cosine and sine of the largest angle from the centre to a member.
+        let radius: Double
+        let stars: [Int]
+    }
 
     public init(catalog: StarCatalog, epoch: Date) {
         self.catalog = catalog
@@ -93,7 +103,29 @@ public struct StarField: Sendable {
             let v = SkyRotation.vector(raDeg: ra, decDeg: dec) + beta
             return v / (v * v).sum().squareRoot()
         }
-        byBrightness = catalog.stars.indices.sorted { catalog.stars[$0].vmag < catalog.stars[$1].vmag }
+        let sorted = catalog.stars.indices.sorted { catalog.stars[$0].vmag < catalog.stars[$1].vmag }
+        byBrightness = sorted
+        cells = StarField.grid(sorted, vectors: apparentEQJ)
+    }
+
+    static func grid(_ sorted: [Int], vectors: [SIMD3<Double>]) -> [SkyCell] {
+        func key(_ v: SIMD3<Double>) -> Int {
+            let dec = asin(max(-1, min(1, v.z))) * 180 / .pi
+            let band = min(Int((dec + 90) / 10), 17)
+            let ra = Geodesy.normalizedAzimuth(atan2(v.y, v.x) * 180 / .pi)
+            let count = max(1, Int((36 * cos((Double(band) * 10 - 85) * .pi / 180)).rounded()))
+            return band * 64 + min(Int(ra / 360 * Double(count)), count - 1)
+        }
+        var members: [Int: [Int]] = [:]
+        for i in sorted { members[key(vectors[i]), default: []].append(i) }
+        return members.keys.sorted().map { k in
+            let stars = members[k]!
+            var sum = SIMD3<Double>.zero
+            for i in stars { sum += vectors[i] }
+            let centre = sum / (sum * sum).sum().squareRoot()
+            let radius = stars.map { acos(max(-1, min(1, (vectors[$0] * centre).sum()))) }.max() ?? 0
+            return SkyCell(centre: centre, radius: radius, stars: stars)
+        }
     }
 
     static let j2000 = Date(timeIntervalSince1970: AstroTime.j2000UnixMs / 1000)
@@ -149,7 +181,8 @@ public struct HorizonLookup: Sendable, Hashable {
 
 extension StarField {
     /// Every star brighter than `magnitudeLimit` (after extinction) that is
-    /// above the terrain and inside the view, expanded by `margin` points.
+    /// above the terrain and inside the view, expanded by `margin` points,
+    /// grouped by sky cell (brightest first within a cell).
     /// `eqjToReference` is `SkyRotation.eqjToReference` for the frame's time.
     public func project(
         through projector: SkyProjector, eqjToReference rotation: RotationMatrix,
@@ -164,7 +197,14 @@ extension StarField {
         let slack = margin + 0.011 * max(k.fx, k.fy)
         var out: [ProjectedStar] = []
         out.reserveCapacity(1024)
-        for i in byBrightness {
+        // Visit only grid cells that can reach the view: the view's cone
+        // (half its diagonal plus the margin) grown by each cell's radius.
+        let boresight = rotation.transposed * (toDevice.row3 * -1)
+        let halfDiagonal = atan(hypot((k.width / 2 + slack) / k.fx, (k.height / 2 + slack) / k.fy))
+        for cell in cells {
+            let reach = halfDiagonal + cell.radius
+            if reach < .pi, (cell.centre * boresight).sum() < cos(reach) { continue }
+        for i in cell.stars {
             let vmag = catalog.stars[i].vmag
             if vmag > magnitudeLimit { break }
             let g = eqjToDevice * apparentEQJ[i]
@@ -188,6 +228,7 @@ extension StarField {
             let az = Geodesy.normalizedAzimuth(atan2(-r.y, r.x) * 180 / .pi)
             if alt < horizon.altitudeDeg(atAzimuth: az) { continue }
             out.append(ProjectedStar(index: i, u: u, v: v, altitudeDeg: alt, apparentMagnitude: mag))
+        }
         }
         return out
     }
