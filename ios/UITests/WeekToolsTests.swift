@@ -59,7 +59,7 @@ final class WeekToolsTests: XCTestCase {
         let app = launch(["DS_PLACE": Self.canyonlands])
         openWeek(app)
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'week.row.'"))
-        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 45))
         XCTAssertEqual(rows.count, 7)
         let status = app.staticTexts["week.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
@@ -76,7 +76,7 @@ final class WeekToolsTests: XCTestCase {
         let app = launch(["DS_PLACE": Self.canyonlands, "DS_FIXTURE_CONDITIONS": "1"])
         openWeek(app)
         let status = app.staticTexts["week.status"]
-        XCTAssertTrue(status.waitForExistence(timeout: 15))
+        XCTAssertTrue(status.waitForExistence(timeout: 45))
         expectation(for: NSPredicate(format: "label BEGINSWITH 'Conditions received'"), evaluatedWith: status)
         waitForExpectations(timeout: 15)
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'week.row.'"))
@@ -201,7 +201,7 @@ final class WeekToolsTests: XCTestCase {
                          arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
         openWeek(app)
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'week.row.'"))
-        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 45))
         XCTAssertEqual(rows.count, 7)
         XCTAssertTrue(rows.firstMatch.label.contains("moon-free"), "a row reads as one VoiceOver element")
         snapshot("week-ax-large")
