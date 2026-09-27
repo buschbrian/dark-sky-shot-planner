@@ -232,7 +232,7 @@ struct SkyScreen: View {
     }
 
     private func radiants(at time: Date) -> [SkyRadiant] {
-        (radiantProvider ?? SimulatedSky.demoRadiants)?.radiants(activeAt: time) ?? []
+        (SimulatedSky.demoRadiants ?? radiantProvider)?.radiants(activeAt: time) ?? []
     }
 
     /// Drag to look around the simulated sky, pinch to change the lens.

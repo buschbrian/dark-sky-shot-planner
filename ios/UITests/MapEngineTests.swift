@@ -5,11 +5,18 @@ import XCTest
 /// Map engine: basemaps, the location puck, offline areas. Camera positions
 /// come from `-MapCamera "lat,lon,zoom"`, never from gestures, so the
 /// screenshots are repeatable. Candlestick Camp is 38.3740, −109.9654.
+///
+/// Opt-in: these need live USGS/AWS tiles and a simulated location, so the
+/// default suite skips them. Run with
+/// `xcrun simctl location <sim> set 38.3740,-109.9654` and
+/// `TEST_RUNNER_MAP_ENGINE=1 xcodebuild test … -only-testing:DarkSkyUITests/MapEngineTests`.
 final class MapEngineTests: XCTestCase {
     static let candlestick = "38.3740,-109.9654"
 
-    override func setUp() {
+    override func setUpWithError() throws {
         continueAfterFailure = false
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["MAP_ENGINE"] == "1",
+                          "network + simulated location: set TEST_RUNNER_MAP_ENGINE=1")
     }
 
     @MainActor
