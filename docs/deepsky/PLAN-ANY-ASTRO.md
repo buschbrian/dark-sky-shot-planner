@@ -26,7 +26,8 @@ forecast. No surveyed tool joins all four (apps.md §5).
 
 M13 extends the M11 shot window and the verdict. The 2026-09-27 review
 found both unfinished (`docs/ios/REVIEW-2026-09-27-FABLE.md`). Merge
-these, with checks green, first:
+these, with checks green, first (B-2, B-4 and B-5 merged at 66e0c34;
+B-3 in progress):
 
 - **B-2:** "tonight" rolls over once darkness ends (SkyCore and web);
   every per-target window inherits it.
