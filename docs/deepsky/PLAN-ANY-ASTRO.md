@@ -1,7 +1,9 @@
 # Any astrophotography: plan
 
-**Status:** proposal, 2026-09-27. Nothing here is approved until the owner
-accepts ADR-0013 and answers `OWNER-DECISIONS.md`.
+**Status:** Accepted, 2026-09-27. ADR-0013 is accepted and owner decisions
+D1–D9 are recorded in `docs/deepsky/OWNER-DECISIONS.md`. M13 has not started
+yet: `docs/ios/PLAN.md`'s M13 precondition (its "Before M13" list below) is
+still open, per owner decision D9.
 **Why:** ADR-0013 (activity profiles, catalog targets; amends ADR-0009 §1).
 **How to work:** as in `docs/ios/PLAN.md`. Work one milestone at a time, in
 order. Each milestone ends with its checks green and a §Log note. SkyCore
