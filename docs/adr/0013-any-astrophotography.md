@@ -1,6 +1,6 @@
 # ADR-0013: Any astrophotography: activity profiles and catalog targets
 
-**Status:** Proposed · **Date:** 2026-09-27 · **Amends:** ADR-0009 §1
+**Status:** Accepted (owner decisions D1–D9 recorded in `docs/deepsky/OWNER-DECISIONS.md`, 2026-09-27) · **Date:** 2026-09-27 · **Amends:** ADR-0009 §1
 
 ## Context
 

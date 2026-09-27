@@ -7,6 +7,8 @@ is decided here. Record each answer, with its date, in
 
 ## D1. Bundle OpenNGC (CC BY-SA 4.0)?
 
+**Decided 2026-09-27:** Yes: bundle OpenNGC as its own separately licensed data file, with attribution (owner).
+
 OpenNGC supplies sizes, magnitudes and common names for NGC and IC objects,
 including most of Messier and Caldwell (planning.md §1.3, §1.8). The
 share-alike clause attaches to the derived data file, not to the app code.
@@ -25,6 +27,8 @@ found, and the share-alike obligation stays limited to one data file.
 
 ## D2. Include solar at all?
 
+**Decided 2026-09-27:** Exclude solar for now (owner).
+
 The research covers safety: front-mounted, ISO 12312-2 filters, never at
 the eyepiece (gear.md §6). It sourced no filter products and no solar
 planning data. Solar work also happens in daylight, which the app's
@@ -40,6 +44,8 @@ night-first design does not cover.
 safety review exist.
 
 ## D3. Smart-telescope control through community bridges?
+
+**Decided 2026-09-27:** "Copy coordinates" always, plus an opt-in ASCOM Alpaca client that talks to a bridge the owner runs; never reverse-engineered protocols or linked community code (owner).
 
 No manufacturer publishes an API (gear.md §1). seestar_alp exposes Alpaca
 for the Seestar, and dwarfAlp does for DWARF, with its license unverified.
@@ -57,6 +63,8 @@ owner has one.
 
 ## D4. Tab structure
 
+**Decided 2026-09-27:** Profile switch at the top of Tonight; no sixth tab (recommendation, accepted by default).
+
 The app has five tabs: Tonight, Map, Sky, Spots and Tools. The 2026-09-27
 review warns about conditionally hidden tabs on iOS 27 (§A #15).
 
@@ -71,6 +79,8 @@ proves to be a destination in its own right.
 
 ## D5. How many targets to bundle
 
+**Decided 2026-09-27:** About 200 targets now; about 300 once VizieR terms are verified (recommendation, accepted by default).
+
 The research proposes 150–300, with about 200 as the target, all well
 under 1 MB (planning.md §1.9, §7.2).
 
@@ -84,6 +94,8 @@ under 1 MB (planning.md §1.9, §7.2).
 not on code.
 
 ## D6. Does the web app get the same profiles?
+
+**Decided 2026-09-27:** Web app gets the numbers via shared golden vectors, not the UI yet (recommendation, accepted by default).
 
 The web app is the reference implementation for the astronomy, and
 `shared/golden/` is the numbers contract (ADR-0009 §3). It does not read
@@ -100,6 +112,8 @@ everything new, without building two UIs at once.
 
 ## D7. Transparency as a deep-sky gate
 
+**Decided 2026-09-27:** Yes: transparency gates deep-sky only, and only when data exists; nightscapes stay advisory (owner).
+
 On 2026-09-26 the owner made transparency advisory, because its only
 source, 7Timer, is optional and non-commercial. The research proposes a
 `when_available` gate for deep sky only: it gates when present and never
@@ -115,6 +129,8 @@ falls back to AOD and smoke.
 
 ## D8. The seeing source for lunar and planetary
 
+**Decided 2026-09-27:** Jet-stream (250 hPa) seeing gates lunar/planetary; 7Timer advisory (recommendation, accepted by default).
+
 - **a.** Gate on the jet-stream proxy (`wind_speed_250hpa`: 111 and 185 km/h
   edges, from 60 and 100 kt; planning.md §5.1). This source is license-clean.
 - **b.** Gate on 7Timer seeing, which is non-commercial and optional.
@@ -122,6 +138,8 @@ falls back to AOD and smoke.
 **Recommendation: a.** Show 7Timer seeing as an advisory beside it.
 
 ## D9. When to start
+
+**Decided 2026-09-27:** Start after the review fixes (B-2, B-3, B-4, B-5, B-8) land (recommendation, accepted by default).
 
 - **a.** Fix review items B-2 to B-5, P2 #4 and B-8 first, then M13
   (`PLAN-ANY-ASTRO.md` §Before M13).
