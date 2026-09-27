@@ -206,6 +206,7 @@ struct HorizonSection: View {
     @State private var job: Task<Void, Never>?
 
     var atCandlestick: Bool { MeasuredHorizons.isAtCandlestick(latitude: spot.latitude, longitude: spot.longitude) }
+    var nearCandlestick: Bool { MeasuredHorizons.offersCandlestick(latitude: spot.latitude, longitude: spot.longitude) }
     var computed: Bool { spot.horizonSource?.hasPrefix("Computed") == true }
 
     var body: some View {
@@ -241,8 +242,9 @@ struct HorizonSection: View {
                     }
                 }
             } else {
-                if atCandlestick {
-                    Button("Use the measured Candlestick Camp profile") { useMeasured() }
+                if nearCandlestick {
+                    Button(atCandlestick ? "Use the measured Candlestick Camp profile"
+                           : "Reuse Candlestick Camp's measured profile (surveyed nearby)") { useMeasured() }
                         .accessibilityIdentifier("horizon-measured")
                 }
                 Button(spot.horizonCSV == nil ? "Compute from terrain" : "Recompute from terrain") { compute() }
@@ -293,7 +295,7 @@ struct HorizonSection: View {
             error = "The bundled Candlestick profile is unavailable."
             return
         }
-        set(p, source: MeasuredHorizons.candlestickSource)
+        set(p, source: MeasuredHorizons.candlestickSource(latitude: spot.latitude, longitude: spot.longitude))
     }
 
     func importCSV(_ result: Result<URL, any Error>) {

@@ -114,7 +114,8 @@ nonisolated enum SpotWeekPlanner {
                 night: date.iso,
                 moonFreeMinutes: a.flat?.moonFreeMinutes,
                 skylineMoonFreeMinutes: a.skyline?.moonFreeMinutes,
-                verdict: verdict.map(summary))
+                verdict: verdict.map(summary),
+                usableUntil: report?.moonFreeWindows.map(\.end).max())
         }
         return SpotWeek(checkedAt: now, terrainAware: input.horizon != nil, nights: nights,
                         requestedWindows: plan.count, fetchedWindows: fetched, interrupted: interrupted)

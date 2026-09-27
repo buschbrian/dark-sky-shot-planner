@@ -93,9 +93,17 @@ enum SpotRefresh {
         if spot.isPinned { WidgetBridge.publish(spot) }
     }
 
+    /// Go nights not yet alerted whose moon-free window still lies ahead. Before noon
+    /// "tonight" can be the night that just ended; a label alone isn't enough.
+    static func eligibleGoNights(_ week: SpotWeek, notified: [String], now: Date) -> [NightSummary] {
+        week.nights.filter { n in
+            n.verdict?.level == .go && !notified.contains(n.night) && (n.usableUntil.map { $0 > now } ?? false)
+        }
+    }
+
     /// Nights are marked only once iOS accepts the notification.
-    static func notifyNewGoNights(_ spot: Spot, week: SpotWeek) async {
-        let fresh = week.nights.filter { $0.verdict?.level == .go && !spot.alertNotifiedNights.contains($0.night) }
+    static func notifyNewGoNights(_ spot: Spot, week: SpotWeek, now: Date = .now) async {
+        let fresh = eligibleGoNights(week, notified: spot.alertNotifiedNights, now: now)
         let oldest = NightDate.containing(.now, in: spot.place.timeZone).adding(days: -7).iso
         spot.alertNotifiedNights.removeAll { $0 < oldest }
         guard !fresh.isEmpty else { return }

@@ -50,6 +50,9 @@ nonisolated struct NightSummary: Codable, Hashable, Sendable, Identifiable {
     /// With the spot's horizon profile; nil without one.
     let skylineMoonFreeMinutes: Int?
     let verdict: VerdictSummary?
+    /// End of the night's last moon-free window (above the skyline when there is one);
+    /// nil for weeks saved before this field existed, which never alert.
+    var usableUntil: Date? = nil
 
     var id: String { night }
     var date: NightDate? { NightDate(iso: night) }

@@ -274,13 +274,34 @@ nonisolated enum TerrainHorizon {
 nonisolated enum MeasuredHorizons {
     static let candlestick = (latitude: 38.374031, longitude: -109.965416)
     static let candlestickSource = "Measured: ArcGIS Pro Skyline on USGS 3DEP 10 m, 2026-09-04 (config/horizon-profiles/candlestick-camp.csv)"
-    static let nearMeters = 1_000.0
+    /// The profile belongs to its surveyed observer (README: the analysis point;
+    /// the campsite field note is ~21 m north). Only this close is "the same site".
+    static let observerMatchMeters = 30.0
+    /// Farther than the observer match but within this, the profile is offered as
+    /// labelled reuse; a nearby point can see a different skyline.
+    static let offerMeters = 1_000.0
 
-    static func isAtCandlestick(latitude: Double, longitude: Double) -> Bool {
-        guard let d = Geodesy.inverse(
+    static func distanceToCandlestick(latitude: Double, longitude: Double) -> Double? {
+        Geodesy.inverse(
             from: GeoCoordinate(latitude: latitude, longitude: longitude),
-            to: GeoCoordinate(latitude: candlestick.latitude, longitude: candlestick.longitude)) else { return false }
-        return d.distanceMeters < nearMeters
+            to: GeoCoordinate(latitude: candlestick.latitude, longitude: candlestick.longitude))?.distanceMeters
+    }
+
+    /// The surveyed observer itself: the only place the RMS comparison means anything.
+    static func isAtCandlestick(latitude: Double, longitude: Double) -> Bool {
+        distanceToCandlestick(latitude: latitude, longitude: longitude).map { $0 <= observerMatchMeters } ?? false
+    }
+
+    static func offersCandlestick(latitude: Double, longitude: Double) -> Bool {
+        distanceToCandlestick(latitude: latitude, longitude: longitude).map { $0 <= offerMeters } ?? false
+    }
+
+    /// Source line for an applied measured profile, naming the reuse when the spot isn't the observer.
+    static func candlestickSource(latitude: Double, longitude: Double) -> String {
+        guard let d = distanceToCandlestick(latitude: latitude, longitude: longitude), d > observerMatchMeters else {
+            return candlestickSource
+        }
+        return "\(candlestickSource); reused \(Int(d.rounded())) m from its surveyed observer, so this spot's skyline may differ"
     }
 
     static func candlestickProfile() -> HorizonProfile? { try? HorizonProfile.bundled("candlestick-camp") }
