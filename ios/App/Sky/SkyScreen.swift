@@ -466,9 +466,14 @@ struct SkyScreen: View {
         look.point(at: position)
     }
 
+    /// Puts the pole a third of the way down the view (above the panels),
+    /// the usual circular-trails composition.
     private func pointSimulatedAtPole(place: Place, time: Date) {
         guard let observer = try? place.observer() else { return }
-        look.point(at: StarTrails.pole(at: time, observer: observer))
+        let pole = StarTrails.pole(at: time, observer: observer)
+        look.point(at: pole)
+        let lift = atan(2 * (0.5 - 1.0 / 3) * tan(look.fieldOfViewDeg / 2 * .pi / 180)) * 180 / .pi
+        look.pitchDeg = min(max(pole.altitudeDeg - lift, -10), 89)
     }
 
     private func headingAccuracy(simulated: Bool) -> Double {

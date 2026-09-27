@@ -63,12 +63,18 @@ struct SkyFindPanel: View {
     let onClose: () -> Void
 
     @State private var kind = Kind.constellations
+    /// The list folds away once a target is picked, so the sky stays visible.
+    @State private var showsList = true
     @Environment(\.palette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Find").font(.headline).foregroundStyle(palette.primary)
+                if target != nil, !showsList {
+                    Button("List") { showsList = true }.buttonStyle(SkyButtonStyle())
+                        .accessibilityIdentifier("sky.find.list")
+                }
                 Spacer()
                 if target != nil {
                     Button("Stop") { target = nil }.buttonStyle(SkyButtonStyle()).accessibilityIdentifier("sky.find.stop")
@@ -80,6 +86,13 @@ struct SkyFindPanel: View {
                 }
                 Button("Close", action: onClose).buttonStyle(SkyButtonStyle()).accessibilityIdentifier("sky.panel.close")
             }
+            if showsList || target == nil {
+                list
+            }
+        }
+    }
+
+    @ViewBuilder private var list: some View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(Kind.allCases) { k in
@@ -99,6 +112,7 @@ struct SkyFindPanel: View {
                         ForEach(list) { item in
                             Button {
                                 target = item.target
+                                showsList = false
                             } label: {
                                 Text("\(item.name) \(Int(item.altitudeDeg.rounded()))°")
                                     .lineLimit(1).minimumScaleFactor(0.8)
@@ -115,7 +129,6 @@ struct SkyFindPanel: View {
                 }
                 .frame(maxHeight: 150)
             }
-        }
     }
 }
 

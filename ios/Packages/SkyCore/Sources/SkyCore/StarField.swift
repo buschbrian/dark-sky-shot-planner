@@ -30,6 +30,15 @@ public enum SkyRotation {
         return RotationMatrix(Astronomy_Rotation_EQJ_HOR(&time, observer.c))
     }
 
+    /// astronomy-engine's `REFRACTION_NORMAL` (Saemundsson, as JPL Horizons),
+    /// inlined for the per-frame star loop; below −1° it defers to the C code,
+    /// which tapers refraction toward the nadir. Same numbers either way.
+    @inline(__always)
+    static func refractionDeg(_ altitude: Double) -> Double {
+        guard altitude >= -1, altitude <= 90 else { return Astronomy_Refraction(REFRACTION_NORMAL, altitude) }
+        return 1.02 / tan((altitude + 10.3 / (altitude + 5.11)) * .pi / 180) / 60
+    }
+
     /// Galactic (l, b) → EQJ, constant.
     public static let galacticToEQJ = RotationMatrix(Astronomy_Rotation_GAL_EQJ())
 
@@ -52,7 +61,7 @@ public enum SkyRotation {
         let horizontal = (r.x * r.x + r.y * r.y).squareRoot()
         guard horizontal > 1e-12 else { return r }
         let alt = atan2(r.z, horizontal) * 180 / .pi
-        let lifted = (alt + Astronomy_Refraction(REFRACTION_NORMAL, alt)) * .pi / 180
+        let lifted = (alt + refractionDeg(alt)) * .pi / 180
         let length = (horizontal * horizontal + r.z * r.z).squareRoot()
         let s = cos(lifted) * length / horizontal
         return SIMD3(r.x * s, r.y * s, sin(lifted) * length)
@@ -148,11 +157,21 @@ extension StarField {
     ) -> [ProjectedStar] {
         let k = projector.intrinsics
         let toDevice = projector.attitude.referenceToDevice
+        // Everything a star needs in one matrix: EQJ → device.
+        let eqjToDevice = toDevice * rotation
+        // Refraction lifts a star by at most ~0.6°: cull on the geometric
+        // place with that much slack before paying for it.
+        let slack = margin + 0.011 * max(k.fx, k.fy)
         var out: [ProjectedStar] = []
         out.reserveCapacity(1024)
         for i in byBrightness {
             let vmag = catalog.stars[i].vmag
             if vmag > magnitudeLimit { break }
+            let g = eqjToDevice * apparentEQJ[i]
+            let gz = -g.z
+            guard gz > 1e-3 else { continue }
+            let gu = k.fx * g.x / gz + k.cx, gv = k.fy * -g.y / gz + k.cy
+            guard gu > -slack, gu < k.width + slack, gv > -slack, gv < k.height + slack else { continue }
             let geometric = rotation * apparentEQJ[i]
             // Anything more than 2° below the horizon stays down after refraction.
             if geometric.z < -0.035 { continue }

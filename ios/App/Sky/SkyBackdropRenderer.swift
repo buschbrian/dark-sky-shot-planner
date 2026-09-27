@@ -228,10 +228,12 @@ fragment float4 skyFragment(VOut vin [[stage_in]], constant Uniforms &u [[buffer
     }
 
     float total = dark + moonB + twB + mwB;
-    // Log tone map: 25 nL (darker than any natural sky) → 0, a bright
-    // daytime sky (4e7 nL) → 1, scaled by the exposure control.
-    float v = clamp(log10(total / 25.0f) / log10(4e7f / 25.0f), 0.0f, 1.0f);
-    v = pow(v, 0.85f) * opts.w;
+    // Log tone map, 50 nL → 0 and a bright daytime sky (4e7 nL) → 1, then
+    // a 0.6 power to open up the night end: a dark zenith (60 nL) lands
+    // near 0.07, the Sagittarius star cloud near 0.28, a moonlit sky near
+    // 0.4, the end of civil twilight near 0.7. Scaled by the exposure control.
+    float v = clamp(log10(total / 50.0f) / log10(4e7f / 50.0f), 0.0f, 1.0f);
+    v = pow(v, 0.6f) * opts.w;
 
     // Colour: each light source's share of the brightness.
     float warm = exp(-sunRho / 30.0f) * smoothstep(-14.0f, -2.0f, sunAlt) * exp(-max(h, 0.0f) / 20.0f);

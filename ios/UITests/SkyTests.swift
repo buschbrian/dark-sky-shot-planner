@@ -233,7 +233,7 @@ final class SkyTests: XCTestCase {
         expectation(for: arcs, evaluatedWith: readout)
         waitForExpectations(timeout: 5)
         element(app, "sky.trails.pointPole").tap()
-        let pole = NSPredicate(format: "label CONTAINS 'Pole in frame: 50% across, 50% down'")
+        let pole = NSPredicate(format: "label CONTAINS 'Pole in frame: 50% across, 33% down'")
         expectation(for: pole, evaluatedWith: readout)
         waitForExpectations(timeout: 5)
         XCTAssertTrue(readout.label.contains("Polaris 0.6"), readout.label)

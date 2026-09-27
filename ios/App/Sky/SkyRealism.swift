@@ -235,17 +235,23 @@ struct SkyRealismBuilder {
                 guard let name = catalog.names[catalog.stars[p.index].hr],
                       p.u > 0, p.u < projector.intrinsics.width, p.v > 0, p.v < projector.intrinsics.height else { continue }
                 frame.namedStarsOnScreen.append(name)
-                if layers.names {
+                // With trails on, Polaris gets its own label beside the pole.
+                if layers.names, !(trail != nil && catalog.stars[p.index].hr == 424) {
                     frame.labels.append(.init(text: name, point: CGPoint(x: p.u + 5, y: p.v + 4), isConstellation: false, highlighted: find == .star(hr: catalog.stars[p.index].hr)))
                 }
             }
         }
 
-        // Constellation figures and names.
+        // Constellation figures and names. Figures whose centre is far
+        // outside the view (the largest spans ~50°) are skipped outright.
         let width = projector.intrinsics.width, height = projector.intrinsics.height
+        let boresight = projector.attitude.referenceToDevice.row3 * -1
+        let halfDiagonal = atan(hypot(width / 2 / projector.intrinsics.fx, height / 2 / projector.intrinsics.fy))
+        let cullCos = cos(min(halfDiagonal + 50 * .pi / 180, .pi))
         for figure in catalog.constellations {
             let highlighted = find == .constellation(figure.abbreviation)
             let centre = SkyRotation.refracted(rotation * (stars.centres[figure.abbreviation] ?? stars.field.centre(of: figure)))
+            if !highlighted, (centre * boresight).sum() < cullCos { continue }
             let centreAlt = asin(max(-1, min(1, centre.z))) * 180 / .pi
             if centreAlt > -15 || highlighted, layers.constellationLines || highlighted {
                 var runs: [[CGPoint]] = []
@@ -277,7 +283,7 @@ struct SkyRealismBuilder {
         }
 
         if let trail {
-            let preview = cache.trails(trail, stars: stars, observer: observer, magnitudeLimit: fov < 50 ? 4.5 : 3.8)
+            let preview = cache.trails(trail, stars: stars, observer: observer, magnitudeLimit: fov < 50 ? 5.0 : 4.5)
             let runs = preview.arcs.map { arc in
                 (runs: projector.projectPath(referenceVectors: arc.points).map { $0.map(Self.point) },
                  magnitude: catalog.stars[arc.index].vmag, color: stars.colorBucket[arc.index])
@@ -339,9 +345,14 @@ struct SkyRealismBuilder {
             camToRef: camToRef, camToGal: camToGal,
             sun: l.sun.referenceVector, moon: l.moon.referenceVector,
             light: SIMD4(Float(l.sun.altitudeDeg), Float(l.moon.altitudeDeg), Float(l.moonPhaseAngleDeg), Float(l.darkZenithNanoLamberts)),
-            options: SIMD4(Float(l.extinction.k), layers.milkyWay ? 1.6 : 0, fieldMode ? 1 : 0, 1),
+            options: SIMD4(Float(l.extinction.k), layers.milkyWay ? Self.milkyWayGain : 0, fieldMode ? 1 : 0, 1),
             horizon: cache.terrain(horizonProfile))
     }
 
     static func point(_ p: PixelPoint) -> CGPoint { CGPoint(x: p.u, y: p.v) }
+
+    /// Milky Way surface brightness per unit of `MilkyWayModel.brightness`,
+    /// in dark-sky zenith units: the Sagittarius Star Cloud (model ~1.1)
+    /// comes out ~3.3× the dark sky, about 20.4 against 21.9 mag/arcsec².
+    static let milkyWayGain: Float = 3.0
 }

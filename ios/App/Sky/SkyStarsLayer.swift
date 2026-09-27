@@ -87,8 +87,8 @@ extension SkyOverlayView {
         }
         for (key, path) in groups {
             let step = Double(key / 8)
-            let width = max(0.6, (2.4 - 0.3 * step) * scale)
-            c.stroke(path, with: .color(starColor(UInt8(key % 8)).opacity(max(0.3, 0.9 - 0.1 * step))),
+            let width = max(0.8, (2.8 - 0.3 * step) * scale)
+            c.stroke(path, with: .color(starColor(UInt8(key % 8)).opacity(max(0.45, 0.95 - 0.08 * step))),
                      style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: t.sequence.gapFraction > 0.15 ? [6, 2] : []))
         }
     }
@@ -104,7 +104,7 @@ extension SkyOverlayView {
             c.stroke(cross, with: .color(color), lineWidth: 1.5)
             c.stroke(Path(ellipseIn: CGRect(x: pole.x - 5, y: pole.y - 5, width: 10, height: 10)), with: .color(color), lineWidth: 1)
             c.draw(Text("Celestial pole").font(.caption2.weight(.semibold)).foregroundStyle(color),
-                   at: CGPoint(x: pole.x + 10, y: pole.y + 8), anchor: .topLeading)
+                   at: CGPoint(x: pole.x - 10, y: pole.y + 8), anchor: .topTrailing)
         }
         if let polaris = t.polaris {
             c.stroke(Path(ellipseIn: CGRect(x: polaris.x - 7, y: polaris.y - 7, width: 14, height: 14)), with: .color(color), lineWidth: 1.5)
