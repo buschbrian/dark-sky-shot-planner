@@ -111,6 +111,8 @@ struct PlannerMapView: UIViewRepresentable {
                 map.styleURL = url
             }
             map.backgroundColor = s.colors.background
+            // The scale bar draws white; under field mode's red multiply that is full red.
+            map.scaleBar.alpha = s.colors.field ? MapColors.fieldCap * 0.9 : 1
             if map.tintColor != s.colors.accent {
                 map.tintColor = s.colors.accent
                 if let u = map.userLocation { (map.view(for: u) as? UserPuckView)?.colors = s.colors }
@@ -123,6 +125,7 @@ struct PlannerMapView: UIViewRepresentable {
                 lastPin = s.pin
             }
             updateAnnotations(s, on: map)
+            DispatchQueue.main.async { [weak self] in self?.declutter() }
             guard styleReady, let style = map.style else { return }
             let old = applied
             applied = s
@@ -296,6 +299,29 @@ struct PlannerMapView: UIViewRepresentable {
             }
         }
 
+        /// Line labels are views, so MapLibre can't place them around each
+        /// other: hide any that would cover a higher-priority label (the
+        /// at-time ones first), the pin, or the map's buttons. Hidden labels
+        /// are still listed in the panel.
+        fileprivate func declutter() {
+            guard let map else { return }
+            let reserved = MapOverlayControls.reservedSize
+            var taken = [CGRect(x: map.bounds.maxX - reserved.width, y: map.bounds.maxY - reserved.height,
+                                width: reserved.width, height: reserved.height)]
+            for a in [pinAnnotation as MLNAnnotation?, map.userLocation].compactMap({ $0 }) {
+                if let v = map.view(for: a) { taken.append(v.convert(v.bounds, to: map).insetBy(dx: -4, dy: -4)) }
+            }
+            let ordered = labelAnnotations.filter(\.emphasized) + labelAnnotations.filter { !$0.emphasized }
+            for a in ordered {
+                guard let v = map.view(for: a) else { continue }
+                let f = v.convert(v.bounds, to: map).insetBy(dx: -2, dy: -2)
+                let hide = !map.bounds.intersects(f) || taken.contains { $0.intersects(f) }
+                v.alpha = hide ? 0 : 1
+                v.accessibilityElementsHidden = hide
+                if !hide { taken.append(f) }
+            }
+        }
+
         // MARK: Gestures
 
         @objc func longPress(_ g: UILongPressGestureRecognizer) {
@@ -388,7 +414,13 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
         parent.controller.report(trackingMode: mode)
     }
 
+    @objc(mapViewRegionIsChanging:)
+    func mapViewRegionIsChanging(_ mapView: MLNMapView) {
+        declutter()
+    }
+
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        declutter()
         reportCamera()
         reportPinLand()
     }

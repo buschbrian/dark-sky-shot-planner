@@ -119,8 +119,8 @@ enum MapStyle {
             [
                 "id": "basemap-dark", "type": "raster", "source": BasemapSource.usgsTopo.id, "layout": hidden,
                 "paint": [
-                    "raster-saturation": -1, "raster-contrast": field ? 0.5 : 0.45,
-                    "raster-brightness-min": field ? 0.6 : 0.92, "raster-brightness-max": field ? 0.03 : 0.07,
+                    "raster-saturation": -1, "raster-contrast": field ? 0.35 : 0.45,
+                    "raster-brightness-min": field ? 0.5 : 0.92, "raster-brightness-max": field ? 0.03 : 0.07,
                     "raster-fade-duration": 150,
                 ] as [String: Any],
             ],

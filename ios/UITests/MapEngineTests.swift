@@ -103,9 +103,11 @@ final class MapEngineTests: XCTestCase {
         let s = try mapStats(app)
         attach(app, "field-dark-z13")
         print("FIELD_SCAN \(s)")
+        // Whole map frame, including the panel's own age badge and hint (MapScreen).
+        print("FIELD_SCAN_WHOLE_MAP \(try mapStats(app, wholeMap: true))")
         XCTAssertLessThanOrEqual(s.maxGB, 12, "green/blue light in field mode: \(s)")
         XCTAssertLessThan(s.p999Red, 160, "field map too bright: \(s)")
-        XCTAssertGreaterThan(s.stddev, 4, "field map blank: \(s)")
+        XCTAssertGreaterThan(s.stddev, 2, "field map blank: \(s)")
     }
 
     @MainActor
@@ -231,13 +233,13 @@ final class MapEngineTests: XCTestCase {
 
     /// Luma statistics over the map, inset past its corner badges and buttons.
     @MainActor
-    private func mapStats(_ app: XCUIApplication) throws -> Stats {
+    private func mapStats(_ app: XCUIApplication, wholeMap: Bool = false) throws -> Stats {
         let shot = XCUIScreen.main.screenshot()
         let cg = try XCTUnwrap(shot.image.cgImage)
         let scale = CGFloat(cg.width) / shot.image.size.width
         let f = app.otherElements["map.view"].frame
         // The middle of the map: clear of the age badge, hint, credit and buttons.
-        let r = CGRect(x: f.minX + 20, y: f.minY + 70, width: f.width - 100, height: f.height - 150)
+        let r = wholeMap ? f : CGRect(x: f.minX + 20, y: f.minY + 70, width: f.width - 100, height: f.height - 150)
         let px = CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale).integral
         let w = Int(px.width), h = Int(px.height)
         var buf = [UInt8](repeating: 0, count: w * h * 4)

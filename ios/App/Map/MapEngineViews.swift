@@ -13,6 +13,10 @@ struct MapOverlayControls: View {
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
     @State private var choosing = false
+    /// On the map, field mode keeps the buttons at the map's brightness cap too.
+    private var ink: Color { state.fieldMode ? palette.accent.opacity(Double(MapColors.fieldCap)) : palette.accent }
+    /// The button column's footprint; line labels stay out of it.
+    static let reservedSize = CGSize(width: 68, height: 190)
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
@@ -34,10 +38,10 @@ struct MapOverlayControls: View {
                         } label: {
                             Text(b.title)
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(on ? palette.background : palette.accent)
+                                .foregroundStyle(on ? palette.background : ink)
                                 .padding(.horizontal, 10).frame(height: 44)
-                                .background(on ? palette.accent : palette.background.opacity(0.9), in: Capsule())
-                                .overlay(Capsule().stroke(palette.accent.opacity(0.7), lineWidth: 1))
+                                .background(on ? ink : palette.background.opacity(0.9), in: Capsule())
+                                .overlay(Capsule().stroke(ink.opacity(0.7), lineWidth: 1))
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("map.basemap.\(b.rawValue)")
@@ -78,10 +82,10 @@ struct MapOverlayControls: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(palette.accent)
+                .foregroundStyle(ink)
                 .frame(width: 48, height: 48)
                 .background(palette.background.opacity(0.9), in: Circle())
-                .overlay(Circle().stroke(palette.accent.opacity(0.7), lineWidth: 1))
+                .overlay(Circle().stroke(ink.opacity(0.7), lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
