@@ -147,7 +147,10 @@ final class ShotEventsTests: XCTestCase {
         XCTAssertTrue(section.exists)
         let jupiter = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier == 'skyEvents.row' AND label CONTAINS 'Jupiter at opposition'")).firstMatch
-        XCTAssertTrue(jupiter.waitForExistence(timeout: 10), "the opposition is in Tonight's section")
+        if !jupiter.waitForExistence(timeout: 10) {
+            let rows = app.descendants(matching: .any).matching(identifier: "skyEvents.row").allElementsBoundByIndex.map(\.label)
+            XCTFail("the opposition is in Tonight's section; rows: \(rows); section: \(section.label)")
+        }
 
         let plan = app.buttons.matching(NSPredicate(format: "identifier == 'skyEvents.plan' AND label CONTAINS 'Jupiter'")).firstMatch
         plan.swipeUpUntilVisible(in: app)

@@ -25,6 +25,7 @@ struct SkyEventsSection: View {
             await store.load(place: place, night: night)
         }
         .onAppear { store.viewAppeared("section") }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("skyEvents.section")
     }
 
