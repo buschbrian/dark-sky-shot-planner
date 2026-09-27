@@ -11,6 +11,7 @@ struct MapScreen: View {
     @Query(sort: \Spot.createdAt) private var spots: [Spot]
 
     @State private var data = MapData()
+    @State private var controller = MapController()
     @State private var plan: MapPlan?
     @State private var darkness: TimeWindow?
     @State private var time = Date.now
@@ -47,8 +48,10 @@ struct MapScreen: View {
                         placeSection
                         linesSection
                         if !inspection.isEmpty { tappedSection }
+                        BasemapSection(data: data, controller: controller)
                         layersSection
                         offlineSection
+                        OfflineAreasSection(controller: controller)
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 24)
@@ -89,6 +92,7 @@ struct MapScreen: View {
         if let styleURL {
             PlannerMapView(
                 snapshot: snapshot(styleURL),
+                controller: controller,
                 onDropPin: dropPin,
                 onCamera: { z, side in
                     zoom = z
@@ -120,6 +124,8 @@ struct MapScreen: View {
                     .padding(8)
                     .allowsHitTesting(false)
             }
+            .overlay(alignment: .bottomTrailing) { MapAttributionOverlay(controller: controller) }
+            .overlay(alignment: .bottomTrailing) { MapOverlayControls(controller: controller).padding(.bottom, 14) }
         } else {
             palette.background
         }

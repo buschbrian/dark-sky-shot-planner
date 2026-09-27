@@ -76,6 +76,7 @@ final class MapData {
     private let session: URLSession
 
     init(cacheDir: URL? = nil) {
+        MapNetwork.configure()
         let base = cacheDir ?? URL.applicationSupportDirectory.appending(path: "MapData", directoryHint: .isDirectory)
         self.cacheDir = base
         let config = URLSessionConfiguration.default
@@ -143,6 +144,9 @@ final class MapData {
     }
 
     func refreshPages() async {
+        for s in Basemap.allSources {
+            if let u = s.metadataURL { _ = await fetch(u, to: "basemap/\(s.id).json") }
+        }
         _ = await fetch(Self.pagesBase.appending(path: "data-status.json"), to: "data-status.json")
         for layer in MapLayer.allCases {
             guard let p = layer.pages else { continue }
@@ -200,7 +204,17 @@ final class MapData {
         fetched = f
     }
 
+    /// "Data refreshed …" for a USGS basemap source, from its cached service description.
+    func refreshed(_ source: BasemapSource) -> String? {
+        read("basemap/\(source.id).json").flatMap(USGSServiceInfo.refreshed(fromServiceJSON:))
+    }
+
     private func fetch(_ url: URL, to rel: String) async -> Bool {
+        // -DarkSkyOffline: behave exactly as with no signal (the cached copies stay).
+        if MapNetwork.offline {
+            failed.insert(rel)
+            return false
+        }
         do {
             let (data, response) = try await session.data(from: url)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200, !data.isEmpty else {

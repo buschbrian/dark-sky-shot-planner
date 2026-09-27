@@ -31,6 +31,28 @@ locally and is not deployed yet. "Personal use" means the owner's own app.
 | Observed AQI | [EPA AirNow API](https://docs.airnowapi.org/) `/aq/observation/current/ziplatLong/` (the replacement schema's docs are behind a login; request parameter names unverified) | Free key. Label data "preliminary", credit the reporting agencies and AirNow, don't alter values, use official AQI colors, notify AirNow | OK | OK, with the display rules |
 | Kp, aurora oval | [NOAA SWPC](https://services.swpc.noaa.gov/) JSON | U.S. Government work, public domain (SWPC disclaimer page unreachable when checked) | OK | OK |
 
+## Basemaps on the iOS map
+
+Checked on 2026-09-26 by fetching each service's description and sample tiles
+at Candlestick Camp (38.3740, −109.9654), and reading the publisher's terms.
+All are keyless. The iOS map draws the credit in its corner and names each
+source, license and "Data refreshed" date in the Map panel. Offline areas use
+MapLibre offline packs of these same tile URLs.
+
+| Basemap | Source | License / terms | Credit shown | Offline packs |
+|---|---|---|---|---|
+| Topo; Dark relief (the same tiles inverted and dimmed by MapLibre paint properties) | USGS The National Map [USGSTopo](https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer) cached tiles, `…/tile/{z}/{y}/{x}`, z0–16. Its `copyrightText` lists TNM datasets, Census TIGER/Line, USFS roads, Natural Earth, NOAA NCEI; "Data refreshed September 4, 2026" | Public domain: "USGS-authored or produced data and information are considered to be in the U.S. public domain and can be freely used without permission" ([USGS copyright FAQ](https://www.usgs.gov/faqs/are-usgs-reportspublications-copyrighted)); credit requested | "USGS The National Map" | Allowed: the service reports `exportTilesAllowed: true` (`maxExportTilesCount` 100 000) |
+| Imagery | USGS The National Map [USGSImageryTopo](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer) (orthoimagery, NAIP-class, with US Topo labels), z0–16; "Data refreshed April, 2026" | Public domain (as above) | "USGS The National Map: imagery" | Allowed (`exportTilesAllowed: true`); optional per area, about doubles the size |
+| Dark relief hillshade | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) terrarium PNG, `s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`, used to z12 (overzoomed above) | Public-domain sources (USGS 3DEP/NED, SRTM, GMTED2010); credit per the tiles' [attribution file](https://github.com/tilezen/joerd/blob/master/docs/attribution.md) | "terrain Mapzen/AWS, USGS" | AWS Open Data registry, no terms against bulk use |
+
+Rejected on 2026-09-26: **OpenFreeMap** vector tiles (OpenStreetMap, ODbL,
+keyless) — its [terms](https://openfreemap.org/tos/) forbid collecting data
+"in automated ways without permission", which an offline-pack download is.
+**USGSShadedReliefOnly** returns 404 above z12 at Candlestick. The dynamic
+`carto.nationalmap.gov` transportation/geonames exports returned empty images
+there and would cut labels at tile edges. No Google, Apple, Esri World
+Imagery or competitor tiles are used.
+
 ## Proposed for the iOS companion (not yet fetched)
 
 Verified on 2026-09-25, as above. A row moves up when code starts using it.
@@ -38,7 +60,7 @@ Verified on 2026-09-25, as above. A row moves up when code starts using it.
 | Layer | Source | License / terms | Personal use | Distribution |
 |---|---|---|---|---|
 | Night cloud imagery | [NASA GIBS](https://nasa-gibs.github.io/gibs-api-docs/) GOES ABI band 13 | NASA open data; GIBS acknowledgement text required | OK | OK |
-| Terrain for horizon profiles | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (3DEP/NED, SRTM) and [USGS 3DEP](https://www.usgs.gov/3d-elevation-program) services | Public domain sources; credit per the tiles' attribution file | OK | OK |
+| Terrain for horizon profiles | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (3DEP/NED, SRTM) and [USGS 3DEP](https://www.usgs.gov/3d-elevation-program) services | Public domain sources; credit per the tiles' attribution file. Now also drawn as the map's Dark relief hillshade (above) | OK | OK |
 | Terrain (alternative) | Mapterhorn hosted tiles | Terms for the hosted tiles not stated | Avoid | Avoid (self-host its PMTiles if ever needed) |
 
 SkyCore's horizon ray march reads terrarium tiles through a protocol and does

@@ -51,6 +51,21 @@ extension MapData {
         }
     }
 
+    /// The basemap's sources, license and the date each source gives for its
+    /// data. Basemaps have no freshness window, so none is claimed.
+    func basemapDetail(_ b: Basemap) -> String {
+        var parts: [String] = [b.summary + "."]
+        for src in b.sources {
+            var line = "\(src.attribution): \(src.license)"
+            if src.metadataURL != nil {
+                line += refreshed(src).map { ", data refreshed \($0) (per the service)" } ?? ", refresh date not downloaded yet"
+            }
+            parts.append(line + ".")
+        }
+        if MapNetwork.offline { parts.append("Offline: tiles come from offline areas and the map's cache only.") }
+        return parts.joined(separator: " ")
+    }
+
     private func pagesProvenance(_ layer: MapLayer, now: Date) -> LayerProvenance {
         let p = layer.pages!
         let manifest = manifests[p.layerId]

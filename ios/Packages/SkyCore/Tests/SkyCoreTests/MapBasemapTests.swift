@@ -36,20 +36,29 @@ struct MapBasemapTests {
             bounds: spot, minZoom: OfflineArea.spotZooms.lowerBound, maxZoom: OfflineArea.spotZooms.upperBound,
             sources: OfflineArea.sources(includeImagery: false))
         #expect(e.rows.map(\.sourceID) == ["usgs-topo", "aws-terrain"])
-        // Terrain stops at its own z12; overzoomed above that.
+        // 256-pixel tiles one level deeper than the map zoom; terrain stops at its own z12.
         let dem = e.rows[1]
-        #expect(dem.tiles == (8...12).map { TileMath.count(spot, zoom: $0) }.reduce(0, +))
+        #expect(dem.tiles == (9...12).map { TileMath.count(spot, zoom: $0) }.reduce(0, +))
+        #expect(e.rows[0].tiles == (9...16).map { TileMath.count(spot, zoom: $0) }.reduce(0, +))
         #expect(e.bytes > 2_000_000 && e.bytes < 20_000_000, "\(e.bytes) bytes")
         let withImagery = OfflineEstimate.make(
-            bounds: spot, minZoom: 8, maxZoom: 16, sources: OfflineArea.sources(includeImagery: true))
+            bounds: spot, minZoom: 8, maxZoom: 15, sources: OfflineArea.sources(includeImagery: true))
         #expect(withImagery.bytes > e.bytes)
     }
 
     @Test("view zooms keep context and end at the caches' deepest level")
     func viewZooms() {
-        #expect(OfflineArea.viewZooms(currentZoom: 13.4) == 11...16)
-        #expect(OfflineArea.viewZooms(currentZoom: 3) == 5...16)
-        #expect(OfflineArea.viewZooms(currentZoom: 18) == 14...16)
+        #expect(OfflineArea.viewZooms(currentZoom: 13.4) == 11...15)
+        #expect(OfflineArea.viewZooms(currentZoom: 3) == 5...15)
+        #expect(OfflineArea.viewZooms(currentZoom: 18) == 13...15)
+    }
+
+    @Test("padding grows each side and stays on the Mercator map")
+    func padding() {
+        let b = GeoBounds(west: -110, south: 38, east: -109, north: 39).padded(by: 0.15)
+        #expect(abs(b.west - -110.15) < 1e-9 && abs(b.east - -108.85) < 1e-9)
+        #expect(abs(b.south - 37.85) < 1e-9 && abs(b.north - 39.15) < 1e-9)
+        #expect(GeoBounds(west: 0, south: -84, east: 1, north: 84).padded(by: 0.5).north == 85)
     }
 
     @Test("byte table falls back to the nearest sampled zoom")

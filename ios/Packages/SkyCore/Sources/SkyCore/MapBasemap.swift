@@ -111,6 +111,13 @@ public struct GeoBounds: Sendable, Equatable, Codable {
         return GeoBounds(west: longitude - dLon, south: latitude - dLat, east: longitude + dLon, north: latitude + dLat)
     }
 
+    /// Grown by `fraction` of its size on every side (an offline area keeps a
+    /// margin past the screen edges so panning a little still finds tiles).
+    public func padded(by fraction: Double) -> GeoBounds {
+        let dx = (east - west) * fraction, dy = (north - south) * fraction
+        return GeoBounds(west: west - dx, south: max(-85, south - dy), east: east + dx, north: min(85, north + dy))
+    }
+
     public var widthMeters: Double {
         (east - west) * 111_320 * cos((north + south) / 2 * .pi / 180)
     }
@@ -152,15 +159,16 @@ public struct OfflineEstimate: Sendable, Equatable {
     public var tiles: Int { rows.reduce(0) { $0 + $1.tiles } }
     public var bytes: Int { rows.reduce(0) { $0 + $1.bytes } }
 
-    /// MapLibre downloads each source from `minZoom` up to the lower of
-    /// `maxZoom` and the source's own maximum (it overzooms past that).
+    /// `minZoom`/`maxZoom` are map zooms. MapLibre's zooms count 512-point
+    /// tiles, so a 256-pixel source is fetched one level deeper (z + 1), up to
+    /// the source's own maximum; past that it overzooms.
     public static func make(bounds: GeoBounds, minZoom: Int, maxZoom: Int, sources: [BasemapSource]) -> OfflineEstimate {
         var rows: [Row] = []
         for s in sources {
-            let top = min(maxZoom, s.maxZoom)
+            let lo = minZoom + 1, top = min(maxZoom + 1, s.maxZoom)
             var tiles = 0, bytes = 0
-            if minZoom <= top {
-                for z in minZoom...top {
+            if lo <= top {
+                for z in lo...top {
                     let n = TileMath.count(bounds, zoom: z)
                     tiles += n
                     bytes += n * s.bytes(atZoom: z)
@@ -176,9 +184,12 @@ public struct OfflineEstimate: Sendable, Equatable {
 public enum OfflineArea {
     /// Half-side of the box kept around a saved spot.
     public static let spotRadiusMeters = 5_000.0
-    public static let spotZooms = 8...16
-    /// Deepest zoom kept for "this view": the USGS caches end at 16.
-    public static let maxZoom = 16
+    /// Map zooms (see `OfflineEstimate.make`).
+    public static let spotZooms = 8...15
+    /// Deepest map zoom kept: it already draws the USGS caches' last level (16).
+    public static let maxZoom = 15
+    /// Margin kept around the current view, per side.
+    public static let viewPadding = 0.15
 
     /// Zooms kept for the current view: a little wider context than on
     /// screen, and every deeper level down to `maxZoom`.
