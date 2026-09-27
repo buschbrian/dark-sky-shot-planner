@@ -33,6 +33,9 @@ final class DesignTourTests: XCTestCase {
             let m = field ? "field" : "std"
             XCTAssertTrue(el(app, "tonight.headline").waitForExistence(timeout: 20))
             _ = el(app, "tonight.conditionsStrip").waitForExistence(timeout: 10)
+            // Review B-3: the shot plan is the first block, so the field scan covers it.
+            XCTAssertTrue(el(app, "shot.target").waitForExistence(timeout: 10))
+            XCTAssertTrue(el(app, "shot.target").isHittable, "shot plan on screen in tonight-1")
             try shot(app, "tonight-1-\(m)", field: field)
             app.swipeUp()
             try shot(app, "tonight-2-\(m)", field: field)
@@ -54,6 +57,14 @@ final class DesignTourTests: XCTestCase {
             XCTAssertTrue(el(app, "location.cancel").waitForExistence(timeout: 5))
             try shot(app, "location-\(m)", field: field)
             el(app, "location.cancel").tap()
+            // The events section and the collapsed conditions rows, in both palettes.
+            let events = el(app, "skyEvents.section")
+            events.swipeUpUntilVisible(in: app)
+            try shot(app, "tonight-events-\(m)", field: field)
+            let strip = el(app, "tonight.conditionsStrip")
+            strip.swipeUpUntilVisible(in: app)
+            try shot(app, "tonight-conditions-\(m)", field: field)
+            for _ in 0..<6 { app.swipeDown() }
             if field { app.buttons["scope.week"].tap() } else { app.segmentedControls.buttons["Week"].tap() }
             XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'week.row.'"))
                 .firstMatch.waitForExistence(timeout: 15))

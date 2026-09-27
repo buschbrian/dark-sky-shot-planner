@@ -114,7 +114,7 @@ final class TonightTests: XCTestCase {
             if steps == 0 {
                 XCTAssertFalse(element("tonight.verdict").label.contains("incomplete data"), element("tonight.verdict").label)
                 element("tonight.factors").tap()
-                let reason = app.staticTexts.matching(NSPredicate(format: "label CONTAINS \"Conditions don't matter tonight\"")).firstMatch
+                let reason = app.staticTexts.matching(NSPredicate(format: "label CONTAINS \"no weather can change that tonight\"")).firstMatch
                 XCTAssertTrue(reason.waitForExistence(timeout: 5))
                 XCTAssertFalse(app.descendants(matching: .any).matching(
                     NSPredicate(format: "label BEGINSWITH 'Cloud cover (mean over window)'")).firstMatch.exists)

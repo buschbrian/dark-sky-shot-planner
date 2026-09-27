@@ -147,7 +147,11 @@ struct TonightScreen: View {
     }
 
     private var conditionsStatus: ConditionsStatus? {
-        if case .loaded(_, let status) = model.conditions { status } else { nil }
+        switch model.conditions {
+        case .loaded(_, let status): status
+        case .none: .nothing
+        case .idle, .loading: nil
+        }
     }
 
     /// Where the conditions came from, in the one voice (`Voice`).
@@ -258,7 +262,7 @@ extension ConditionsSourceStatus {
         case .liveWorker(let checked, let revalidated):
             let fetched = snapshot?.fetchedUTC ?? checked
             self = revalidated ? .confirmed(fetched: fetched, checked: checked) : .service(fetched: fetched)
-        case .nothing: self = .none(reason: "No conditions yet.")
+        case .nothing: self = .none(reason: "No connection, and nothing saved for this place and night yet.")
         }
     }
 }

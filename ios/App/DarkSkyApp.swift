@@ -163,6 +163,7 @@ struct NightTab: View {
     private func restore() {
         if uiTesting {
             UserDefaults.standard.removeObject(forKey: RememberedPlace.key)
+            UserDefaults.standard.removeObject(forKey: ShotPlan.storageKey)
             return
         }
         if state.place == nil, let r = RememberedPlace.load() { state.place = r.place }
