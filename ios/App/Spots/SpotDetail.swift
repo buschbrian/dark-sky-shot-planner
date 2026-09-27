@@ -87,6 +87,9 @@ struct SpotDetail: View {
                 WeekStrip(week: week, timeZone: spot.place.timeZone, selected: $selectedNight)
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 let night = week.nights.first { $0.night == selectedNight } ?? week.nights.first
+                if let date = night?.date {
+                    ShotWindowLine(place: spot.place, night: date, horizon: spot.horizonProfile)
+                }
                 if let night { NightDetail(night: night, timeZone: spot.place.timeZone, terrainAware: week.terrainAware) }
             } else {
                 Text(checking ? "Checking the week…" : "Not checked yet").font(.dsCallout).foregroundStyle(palette.secondary)

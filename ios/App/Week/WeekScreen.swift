@@ -88,7 +88,7 @@ final class WeekLoader {
             let config = try Self.config.get()
             let observer = try place.observer()
             let zone = place.timeZone
-            let key = WeekCache.Key(place: place, first: place.tonight(at: now))
+            let key = WeekCache.Key(place: place, first: place.firstListedNight(at: now))
             if nights.isEmpty, let last = WeekCache.rows[key] {
                 nights = last.rows
                 conditions = WeekCache.conditions[key] ?? .none
@@ -167,9 +167,10 @@ private struct WeekList: View {
                         Text(failure).font(.dsData).foregroundStyle(palette.tertiary)
                     }
                 }
-                ForEach(Array(loader.nights.enumerated()), id: \.element.id) { index, night in
+                ForEach(Array(loader.nights.enumerated()), id: \.element.id) { _, night in
                     Button { open(night) } label: {
-                        WeekRowView(night: night, place: place, isTonight: index == 0, now: loader.computedAt)
+                        WeekRowView(night: night, place: place, isTonight: night.id == place.tonight(), now: loader.computedAt,
+                                    weekStart: loader.nights.first?.id)
                     }
                     .buttonStyle(PressDimStyle())
                     .accessibilityHint("Opens this night in Tonight")
@@ -248,6 +249,8 @@ struct WeekRowView: View {
     let place: Place
     let isTonight: Bool
     let now: Date
+    /// The list's first night, so every row's event badge shares one agenda run.
+    var weekStart: NightDate?
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -263,6 +266,7 @@ struct WeekRowView: View {
                     badge
                 }
             }
+            SkyEventBadge(place: place, night: night.id, weekStart: weekStart)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
                     minutes

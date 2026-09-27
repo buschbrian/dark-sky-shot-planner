@@ -21,6 +21,21 @@ nonisolated struct Place: Hashable, Codable, Sendable {
     func tonight(at now: Date = .now) -> NightDate {
         TonightClock.shared.night(for: self, at: now)
     }
+
+    /// The first night Week and a spot's strip list: tonight, or in Debug the
+    /// launch environment's `DS_FIRST_NIGHT=YYYY-MM-DD` (UI tests that need a
+    /// known full-moon or event night whatever today is).
+    func firstListedNight(at now: Date = .now) -> NightDate {
+        Self.debugFirstNight ?? tonight(at: now)
+    }
+
+    static var debugFirstNight: NightDate? {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["DS_FIRST_NIGHT"].flatMap(NightDate.init(iso:))
+        #else
+        nil
+        #endif
+    }
 }
 
 /// Remembers each place's current night and when it stops being current, so

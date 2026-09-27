@@ -61,7 +61,8 @@ nonisolated enum SpotWeekPlanner {
     ) async -> SpotWeek {
         let observer = try? Observer(latitude: input.latitude, longitude: input.longitude)
         // After dawn the strip starts at the coming night (review B-2).
-        let first = observer.map { NightDate.current(at: now, observer: $0, timeZone: input.timeZone) }
+        let first = Place.debugFirstNight
+            ?? observer.map { NightDate.current(at: now, observer: $0, timeZone: input.timeZone) }
             ?? NightDate.containing(now, in: input.timeZone)
         let dates = (0..<nightCount).map { first.adding(days: $0) }
 
