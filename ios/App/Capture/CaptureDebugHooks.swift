@@ -4,6 +4,7 @@ import CoreImage
 import Foundation
 import ImageIO
 import SkyCore
+import Photos
 import UIKit
 
 /// `-CaptureBench YES`: times star detection, registration and stacking on
@@ -19,17 +20,19 @@ nonisolated func captureBenchInstall() {
     }
 }
 
-/// `-CaptureSelfTest YES`: a real three-frame sequence on the main camera at
-/// the longest exposure. Prints each frame's EXIF (exposure, ISO, aperture,
-/// size) and timing, stacks them, prints the report, then deletes every file
-/// it wrote. No image leaves the phone. Needs camera permission and an
-/// unlocked phone.
+/// `-CaptureSelfTest YES`: the real run path (CaptureModel) headless: a
+/// 5-frame sequence on the main camera at the longest exposure, ISO fixed,
+/// focus locked at the far end of the lens travel, RAW where offered; the
+/// stack; then the frames and stack added to Photos (add-only access, which
+/// needs the owner's tap the first time). Prints EXIF, timing and asset ids.
 @_cdecl("ds_capture_selftest_install")
 nonisolated func captureSelfTestInstall() {
-    guard UserDefaults.standard.bool(forKey: "CaptureSelfTest") else { return }
+    let defaults = UserDefaults.standard
+    guard defaults.bool(forKey: "CaptureSelfTest") || defaults.bool(forKey: "CaptureLifecycleTest") else { return }
     DispatchQueue.main.async {
-        Task {
-            await CaptureDebug.selfTest()
+        Task { @MainActor in
+            if defaults.bool(forKey: "CaptureSelfTest") { await CaptureDebug.selfTest() }
+            if defaults.bool(forKey: "CaptureLifecycleTest") { await CaptureDebug.lifecycleTest() }
             fflush(stdout)
             exit(0)
         }
@@ -87,15 +90,24 @@ nonisolated enum CaptureDebug {
         let register = Date().timeIntervalSince(t)
         say(String(format: "register: %.3f s total; worst corner error %.3f px", register, worst))
         t = Date()
-        let result = FrameStacker().sigmaClipped(rasters, transforms: transforms)
+        let before = CaptureLog.footprint()
+        guard let result = try? FrameStacker().sigmaClipped(rasters, transforms: transforms) else { return }
         let combine = Date().timeIntervalSince(t)
-        say(String(format: "sigma-clipped combine of %d frames: %.2f s (%d uncovered samples)", n, combine, result.uncovered))
+        say(String(format: "sigma-clipped combine of %d frames: %.2f s (%d uncovered samples); footprint %d MB before, %d MB after",
+                   n, combine, result.uncovered, Int(before / 1_000_000), Int(CaptureLog.footprint() / 1_000_000)))
         t = Date()
         var acc = StackAccumulator(mode: .maximum, width: w, height: h, channels: 3)
-        for r in rasters { acc.add(r) }
+        for r in rasters { try? acc.add(r) }
         _ = acc.result
         say(String(format: "maximum (trails) of %d frames: %.2f s", n, Date().timeIntervalSince(t)))
         say("bench done")
+    }
+
+    @MainActor
+    static func waitIdle(_ model: CaptureModel, timeout: TimeInterval) async {
+        let end = Date().addingTimeInterval(timeout)
+        try? await Task.sleep(for: .milliseconds(200))
+        while model.phase.isBusy, Date() < end { try? await Task.sleep(for: .milliseconds(100)) }
     }
 
     @MainActor
@@ -104,87 +116,132 @@ nonisolated enum CaptureDebug {
             say("selftest: camera permission is not granted; open Tools > Tripod capture once and tap Allow")
             return
         }
-        let engine = CaptureEngine()
-        let folder = URL.temporaryDirectory.appending(path: "capture-selftest")
-        try? FileManager.default.removeItem(at: folder)
-        defer {
-            engine.stop()
-            try? FileManager.default.removeItem(at: folder)
-            try? FileManager.default.removeItem(at: URL.cachesDirectory.appending(path: "stack-work/selftest"))
-            say("selftest: deleted \(folder.lastPathComponent) and its work files")
+        let model = CaptureModel()
+        model.frameOverride = 5
+        model.timerSeconds = 0
+        model.iso = Float(UserDefaults.standard.double(forKey: "CaptureSelfTestISO").nonZeroDouble ?? 800)
+        model.focusPosition = 1 // far end of the lens travel; true infinity is set on stars with the focus assist
+        await model.appear()
+        guard let camera = model.camera else { say("selftest: camera did not configure: \(model.errorMessage ?? "?")"); return }
+        say("selftest: main camera max exposure \(camera.maxExposure) s, ISO \(camera.minISO)-\(camera.maxISO), apertures \(camera.apertures), RAW \(camera.proRaw.map(CameraProbe.fourCC) ?? "none"), shutter-sound suppression \(camera.shutterSoundSuppression)")
+        try? await Task.sleep(for: .seconds(2))
+        let raw = model.engine.runningRawFormats
+        say("selftest: running session RAW: bayer \(raw.bayer), proRAW \(raw.proRaw)")
+        model.subExposure = camera.maxExposure
+        model.fileFormat = .raw
+        say("selftest: plan \(model.frameCount) frames x \(model.subExposure) s, ISO \(Int(model.iso)), f/\(model.aperture ?? 0), \(model.frameDimensions.map { "\($0.width)x\($0.height)" } ?? "?"), storage \(model.plan.map { CaptureModel.bytes($0.storedBytes) } ?? "?"), free \(CaptureModel.bytes(model.freeBytes)), battery \(model.batteryLevel), thermal \(CameraProbe.thermalName(model.thermal))")
+        model.start()
+        await waitIdle(model, timeout: 300)
+        for line in model.log { say("selftest log: \(line)") }
+        say("selftest: phase \(model.phase)")
+        if let npf = model.npfSeconds, let gear = model.phoneGear {
+            say(String(format: "selftest: phone gear focal %.2f mm, pitch %.3f um, crop %.2f, NPF(k=1) %.2f s",
+                       gear.lens.focalLengthMM, gear.camera.pixelPitchUM, gear.camera.cropFactor, npf))
         }
-        do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let info = try await engine.configure(lens: .main)
-            say("selftest: main camera max exposure \(info.maxExposure) s, ISO \(info.minISO)-\(info.maxISO), apertures \(info.apertures), RAW \(info.proRaw.map(CameraProbe.fourCC) ?? "none"), shutter-sound suppression \(info.shutterSoundSuppression)")
-            say("selftest: photo sizes \(info.photoDimensions.map { "\($0.width)x\($0.height)" })")
-            engine.start()
-            try await Task.sleep(for: .seconds(2))
-            let raw = engine.runningRawFormats
-            say("selftest: running session RAW: bayer \(raw.bayer), proRAW \(raw.proRaw)")
-            let iso = Float(UserDefaults.standard.double(forKey: "CaptureSelfTestISO").nonZeroDouble ?? 400)
-            try await engine.lockExposure(seconds: info.maxExposure, iso: iso, aperture: info.apertures.first)
-            let position = engine.lensPosition
-            try await engine.lockFocus(position: position)
-            try await Task.sleep(for: .seconds(2.5))
-            let dims = info.photoDimensions.sorted { $0.width * $0.height < $1.width * $1.height }
-                .first { Int($0.width) * Int($0.height) >= 12_000_000 } ?? info.photoDimensions[0]
-            let formats: [FrameRequest.FileFormat] = info.proRaw != nil ? [.raw, .raw, .raw, .heic] : [.heic, .heic, .heic]
-            var frames: [CapturedFrame] = []
-            var exposedAt: [Date] = []
-            let start = Date()
-            for (i, format) in formats.enumerated() {
-                let request = FrameRequest(format: format, dimensions: dims)
-                if i == 0 { engine.prepare(request) }
-                let frame = try await engine.capture(request, to: folder.appending(path: String(format: "frame-%04d", i + 1))) {}
-                exposedAt.append(Date())
-                frames.append(frame)
-                say(String(format: "frame %d %@: exposure %@ s, ISO %@, f/%@, focal %@ mm (%@ mm eq), %dx%d, %.1f MB, request->exposed %.2f s",
-                           i + 1, frame.url.pathExtension, frame.exposure.map { String(format: "%.4f", $0) } ?? "?",
-                           frame.iso.map { String(format: "%.0f", $0) } ?? "?", frame.fNumber.map { String(format: "%.2f", $0) } ?? "?",
-                           frame.focalLength.map { String(format: "%.2f", $0) } ?? "?", frame.focalLength35.map { String(format: "%.0f", $0) } ?? "?",
-                           frame.width, frame.height, Double(frame.bytes) / 1e6, frame.requestToCaptured))
-            }
-            let total = Date().timeIntervalSince(start)
-            say(String(format: "selftest: %d frames of %.2f s in %.2f s (sequential, each awaited)", frames.count, info.maxExposure, total))
-            if let f = frames.first, let fl = f.focalLength, let f35 = f.focalLength35, let n = f.fNumber,
-               let gear = try? PhoneGear.profiles(name: "main", focalLengthMM: fl, focalLength35mmEquivalent: f35, fNumber: n, widthPx: f.width, heightPx: f.height) {
-                let npf = (try? StarExposure.npf(camera: gear.camera, lens: gear.lens)) ?? .nan
-                say(String(format: "selftest: phone gear pitch %.3f um, crop %.2f, NPF(k=1) %.2f s", gear.camera.pixelPitchUM, gear.camera.cropFactor, npf))
-            }
-            // Decode timing and stack attempt (indoors there may be no stars to align).
-            let context = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.extendedLinearSRGB)!])
-            var t = Date()
-            if let first = frames.first {
-                let raster = try StackBuilder.decode(first.url, context: context)
-                say(String(format: "selftest: decode %@ to linear RGB16 %dx%d in %.2f s", first.url.pathExtension, raster.width, raster.height, Date().timeIntervalSince(t)))
-            }
-            let stackFrames = frames.filter { $0.url.pathExtension == frames[0].url.pathExtension }
-            t = Date()
-            let builder = StackBuilder(
-                frames: stackFrames.map { .init(url: $0.url, exposure: $0.exposure, iso: $0.iso) }, mode: .maximum,
-                output: folder.appending(path: "trails.tif"), workDirectory: URL.cachesDirectory.appending(path: "stack-work/selftest"))
-            let report = try builder.run { _, _ in }
-            say(String(format: "selftest: maximum stack of %d in %.2f s", report.used, Date().timeIntervalSince(t)))
-            if let out = report.output, let src = CGImageSourceCreateWithURL(out as CFURL, nil),
-               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any] {
-                let bytes = (try? out.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                say("selftest: TIFF depth \(props[kCGImagePropertyDepth as String] ?? "?"), \(props[kCGImagePropertyPixelWidth as String] ?? "?")x\(props[kCGImagePropertyPixelHeight as String] ?? "?"), profile \(props[kCGImagePropertyProfileName as String] ?? "?"), \(bytes / 1_000_000) MB")
-            }
-            t = Date()
-            let sigma = StackBuilder(
-                frames: stackFrames.map { .init(url: $0.url, exposure: $0.exposure, iso: $0.iso) }, mode: .sigmaClippedMean,
-                output: folder.appending(path: "stack.tif"), workDirectory: URL.cachesDirectory.appending(path: "stack-work/selftest"))
-            do {
-                let r = try sigma.run { _, _ in }
-                say(String(format: "selftest: sigma stack in %.2f s\n%@", Date().timeIntervalSince(t), r.description))
-            } catch {
-                say("selftest: sigma stack not built (\(error.localizedDescription)); expected indoors without stars")
-            }
-            _ = exposedAt
-        } catch {
-            say("selftest failed: \(error.localizedDescription)")
+        if let stack = model.lastStack, let src = CGImageSourceCreateWithURL(stack as CFURL, nil),
+           let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any] {
+            let bytes = (try? stack.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            say("selftest: stack \(stack.lastPathComponent): depth \(props[kCGImagePropertyDepth as String] ?? "?"), \(props[kCGImagePropertyPixelWidth as String] ?? "?")x\(props[kCGImagePropertyPixelHeight as String] ?? "?"), profile \(props[kCGImagePropertyProfileName as String] ?? "?"), \(bytes / 1_000_000) MB")
         }
+        if let folder = model.lastFolder {
+            say("selftest: photos add-only status before request: \(PHPhotoLibrary.authorizationStatus(for: .addOnly).rawValue) (0 notDetermined, 2 denied, 3 authorized)")
+            let save = Task { try await model.saveToPhotos(folder) }
+            let timeout = Task { try await Task.sleep(for: .seconds(60)); save.cancel() }
+            switch await save.result {
+            case .success(let ids): say("selftest: Photos asset ids \(ids)")
+            case .failure(let error): say("selftest: not saved to Photos (\(error.localizedDescription)); status \(PHPhotoLibrary.authorizationStatus(for: .addOnly).rawValue)")
+            }
+            timeout.cancel()
+        }
+        model.leave(.leftScreen)
+        try? await Task.sleep(for: .seconds(1.5))
+        say("selftest: after leave, camera running \(model.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled)")
+    }
+
+    /// `-CaptureLifecycleTest YES`: leave during the countdown, during
+    /// acquisition and during stacking, each followed by a new screen
+    /// model (as navigating back and returning does); checks one run at a
+    /// time, drained frames, camera off, idle timer restored.
+    @MainActor
+    static func lifecycleTest() async {
+        func state(_ label: String, _ m: CaptureModel) {
+            say("lifecycle \(label): phase \(m.phase), camera running \(m.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled), footprint \(CaptureLog.footprint() / 1_000_000) MB")
+        }
+        func fresh() async -> CaptureModel {
+            let m = CaptureModel()
+            m.frameOverride = 8
+            m.timerSeconds = 3
+            m.iso = 800
+            await m.appear()
+            m.subExposure = m.camera?.maxExposure ?? 1
+            return m
+        }
+        // 1. Leave during the countdown.
+        var m = await fresh()
+        m.start()
+        try? await Task.sleep(for: .seconds(1.2))
+        state("1 before leave (countdown)", m)
+        m.leave(.leftScreen)
+        await waitIdle(m, timeout: 30)
+        try? await Task.sleep(for: .seconds(0.5))
+        state("1 after leave", m)
+
+        // 2. Leave during acquisition; a second model opened at once must wait.
+        m = await fresh()
+        m.start()
+        while !{ if case .capturing(let f, _) = m.phase { f >= 3 } else { false } }() {
+            try? await Task.sleep(for: .milliseconds(100))
+            if !m.phase.isBusy { break }
+        }
+        state("2 before leave (acquiring)", m)
+        let left = Date()
+        m.leave(.leftScreen)
+        let second = CaptureModel()
+        let secondAppear = Task { await second.appear() }
+        try? await Task.sleep(for: .milliseconds(300))
+        say("lifecycle 2: new screen while draining shows phase \(second.phase)")
+        await waitIdle(m, timeout: 30)
+        say(String(format: "lifecycle 2: run ended %.2f s after leave; log: %@", Date().timeIntervalSince(left), m.log.joined(separator: " | ")))
+        state("2 after leave", m)
+        await secondAppear.value
+        state("2 second model", second)
+        let saved = second.savedSequence
+        say("lifecycle 2: saved unstacked sequence \(saved?.folder.lastPathComponent ?? "none") with \(saved?.log.frames.count ?? 0) frames, ended \(saved?.log.ended ?? "-")")
+
+        // 3. Stack the saved frames, then leave half a second in.
+        if let saved {
+            second.stackSaved(saved)
+            try? await Task.sleep(for: .milliseconds(500))
+            state("3 before leave (stacking)", second)
+            let t = Date()
+            second.leave(.leftScreen)
+            await waitIdle(second, timeout: 30)
+            say(String(format: "lifecycle 3: stacking stopped %.2f s after leave; %@", Date().timeIntervalSince(t), second.log.last ?? ""))
+            state("3 after leave", second)
+            // 4. Back again: the same sequence is offered and stacks to completion.
+            let third = CaptureModel()
+            await third.appear()
+            if let again = third.savedSequence {
+                let t4 = Date()
+                third.stackSaved(again)
+                await waitIdle(third, timeout: 300)
+                say(String(format: "lifecycle 4: restack %@ in %.1f s: %@", "\(third.phase)", Date().timeIntervalSince(t4), third.log.last ?? ""))
+            }
+            third.leave(.leftScreen)
+            try? await Task.sleep(for: .seconds(1.5))
+            state("4 after leave", third)
+            if !UserDefaults.standard.bool(forKey: "CaptureKeepTestFrames") {
+                try? FileManager.default.removeItem(at: saved.folder)
+                say("lifecycle: deleted test folder \(saved.folder.lastPathComponent)")
+            }
+        }
+        // Folders from part 1 (no frames) are removed too.
+        let root = URL.documentsDirectory.appending(path: "Captures")
+        for folder in (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+            if !files.contains(where: { $0.hasSuffix(".dng") || $0.hasSuffix(".heic") }) { try? FileManager.default.removeItem(at: folder) }
+        }
+        say("lifecycle done")
     }
 }
 

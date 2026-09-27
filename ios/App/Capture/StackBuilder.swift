@@ -31,6 +31,8 @@ nonisolated struct StackBuilder: Sendable {
         var combineSeconds = 0.0
         var writeSeconds = 0.0
         var output: URL?
+        /// Set when the reference frame had too few stars to align on.
+        var unalignedReason: String?
 
         var description: String {
             let regs = registrations.enumerated().map { i, r in
@@ -41,7 +43,7 @@ nonisolated struct StackBuilder: Sendable {
             mode \(mode.rawValue), \(used)/\(frames) frames used, \(width)×\(height), reference #\(reference)
             decode \(String(format: "%.2f", decodeSeconds)) s, detect \(String(format: "%.2f", detectSeconds)) s, \
             register \(String(format: "%.2f", registerSeconds)) s, combine \(String(format: "%.2f", combineSeconds)) s, \
-            write \(String(format: "%.2f", writeSeconds)) s
+            write \(String(format: "%.2f", writeSeconds)) s\(unalignedReason.map { "\n" + $0 } ?? "")
             \(regs.joined(separator: "\n"))
             """
         }
@@ -68,6 +70,8 @@ nonisolated struct StackBuilder: Sendable {
     /// averaged in misaligned; a stack needs at least this many aligned frames.
     var minimumAligned = 2
 
+    /// Throws `CancellationError` promptly (between frames, and every row
+    /// inside the stacker) when its task is cancelled; the frames are untouched.
     func run(progress: @escaping @Sendable (Double, String) -> Void) throws -> Report {
         var report = Report(mode: mode)
         report.frames = frames.count
@@ -81,6 +85,7 @@ nonisolated struct StackBuilder: Sendable {
             // Star trails: stream the maximum, nothing aligned, nothing cached.
             var accumulator: StackAccumulator?
             for (i, frame) in frames.enumerated() {
+                try Task.checkCancellation()
                 progress(Double(i) / Double(frames.count), "Frame \(i + 1) of \(frames.count)")
                 let t0 = Date()
                 let raster = try autoreleasepool { try Self.decode(frame.url, context: context) }
@@ -92,7 +97,7 @@ nonisolated struct StackBuilder: Sendable {
                     report.height = raster.height
                 }
                 guard raster.width == accumulator?.width, raster.height == accumulator?.height else { continue }
-                accumulator?.add(raster)
+                try accumulator?.add(raster)
                 report.combineSeconds += Date().timeIntervalSince(t1)
                 report.used += 1
                 report.registrations.append(Registration(transform: .identity, matchedStars: 0, rmsResidual: 0))
@@ -110,6 +115,7 @@ nonisolated struct StackBuilder: Sendable {
         var stars: [[DetectedStar]] = []
         let detector = StarDetector()
         for (i, frame) in frames.enumerated() {
+            try Task.checkCancellation()
             progress(0.6 * Double(i) / Double(frames.count), "Reading frame \(i + 1) of \(frames.count)")
             let t0 = Date()
             let raster = try autoreleasepool { try Self.decode(frame.url, context: context) }
@@ -135,16 +141,24 @@ nonisolated struct StackBuilder: Sendable {
         progress(0.6, "Aligning on stars")
         var keptRasters: [RasterU16] = []
         var transforms: [RigidTransform] = []
+        // No stars to align on (cloud, daylight, indoors): a tripod keeps the
+        // frames aligned for a short sequence, so stack them unaligned and say so.
+        let matcher = StarMatcher()
+        let alignOnStars = stars[reference].count >= matcher.minMatches
+        if !alignOnStars {
+            report.unalignedReason = "Only \(stars[reference].count) stars in the reference frame: stacked unaligned (tripod assumed)."
+        }
         for i in rasters.indices {
+            try Task.checkCancellation()
             guard rasters[i].width == size.0, rasters[i].height == size.1 else {
                 report.registrations.append(nil)
                 continue
             }
             let registration: Registration?
-            if i == reference {
-                registration = Registration(transform: .identity, matchedStars: stars[i].count, rmsResidual: 0)
+            if i == reference || !alignOnStars {
+                registration = Registration(transform: .identity, matchedStars: alignOnStars ? stars[i].count : 0, rmsResidual: 0)
             } else {
-                registration = try? StarMatcher().register(reference: stars[reference], frame: stars[i])
+                registration = try? matcher.register(reference: stars[reference], frame: stars[i])
             }
             report.registrations.append(registration)
             if let registration {
@@ -157,7 +171,7 @@ nonisolated struct StackBuilder: Sendable {
         report.used = keptRasters.count
         progress(0.7, "Combining \(keptRasters.count) frames")
         let t3 = Date()
-        let combined = FrameStacker(clip: clip).sigmaClipped(keptRasters, transforms: transforms)
+        let combined = try FrameStacker(clip: clip).sigmaClipped(keptRasters, transforms: transforms)
         report.combineSeconds = Date().timeIntervalSince(t3)
         progress(0.95, "Writing")
         let t4 = Date()
@@ -220,7 +234,8 @@ nonisolated struct StackBuilder: Sendable {
         let totalExposure = frames.prefix(report.used).compactMap(\.exposure).reduce(0, +)
         let what = mode == .maximum
             ? "Star trails: per-pixel maximum of \(report.used) frames, unaligned."
-            : "Stack: sigma-clipped mean (kappa \(clip.kappa), \(clip.iterations) iterations) of \(report.used) of \(report.frames) frames, registered on stars (rotation + shift) to frame \(report.reference + 1)."
+            : "Stack: sigma-clipped mean (kappa \(clip.kappa), \(clip.iterations) iterations) of \(report.used) of \(report.frames) frames, "
+                + (report.unalignedReason ?? "registered on stars (rotation + shift) to frame \(report.reference + 1).")
         var exif: [CFString: Any] = [
             kCGImagePropertyExifUserComment: "\(what) Linear light, no tone curve, no learned processing. Total exposure \(String(format: "%.1f", totalExposure)) s.",
             kCGImagePropertyExifDateTimeOriginal: Self.exifDate.string(from: Date()),

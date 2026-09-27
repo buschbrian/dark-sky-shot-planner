@@ -1,12 +1,14 @@
 import AVFoundation
-import Photos
 import SkyCore
 import SwiftUI
 
 /// M12: tripod capture with the iPhone's own camera (ADR-0011).
 struct CaptureScreen: View {
     @Environment(\.palette) private var palette
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = CaptureModel()
+    @State private var onScreen = false
+    @State private var wentToBackground = false
     @State private var showMagnifier = true
     @State private var savedMessage: String?
     @AppStorage("capture.iso") private var storedISO = 3200.0
@@ -34,7 +36,8 @@ struct CaptureScreen: View {
                     focusCard
                     sequenceCard
                     estimateCard
-                    startButton
+                    controls
+                    savedCard
                     resultCard
                 }
                 #if DEBUG
@@ -47,12 +50,32 @@ struct CaptureScreen: View {
         .paletteChrome("Capture", pushed: true)
         .toolbar(.hidden, for: .tabBar)
         .task {
+            onScreen = true
             model.iso = Float(storedISO)
             model.focusPosition = Float(storedFocus)
             model.timerSeconds = storedTimer
             await model.appear()
         }
-        .onDisappear { model.disappear() }
+        // One lifetime (CaptureModel): leaving the screen, the background or
+        // a lock ends the run with its frames kept and releases the camera.
+        .onDisappear {
+            onScreen = false
+            model.leave(.leftScreen)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                guard onScreen else { return }
+                wentToBackground = true
+                model.leave(.background)
+            case .active:
+                guard onScreen, wentToBackground else { return }
+                wentToBackground = false
+                Task { await model.appear() }
+            default:
+                break
+            }
+        }
         .alert("Capture", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -87,10 +110,13 @@ struct CaptureScreen: View {
         Group {
             switch model.phase {
             case .idle: EmptyView()
+            case .waitingForPreviousRun: statusLine("Finishing the previous sequence…")
             case .countdown(let s): statusLine("Self-timer: \(s)")
             case .settling: statusLine("Waiting for the tripod to settle…")
             case .capturing(let i, let n): statusLine("Frame \(i) of \(n)")
             case .coolingDown(let s): statusLine("Hot: pausing \(Int(s)) s between frames")
+            case .draining: statusLine("Saving the last frames…")
+            case .stopped(let text): statusLine(text)
             case .stacking(let f, let what): statusLine("\(what) (\(Int(f * 100)) %)")
             case .finished(let text): statusLine(text)
             case .failed(let text): statusLine(text)
@@ -112,7 +138,7 @@ struct CaptureScreen: View {
                 ForEach(CaptureCameraInfo.Lens.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
-            .disabled(model.phase.isRunning)
+            .disabled(model.phase.isBusy)
             .onChange(of: model.lens) { Task { await model.configure() } }
             if let camera = model.camera {
                 row("Exposure", String(format: "%.2g s (longest this camera allows)", model.subExposure))
@@ -121,7 +147,7 @@ struct CaptureScreen: View {
                 } onEditingChanged: { editing in
                     if !editing { Task { try? await model.applyManual() } }
                 }
-                .disabled(model.phase.isRunning)
+                .disabled(model.phase.isBusy)
                 row("ISO", "\(Int(model.iso))")
                 Slider(value: Binding(get: { Double(model.iso) }, set: { model.iso = Float($0.rounded()) }),
                        in: Double(camera.minISO)...Double(camera.maxISO)) {
@@ -132,14 +158,14 @@ struct CaptureScreen: View {
                         Task { try? await model.applyManual() }
                     }
                 }
-                .disabled(model.phase.isRunning)
+                .disabled(model.phase.isBusy)
                 if camera.apertureControl {
                     Picker("Aperture", selection: Binding(get: { model.aperture ?? camera.apertures[0] },
                                                           set: { model.aperture = $0; Task { try? await model.applyManual() } })) {
                         ForEach(camera.apertures, id: \.self) { Text(String(format: "f/%.2g", $0)).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .disabled(model.phase.isRunning)
+                    .disabled(model.phase.isBusy)
                 } else if let a = camera.apertures.first {
                     row("Aperture", String(format: "f/%.2g (fixed)", a))
                 }
@@ -165,7 +191,7 @@ struct CaptureScreen: View {
                     Task { try? await model.applyManual() }
                 }
             }
-            .disabled(model.phase.isRunning)
+            .disabled(model.phase.isBusy)
             HStack {
                 ForEach([-0.01, -0.002, 0.002, 0.01], id: \.self) { step in
                     Button(String(format: "%+.3f", step)) {
@@ -179,7 +205,7 @@ struct CaptureScreen: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(model.phase.isRunning)
+            .disabled(model.phase.isBusy)
             HStack {
                 Button("Autofocus once") { Task { await model.autofocus(); storedFocus = Double(model.focusPosition) } }
                     .buttonStyle(PressDimStyle()).foregroundStyle(palette.accent)
@@ -198,21 +224,21 @@ struct CaptureScreen: View {
                 ForEach(CaptureModel.Mode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
-            .disabled(model.phase.isRunning)
+            .disabled(model.phase.isBusy)
             switch model.mode {
             case .stack:
                 row("Noise reduction", String(format: "%.1f× better SNR", model.snrGain))
                 Slider(value: $model.snrGain, in: 2...8, step: 0.5) { Text("SNR gain") }
-                    .disabled(model.phase.isRunning)
+                    .disabled(model.phase.isBusy)
                 Text("\(model.frameCount) frames (√N rule, the Tools stacking calculator), aligned on stars and averaged with outliers such as satellites rejected.")
                     .font(.caption).foregroundStyle(palette.secondary)
             case .trails:
                 row("Duration", "\(Int(model.trailMinutes)) min")
                 Slider(value: $model.trailMinutes, in: 1...120, step: 1) { Text("Duration") }
-                    .disabled(model.phase.isRunning)
+                    .disabled(model.phase.isBusy)
                 row("Interval", String(format: "%.1f s", model.trailInterval))
                 Slider(value: $model.trailInterval, in: max(model.subExposure, 0.1)...30, step: 0.5) { Text("Interval") }
-                    .disabled(model.phase.isRunning)
+                    .disabled(model.phase.isBusy)
                 Text("\(model.frameCount) frames, combined by the brightest value per pixel. A gap between frames leaves gaps in the trails.")
                     .font(.caption).foregroundStyle(palette.secondary)
             }
@@ -221,16 +247,16 @@ struct CaptureScreen: View {
                 Text("HEIC").tag(FrameRequest.FileFormat.heic)
             }
             .pickerStyle(.segmented)
-            .disabled(model.phase.isRunning || !model.rawAvailable)
+            .disabled(model.phase.isBusy || !model.rawAvailable)
             Toggle("12 MP frames (48 MP when off)", isOn: $model.twelveMegapixels)
                 .font(.subheadline).foregroundStyle(palette.primary).tint(palette.accent)
-                .disabled(model.phase.isRunning)
+                .disabled(model.phase.isBusy)
             Picker("Self-timer", selection: $model.timerSeconds) {
                 ForEach([0, 2, 5, 10], id: \.self) { Text($0 == 0 ? "No timer" : "\($0) s").tag($0) }
             }
             .pickerStyle(.segmented)
             .onChange(of: model.timerSeconds) { storedTimer = model.timerSeconds }
-            .disabled(model.phase.isRunning)
+            .disabled(model.phase.isBusy)
         }
     }
 
@@ -269,12 +295,37 @@ struct CaptureScreen: View {
         }
     }
 
-    private var startButton: some View {
-        Button {
-            if model.phase.isRunning { model.cancel() } else { model.start() }
-        } label: {
-            Label(model.phase.isRunning ? "Stop" : "Start \(model.frameCount) frames",
-                  systemImage: model.phase.isRunning ? "stop.circle" : "camera.aperture")
+    /// What each button does is in its label: "Stop and stack" keeps going
+    /// to a stack of what was shot; "Cancel" and "Stop stacking" stop all
+    /// work. Frames already shot are always kept.
+    @ViewBuilder private var controls: some View {
+        switch model.phase {
+        case .countdown, .settling, .capturing, .coolingDown:
+            HStack(spacing: 12) {
+                bigButton("Stop and stack", symbol: "stop.circle", id: "capture.stopAndStack") { model.stopAndStack() }
+                bigButton("Cancel", symbol: "xmark.circle", id: "capture.cancel") { model.cancel() }
+            }
+            Text("Stop and stack: end the sequence now and stack the frames shot. Cancel: end it and stack nothing. Either way every frame is kept.")
+                .font(.caption).foregroundStyle(palette.secondary)
+        case .draining:
+            bigButton("Saving the last frames…", symbol: "hourglass", id: "capture.draining") {}.disabled(true)
+        case .stacking:
+            bigButton("Stop stacking", symbol: "xmark.circle", id: "capture.stopStacking") { model.cancel() }
+            Text("Stops the stack within about a second. The frames are kept and can be stacked again here.")
+                .font(.caption).foregroundStyle(palette.secondary)
+        case .waitingForPreviousRun:
+            bigButton("Finishing the previous sequence…", symbol: "hourglass", id: "capture.waiting") {}.disabled(true)
+        case .idle, .finished, .stopped, .failed:
+            bigButton("Start \(model.frameCount) frames", symbol: "camera.aperture", id: "capture.start") { model.start() }
+                .disabled(model.plan == nil)
+            Text("The sequence runs while this screen is open and the phone is unlocked. Leaving the screen, locking the phone or another app taking the camera ends it; the frames shot so far are kept.")
+                .font(.caption).foregroundStyle(palette.secondary)
+        }
+    }
+
+    private func bigButton(_ title: String, symbol: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
                 .font(.headline)
                 .foregroundStyle(palette.accent)
                 .frame(maxWidth: .infinity)
@@ -282,8 +333,20 @@ struct CaptureScreen: View {
                 .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(PressDimStyle())
-        .disabled(model.plan == nil || { if case .stacking = model.phase { return true } else { return false } }())
-        .accessibilityIdentifier("capture.start")
+        .accessibilityIdentifier(id)
+    }
+
+    @ViewBuilder private var savedCard: some View {
+        if let saved = model.savedSequence, !model.phase.isBusy {
+            Card {
+                Text("Saved sequence, not stacked").font(.headline).foregroundStyle(palette.primary)
+                Text("\(saved.folder.lastPathComponent): \(saved.log.frames.count) frames\(saved.log.ended.map { "; ended because \($0)" } ?? "").")
+                    .font(.caption).foregroundStyle(palette.secondary)
+                Button("Stack these frames") { model.stackSaved(saved) }
+                    .buttonStyle(PressDimStyle()).foregroundStyle(palette.accent).font(.subheadline)
+                    .accessibilityIdentifier("capture.stackSaved")
+            }
+        }
     }
 
     @ViewBuilder private var resultCard: some View {
@@ -298,7 +361,7 @@ struct CaptureScreen: View {
                         .font(.caption).foregroundStyle(palette.secondary)
                     Button("Save frames and stack to Photos") { Task { await saveToPhotos(folder) } }
                         .buttonStyle(PressDimStyle()).foregroundStyle(palette.accent).font(.subheadline)
-                        .disabled(model.phase.isRunning)
+                        .disabled(model.phase.isBusy)
                 }
                 if let savedMessage { Text(savedMessage).font(.caption).foregroundStyle(palette.secondary) }
             }
@@ -315,23 +378,11 @@ struct CaptureScreen: View {
     }
 
     private func saveToPhotos(_ folder: URL) async {
-        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-        guard status == .authorized || status == .limited else {
-            savedMessage = "Photos access was not given; the files stay in the Dark Sky folder."
-            return
-        }
-        let files = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
-            .filter { ["dng", "heic", "tif"].contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
         do {
-            try await PHPhotoLibrary.shared().performChanges {
-                for url in files {
-                    PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: url, options: nil)
-                }
-            }
-            savedMessage = "Saved \(files.count) files to Photos. The originals also stay in the Dark Sky folder."
+            let ids = try await model.saveToPhotos(folder)
+            savedMessage = "Saved \(ids.count) files to Photos. The originals also stay in the Dark Sky folder."
         } catch {
-            savedMessage = "Photos did not accept the files: \(error.localizedDescription)"
+            savedMessage = "Not saved to Photos (\(error.localizedDescription)); the files stay in the Dark Sky folder."
         }
     }
 }

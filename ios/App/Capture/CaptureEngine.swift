@@ -106,7 +106,41 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     private let lock = NSLock()
     /// Latest centre crop of the preview, for the focus assist.
     var onFocusCrop: (@Sendable (ImagePlane) -> Void)?
+    /// The session was interrupted (phone locked, another app took the
+    /// camera, a call) or hit a runtime error; the string says which.
+    var onInterruption: (@Sendable (String) -> Void)?
     private var lastCrop = Date.distantPast
+    private var observers: [any NSObjectProtocol] = []
+
+    override init() {
+        super.init()
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { [weak self] note in
+            let raw = (note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int).flatMap(AVCaptureSession.InterruptionReason.init)
+            self?.onInterruption?("camera interrupted (\(Self.describe(raw)))")
+        })
+        observers.append(center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { [weak self] note in
+            let error = note.userInfo?[AVCaptureSessionErrorKey] as? NSError
+            self?.onInterruption?("camera error (\(error?.localizedDescription ?? "unknown"))")
+        })
+    }
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    static func describe(_ reason: AVCaptureSession.InterruptionReason?) -> String {
+        switch reason {
+        case .videoDeviceNotAvailableInBackground: "app in background or phone locked"
+        case .audioDeviceInUseByAnotherClient, .videoDeviceInUseByAnotherClient: "another app is using the camera"
+        case .videoDeviceNotAvailableWithMultipleForegroundApps: "multiple foreground apps"
+        case .videoDeviceNotAvailableDueToSystemPressure: "system pressure (heat)"
+        case .none: "unknown reason"
+        default: "reason \(reason!.rawValue)"
+        }
+    }
+
+    var isRunning: Bool { session.isRunning }
 
     // MARK: Configuration
 
@@ -205,6 +239,17 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
 
     func stop() {
         queue.async { [self] in if session.isRunning { session.stopRunning() } }
+    }
+
+    /// Stops the session and returns once it has stopped (the camera
+    /// indicator goes off).
+    func stopAndWait() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            queue.async { [self] in
+                if session.isRunning { session.stopRunning() }
+                c.resume()
+            }
+        }
     }
 
     // MARK: Manual controls
