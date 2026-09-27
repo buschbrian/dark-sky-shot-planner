@@ -82,10 +82,10 @@ struct FrameStackerTests {
         return total / n
     }
 
-    @Test func sigmaClippedStackCutsNoiseAndDropsTheSatellite() {
+    @Test func sigmaClippedStackCutsNoiseAndDropsTheSatellite() throws {
         let frames = (0..<Self.frames).map { Self.frame($0) }
         let transforms = (0..<Self.frames).map { Self.truth($0).inverse }
-        let result = FrameStacker().sigmaClipped(frames, transforms: transforms)
+        let result = try FrameStacker().sigmaClipped(frames, transforms: transforms)
         let single = Self.rmsError(frames[0])
         let stacked = Self.rmsError(result.raster)
         // √8 = 2.8× lower noise from averaging alone; clipping costs a little.
@@ -94,16 +94,16 @@ struct FrameStackerTests {
         #expect(Self.streakExcess(result.raster) < 0.01 * Self.streak.brightness)
     }
 
-    @Test func plainMeanKeepsAFaintSatellite() {
+    @Test func plainMeanKeepsAFaintSatellite() throws {
         var mean = StackAccumulator(mode: .mean, width: Self.w, height: Self.h, channels: 1)
-        for i in 0..<Self.frames { mean.add(Self.frame(i), transform: Self.truth(i).inverse) }
+        for i in 0..<Self.frames { try mean.add(Self.frame(i), transform: Self.truth(i).inverse) }
         // 5000 / 8 frames, less interpolation losses: why the mean alone is not enough.
         #expect(Self.streakExcess(mean.result) > 400)
     }
 
-    @Test func maximumKeepsTheTrail() {
+    @Test func maximumKeepsTheTrail() throws {
         var max = StackAccumulator(mode: .maximum, width: Self.w, height: Self.h, channels: 1)
-        for i in 0..<Self.frames { max.add(Self.frame(i)) }
+        for i in 0..<Self.frames { try max.add(Self.frame(i)) }
         #expect(max.frames == Self.frames)
         // Unaligned: the streak survives at full strength (star-trail behaviour).
         #expect(Self.minAlongStreak(max.result.values) >= 6_500)
@@ -122,7 +122,7 @@ struct FrameStackerTests {
     /// Star trails: a star 400 px from the pole turns 0.1° per 1 s frame, so it
     /// moves 0.7 px while the shutter is open and the frames follow one another
     /// without a gap. The maximum of the frames draws one unbroken arc.
-    @Test func maximumDrawsContinuousArcs() {
+    @Test func maximumDrawsContinuousArcs() throws {
         let w = 320, h = 240, frames = 40
         let pole = (x: 160.0, y: -200.0), radius = 400.0, start = 80.0 * .pi / 180, step = 0.1 * .pi / 180
         func position(_ angle: Double) -> (x: Double, y: Double) {
@@ -135,7 +135,7 @@ struct FrameStackerTests {
                 let p = position(start + step * (Double(i) + Double(k) / 8))
                 return .init(x: p.x, y: p.y, flux: 40_000 / 8)
             }
-            acc.add(SyntheticStarField.render(sub, width: w, height: h, seed: UInt64(i + 1)))
+            try acc.add(SyntheticStarField.render(sub, width: w, height: h, seed: UInt64(i + 1)))
         }
         let v = acc.result.values
         // Sample the true arc every 0.25 px: every sample is well above the sky.
@@ -163,37 +163,74 @@ struct FrameStackerTests {
             let p = t.apply(Self.truth(i).apply(300, 220).x, Self.truth(i).apply(300, 220).y)
             #expect(hypot(p.x - 300, p.y - 220) < 0.1)
         }
-        let stacked = FrameStacker().sigmaClipped(frames, transforms: transforms).raster
+        let stacked = try FrameStacker().sigmaClipped(frames, transforms: transforms).raster
         #expect(Self.rmsError(stacked) < Self.rmsError(frames[0]) / 2.3)
     }
 
-    @Test func smallBandsGiveTheSameStack() {
+    @Test func smallBandsGiveTheSameStack() throws {
         let frames = (0..<4).map { Self.frame($0, streak: false) }
         let transforms = (0..<4).map { Self.truth($0).inverse }
-        let big = FrameStacker().sigmaClipped(frames, transforms: transforms).raster.values
-        let tiny = FrameStacker(bandBudgetBytes: 1).sigmaClipped(frames, transforms: transforms).raster.values
+        let big = try FrameStacker().sigmaClipped(frames, transforms: transforms).raster.values
+        let tiny = try FrameStacker(bandBudgetBytes: 1).sigmaClipped(frames, transforms: transforms).raster.values
         #expect(big == tiny)
     }
 
-    @Test func identityStackOfIdenticalFramesIsThatFrame() {
+    @Test func identityStackOfIdenticalFramesIsThatFrame() throws {
         let f = Self.frame(0, streak: false)
-        let r = FrameStacker().sigmaClipped([f, f, f], transforms: [.identity, .identity, .identity])
+        let r = try FrameStacker().sigmaClipped([f, f, f], transforms: [.identity, .identity, .identity])
         #expect(r.raster.values == f.values)
         #expect(r.uncovered == 0)
     }
 
-    @Test func rgbChannelsStayApart() {
+    @Test func rgbChannelsStayApart() throws {
         let values: [UInt16] = (0..<(4 * 3 * 3)).map { UInt16($0 % 3 == 0 ? 1_000 : $0 % 3 == 1 ? 2_000 : 3_000) }
         let f = RasterU16(width: 4, height: 3, channels: 3, values: values)
-        let r = FrameStacker().sigmaClipped([f, f, f, f], transforms: Array(repeating: .identity, count: 4))
+        let r = try FrameStacker().sigmaClipped([f, f, f, f], transforms: Array(repeating: .identity, count: 4))
         #expect(r.raster.values == values)
     }
 
-    @Test func pixelsNoFrameCoversAreCountedAndZero() {
+    @Test func pixelsNoFrameCoversAreCountedAndZero() throws {
         let f = Self.frame(0, streak: false)
         let shifted = RigidTransform(rotation: 0, tx: 50, ty: 0)
-        let r = FrameStacker().sigmaClipped([f], transforms: [shifted])
+        let r = try FrameStacker().sigmaClipped([f], transforms: [shifted])
         #expect(r.uncovered == 50 * Self.h)
         #expect(r.raster.values[10] == 0)
+    }
+
+    /// Stop means stop: a 20-frame 12 MP stack, cancelled half a second in,
+    /// returns within a second of the cancel.
+    @Test func cancellingABigStackReturnsWithinASecond() async throws {
+        let w = 4032, h = 3024
+        let frame = RasterU16(width: w, height: h, channels: 3, values: [UInt16](repeating: 2_000, count: w * h * 3))
+        let frames = Array(repeating: frame, count: 20)
+        let transforms = (0..<20).map { RigidTransform(rotationDegrees: 0.01 * Double($0), about: 2_000, -8_000) }
+        let task = Task.detached { try FrameStacker().sigmaClipped(frames, transforms: transforms) }
+        try await Task.sleep(for: .milliseconds(500))
+        let cancelled = ContinuousClock.now
+        task.cancel()
+        let outcome = await task.result
+        let waited = ContinuousClock.now - cancelled
+        #expect(throws: CancellationError.self) { try outcome.get() }
+        #expect(waited < .seconds(1))
+    }
+
+    @Test func cancellingTheTrailStackReturnsWithinASecond() async throws {
+        let w = 4032, h = 3024
+        let frame = RasterU16(width: w, height: h, channels: 3, values: [UInt16](repeating: 2_000, count: w * h * 3))
+        let ready = AsyncStream<Void>.makeStream()
+        let task = Task.detached {
+            // Allocating the 12 MP accumulator is setup, not stacking: time from after it.
+            var acc = StackAccumulator(mode: .maximum, width: w, height: h, channels: 3)
+            ready.continuation.finish()
+            for _ in 0..<100 { try acc.add(frame) }
+            return acc.frames
+        }
+        for await _ in ready.stream {}
+        try await Task.sleep(for: .milliseconds(500))
+        let cancelled = ContinuousClock.now
+        task.cancel()
+        let outcome = await task.result
+        #expect(throws: CancellationError.self) { try outcome.get() }
+        #expect(ContinuousClock.now - cancelled < .seconds(1))
     }
 }

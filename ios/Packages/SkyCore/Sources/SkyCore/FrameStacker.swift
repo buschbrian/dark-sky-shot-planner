@@ -100,7 +100,9 @@ public struct FrameStacker: Sendable {
     }
 
     /// Sigma-clipped mean of `frames`; `transforms[i]` maps frame i onto the reference.
-    public func sigmaClipped(_ frames: [RasterU16], transforms: [RigidTransform]) -> Result {
+    /// Checks for task cancellation every output row (well under a second of
+    /// work on a phone) and throws `CancellationError` when cancelled.
+    public func sigmaClipped(_ frames: [RasterU16], transforms: [RigidTransform]) throws(CancellationError) -> Result {
         precondition(!frames.isEmpty && frames.count == transforms.count, "one transform per frame")
         let w = frames[0].width, h = frames[0].height, ch = frames[0].channels
         precondition(frames.allSatisfy { $0.width == w && $0.height == h && $0.channels == ch }, "frame sizes")
@@ -117,14 +119,21 @@ public struct FrameStacker: Sendable {
             let rows = min(bandRows, h - y0)
             let bandCount = rows * w * ch
             for f in 0..<n {
-                samples.withUnsafeMutableBufferPointer { s in
-                    let dst = UnsafeMutableBufferPointer(rebasing: s[(f * bandCount)..<((f + 1) * bandCount)])
-                    Self.warp(frames[f], inverses[f], firstRow: y0, rows: rows, into: dst)
+                for row in 0..<rows {
+                    if Task.isCancelled { throw CancellationError() }
+                    let rowCount = w * ch
+                    samples.withUnsafeMutableBufferPointer { s in
+                        let start = f * bandCount + row * rowCount
+                        let dst = UnsafeMutableBufferPointer(rebasing: s[start..<(start + rowCount)])
+                        Self.warp(frames[f], inverses[f], firstRow: y0 + row, rows: 1, into: dst)
+                    }
                 }
             }
-            samples.withUnsafeBufferPointer { s in
+            if Task.isCancelled { throw CancellationError() }
+            let cancelled = samples.withUnsafeBufferPointer { s in
                 gather.withUnsafeMutableBufferPointer { g in
                     for k in 0..<bandCount {
+                        if k % (w * ch) == 0, Task.isCancelled { return true }
                         var m = 0
                         for f in 0..<n {
                             let v = s[f * bandCount + k]
@@ -133,8 +142,10 @@ public struct FrameStacker: Sendable {
                         if m == 0 { uncovered += 1; continue }
                         output[y0 * w * ch + k] = Self.quantize(clip.combine(g, count: m))
                     }
+                    return false
                 }
             }
+            if cancelled { throw CancellationError() }
             y0 += rows
         }
         return Result(raster: RasterU16(width: w, height: h, channels: ch, values: output), uncovered: uncovered)
@@ -214,13 +225,16 @@ public struct StackAccumulator: Sendable {
         count = [UInt16](repeating: 0, count: width * height * channels)
     }
 
-    /// Adds a frame; `transform` maps it onto the reference (identity for trails).
-    public mutating func add(_ frame: RasterU16, transform: RigidTransform = .identity) {
+    /// Adds a frame; `transform` maps it onto the reference (identity for
+    /// trails). Throws `CancellationError`, leaving the stack without this
+    /// frame's later rows, if the task is cancelled.
+    public mutating func add(_ frame: RasterU16, transform: RigidTransform = .identity) throws(CancellationError) {
         precondition(frame.width == width && frame.height == height && frame.channels == channels, "frame size")
         var row = [Float](repeating: .nan, count: width * channels)
         let inverse = transform.inverse
         let isMax = mode == .maximum
         for y in 0..<height {
+            if Task.isCancelled { throw CancellationError() }
             row.withUnsafeMutableBufferPointer { FrameStacker.warp(frame, inverse, firstRow: y, rows: 1, into: $0) }
             let base = y * width * channels
             for k in 0..<(width * channels) {
