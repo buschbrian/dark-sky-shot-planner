@@ -20,14 +20,14 @@ struct AlertSection: View {
             Toggle(isOn: Binding(get: { spot.alertGoThisWeek }, set: setRule)) {
                 Text("Alert me when a night this week is Go at \(spot.name)")
             }
-            .toggleStyle(PaletteToggleStyle(palette: palette))
+            .toggleStyle(PaletteToggleStyle())
             .accessibilityIdentifier("alert-toggle")
 
             if spot.alertGoThisWeek {
                 if allowed == false {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Notifications are off for Dark Sky, so this rule cannot alert you.")
-                            .font(.footnote).foregroundStyle(palette.poor)
+                    VStack(alignment: .leading, spacing: DS.Space.xs) {
+                        DataStatusLine(symbol: "bell.slash", text: "Notifications are off for Dark Sky, so this rule can't alert you.",
+                                       tone: .caution)
                         Button("Open Settings") {
                             if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                                 UIApplication.shared.open(url)
@@ -35,9 +35,9 @@ struct AlertSection: View {
                         }
                     }
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     CheckStatus(spot: spot)
-                        .font(.footnote)
+                        .font(.dsFootnote)
                         .accessibilityIdentifier("alert-last-checked")
                     HStack(spacing: 4) {
                         Text("Last background run:")
@@ -48,11 +48,11 @@ struct AlertSection: View {
                             Text("not yet")
                         }
                     }
-                    .font(.caption)
+                    .font(.dsData)
                     .foregroundStyle(palette.secondary)
                     if !spot.alertNotifiedNights.isEmpty {
                         Text("Alerted for: \(spot.alertNotifiedNights.sorted().compactMap(NightDate.init(iso:)).map { SpotRefresh.weekdayLabel($0, timeZone: spot.place.timeZone) }.joined(separator: ", "))")
-                            .font(.caption)
+                            .font(.dsFootnote)
                             .accessibilityIdentifier("alert-notified")
                     }
                 }
@@ -70,15 +70,15 @@ struct AlertSection: View {
                     Task { testSent = await SpotRefresh.sendTest(spot) }
                 }
                 if let testSent {
-                    Text(testSent ? "Sent; it arrives in about 5 s. Leave the app or lock the phone to see it." : "Could not send: notifications are not allowed.")
-                        .font(.caption).foregroundStyle(testSent ? palette.secondary : palette.poor)
+                    Text(testSent ? "Sent; it arrives in about 5 s. Leave the app or lock the phone to see it." : "Couldn't send: notifications are off for Dark Sky.")
+                        .font(.dsFootnote).foregroundStyle(testSent ? palette.secondary : palette.poor)
                 }
             }
         } header: {
             SectionHeader("Alert")
         } footer: {
-            Text("iOS runs background checks when it chooses: usually a few times a day for an app you open often, less for one you don't, and never after you swipe the app away. Each Go night alerts once. Notifications are drawn by iOS, not in field-mode red.")
-                .font(.caption)
+            Text("Best effort: iOS runs background checks when it chooses (a few times a day for an app you open often, never after you swipe it away). Each Go night alerts once. Notifications are drawn by iOS, so they are not red in field mode.")
+                .font(.dsFootnote)
                 .foregroundStyle(palette.secondary)
         }
         .paletteRow(palette)

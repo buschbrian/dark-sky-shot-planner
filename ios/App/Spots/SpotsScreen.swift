@@ -18,36 +18,25 @@ struct SpotsScreen: View {
         NavigationStack(path: $path) {
             Group {
                 if spots.isEmpty {
-                    ContentUnavailableView {
-                        Label("No saved spots", systemImage: "mappin.and.ellipse")
-                    } description: {
-                        Text("Save the places you shoot from to see their week, attach a skyline and set alerts.")
-                    } actions: {
-                        Button("Add a spot") { adding = true }.accessibilityIdentifier("add-first-spot")
-                    }
-                    .foregroundStyle(palette.secondary)
+                    EmptyState(
+                        symbol: "mappin.and.ellipse", title: "No saved spots",
+                        message: "Save the places you shoot from to see their week, attach a skyline and set alerts.",
+                        actionTitle: "Add a spot", actionID: "add-first-spot") { adding = true }
+                        .frame(maxHeight: .infinity)
                 } else {
                     list
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.background)
-            .paletteTitle("Spots", palette)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { FieldModeToggle() }
-                    .sharedBackgroundVisibility(palette.toolbarGlass)
+            .screenChrome("Spots") {
                 if !spots.isEmpty {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button { Task { await checkAll() } } label: { Label("Re-check all", systemImage: "arrow.clockwise") }
-                            .disabled(checkingAll)
-                            .accessibilityIdentifier("recheck-all")
-                    }
-                    .sharedBackgroundVisibility(palette.toolbarGlass)
+                    Button { Task { await checkAll() } } label: { Label("Re-check all", systemImage: "arrow.clockwise") }
+                        .disabled(checkingAll)
+                        .accessibilityIdentifier("recheck-all")
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { adding = true } label: { Label("Add spot", systemImage: "plus") }
-                        .accessibilityIdentifier("add-spot")
-                }
-                .sharedBackgroundVisibility(palette.toolbarGlass)
+                Button { adding = true } label: { Label("Add spot", systemImage: "plus") }
+                    .accessibilityIdentifier("add-spot")
             }
             .navigationDestination(for: Spot.self) { SpotDetail(spot: $0) }
             .sheet(isPresented: $adding) { SpotEditor(spot: nil) }
@@ -90,8 +79,8 @@ struct SpotsScreen: View {
                     try? context.save()
                 }
             } footer: {
-                Text(checkingAll ? "Checking every spot's week…" : "Verdicts are shown with when they were checked. ↻ re-checks every spot.")
-                    .font(.caption).foregroundStyle(palette.secondary)
+                Text(checkingAll ? "Checking every spot's week…" : "Each week shows when it was checked. ↻ re-checks every spot.")
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
             }
             .paletteRow(palette)
 
@@ -114,9 +103,9 @@ struct SpotRow: View {
     let inUse: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Text(spot.name).font(.body.weight(.semibold)).foregroundStyle(palette.primary)
+        VStack(alignment: .leading, spacing: DS.Space.xs + 2) {
+            HStack(spacing: DS.Space.s) {
+                Text(spot.name).font(.dsHeadline).foregroundStyle(palette.primary)
                 if inUse {
                     Image(systemName: "location.fill").accessibilityLabel("In use")
                 }
@@ -133,15 +122,16 @@ struct SpotRow: View {
             .font(.caption)
             .foregroundStyle(palette.secondary)
             if let week = spot.week {
-                HStack(spacing: 8) {
+                HStack(spacing: DS.Space.s) {
                     MiniWeekStrip(week: week)
-                    AgeText(date: week.checkedAt).font(.caption2).foregroundStyle(palette.secondary)
+                    Spacer(minLength: 0)
+                    AgeText(date: week.checkedAt).font(.dsData).foregroundStyle(palette.tertiary)
                 }
             } else {
-                Text("Week not checked yet").font(.caption).foregroundStyle(palette.secondary)
+                Text("Week not checked yet").font(.dsFootnote).foregroundStyle(palette.secondary)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DS.Space.xs)
     }
 }
 
@@ -153,14 +143,14 @@ struct SyncSection: View {
     var body: some View {
         Section {
             Toggle("Sync spots with iCloud", isOn: .constant(false))
-                .toggleStyle(PaletteToggleStyle(palette: palette))
+                .toggleStyle(PaletteToggleStyle())
                 .disabled(true)
                 .accessibilityIdentifier("icloud-sync")
         } header: {
             SectionHeader("Sync")
         } footer: {
-            Text("Not available yet. Syncing needs an iCloud container on the developer team and a decision on what to sync (spots with precise coordinates would go to your private iCloud database only). Until then spots live on this phone.")
-                .font(.caption).foregroundStyle(palette.secondary)
+            Text("Not set up yet: spots live on this phone. Syncing needs an iCloud container and a decision on what to sync; precise coordinates would only go to your private iCloud database.")
+                .font(.dsFootnote).foregroundStyle(palette.secondary)
         }
         .paletteRow(palette)
     }

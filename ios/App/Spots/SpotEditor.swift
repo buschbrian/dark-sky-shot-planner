@@ -43,7 +43,7 @@ struct SpotEditor: View {
                         .accessibilityIdentifier("spot-longitude")
                     if !latitude.isEmpty || !longitude.isEmpty, parsed == nil {
                         Text("Latitude −90…90 and longitude −180…180, decimal degrees.")
-                            .font(.footnote).foregroundStyle(palette.poor)
+                            .font(.dsFootnote).foregroundStyle(palette.poor)
                     }
                     if let place = state.place, spot == nil {
                         Button("Fill from current place (\(place.name))") {
@@ -82,17 +82,9 @@ struct SpotEditor: View {
                 .paletteRow(palette)
             }
             .paletteList()
-            .paletteTitle(spot == nil ? "New spot" : "Edit spot", palette)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                    .sharedBackgroundVisibility(palette.toolbarGlass)
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save).disabled(!canSave)
-                        .foregroundStyle(canSave ? palette.accent : palette.secondary)
-                        .accessibilityIdentifier("spot-save")
-                }
-                .sharedBackgroundVisibility(palette.toolbarGlass)
-            }
+            .sheetChrome(spot == nil ? "New spot" : "Edit spot",
+                         cancel: SheetAction(title: "Cancel") { dismiss() },
+                         confirm: SheetAction(title: "Save", id: "spot-save", enabled: canSave, action: save))
             .navigationDestination(isPresented: $pickingZone) {
                 ZonePicker(selection: $timeZoneID, zones: zones)
             }
@@ -100,7 +92,7 @@ struct SpotEditor: View {
         }
         .tint(palette.accent)
         .preferredColorScheme(palette.colorScheme)
-        .presentationBackground(palette.background)
+        .sheetPresentation(palette)
     }
 
     var zones: [String] {
@@ -177,7 +169,6 @@ struct ZonePicker: View {
             .paletteRow(palette)
         }
         .paletteList()
-        .paletteTitle("Time zone", palette)
-        .paletteBackButton(palette, dismiss: dismiss)
+        .sheetChrome("Time zone", pushed: true)
     }
 }

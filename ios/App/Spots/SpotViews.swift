@@ -3,14 +3,7 @@ import SwiftUI
 
 enum VerdictSymbol {
     /// Shape as well as colour, since field mode tells levels apart by brightness only.
-    static func name(_ level: VerdictLevel?) -> String {
-        switch level {
-        case .go: "checkmark.circle.fill"
-        case .marginal: "minus.circle.fill"
-        case .noGo: "xmark.circle.fill"
-        case nil: "questionmark.circle"
-        }
-    }
+    static func name(_ level: VerdictLevel?) -> String { StatusLevel(level).symbol }
 }
 
 /// Seven nights, one cell each: weekday, verdict, moon-free minutes.
@@ -21,13 +14,14 @@ struct WeekStrip: View {
     @Binding var selected: String?
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: DS.Space.xs) {
             ForEach(week.nights) { night in
                 let level = night.verdict?.level
+                let isSelected = selected == night.night || (selected == nil && night.id == week.nights.first?.id)
                 Button {
                     selected = night.night
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: DS.Space.xs) {
                         Text(weekday(night))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(palette.secondary)
@@ -39,13 +33,17 @@ struct WeekStrip: View {
                             .foregroundStyle(palette.primary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(selected == night.night ? palette.surface : .clear))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected == night.night ? palette.accent : .clear, lineWidth: 1))
+                    .padding(.vertical, DS.Space.s)
+                    .background(RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous)
+                        .fill(isSelected ? palette.raised : .clear))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous)
+                        .strokeBorder(isSelected ? palette.accent : .clear, lineWidth: DS.Stroke.focus))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("night-\(night.night)")
                 .accessibilityLabel("\(weekday(night)): \(night.verdict?.headline ?? "verdict unavailable"), \(night.headlineMinutes.map { "\($0) minutes moon-free" } ?? "moon-free minutes unavailable")")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
     }
@@ -62,7 +60,7 @@ struct MiniWeekStrip: View {
     let week: SpotWeek
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: DS.Space.xs) {
             ForEach(week.nights) { night in
                 Image(systemName: VerdictSymbol.name(night.verdict?.level))
                     .font(.caption)
@@ -101,10 +99,11 @@ struct SkylineChart: View {
                 fill.addLine(to: point(360, bottom))
                 fill.addLine(to: point(0, bottom))
                 fill.closeSubpath()
-                ctx.fill(fill, with: .color(palette.surface))
+                ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(palette.data.darkness))
+                ctx.fill(fill, with: .color(palette.data.twilight))
                 for az in stride(from: 90.0, to: 360, by: 90) {
                     ctx.stroke(Path { $0.move(to: point(az, bottom)); $0.addLine(to: point(az, top)) },
-                               with: .color(palette.secondary.opacity(0.4)), lineWidth: 0.5)
+                               with: .color(palette.data.grid), lineWidth: 0.5)
                 }
                 ctx.stroke(Path { $0.move(to: point(0, 0)); $0.addLine(to: point(360, 0)) },
                            with: .color(palette.secondary), lineWidth: 0.5)
@@ -115,11 +114,11 @@ struct SkylineChart: View {
             }
             .frame(height: 90)
             .overlay(alignment: .topLeading) {
-                Text("\(Int(top))°").font(.caption2).foregroundStyle(palette.secondary).padding(2)
+                Text("\(Int(top))°").font(.dsData).foregroundStyle(palette.data.axisLabel).padding(DS.Space.xs)
             }
             HStack {
                 ForEach(["N", "E", "S", "W", "N"].indices, id: \.self) { i in
-                    Text(["N", "E", "S", "W", "N"][i]).font(.caption2).foregroundStyle(palette.secondary)
+                    Text(["N", "E", "S", "W", "N"][i]).font(.dsData).foregroundStyle(palette.data.axisLabel)
                     if i < 4 { Spacer() }
                 }
             }
@@ -140,13 +139,7 @@ struct AgeText: View {
         }
     }
 
-    static func age(_ date: Date, now: Date = .now) -> String {
-        let s = now.timeIntervalSince(date)
-        if s < 90 { return "just now" }
-        if s < 90 * 60 { return "\(Int((s / 60).rounded())) min ago" }
-        if s < 36 * 3600 { return "\(Int((s / 3600).rounded())) h ago" }
-        return "\(Int((s / 86400).rounded())) d ago"
-    }
+    static func age(_ date: Date, now: Date = .now) -> String { Voice.ago(date, now: now) }
 }
 
 /// What the last check did. "Couldn't check" never reads as "checked, no Go".
@@ -182,7 +175,7 @@ struct CheckStatus: View {
         case .checked, .astronomyOnly: nil
         case .partial:
             spot.week.map { "Conditions for \($0.fetchedWindows) of \($0.requestedWindows) forecast windows; other nights read unavailable." }
-        case .noConditions: "Conditions unavailable, so no night can be Go; verdicts are incomplete."
+        case .noConditions: "Conditions unavailable, so no night can be Go; verdicts have incomplete data."
         case .interrupted: "iOS ended the background time; showing the previous check."
         }
     }

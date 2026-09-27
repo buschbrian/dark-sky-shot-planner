@@ -101,13 +101,26 @@ struct SheetChrome: ViewModifier {
     let title: String
     let cancel: SheetAction?
     let confirm: SheetAction?
+    /// A page pushed inside the sheet: field mode draws its own back chevron.
+    var pushed = false
     @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
 
     func body(content: Content) -> some View {
         content
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(pushed && palette.isField)
             .toolbar {
+                if pushed && palette.isField {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.backward").font(.headline).foregroundStyle(palette.accent)
+                        }
+                        .accessibilityLabel("Back")
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }
                 ToolbarItem(placement: .principal) {
                     Text(title).font(.dsNavTitle).foregroundStyle(palette.primary).accessibilityAddTraits(.isHeader)
                 }
@@ -141,8 +154,8 @@ struct SheetChrome: ViewModifier {
 
 extension View {
     /// Apply inside the sheet's NavigationStack.
-    func sheetChrome(_ title: String, cancel: SheetAction? = nil, confirm: SheetAction? = nil) -> some View {
-        modifier(SheetChrome(title: title, cancel: cancel, confirm: confirm))
+    func sheetChrome(_ title: String, cancel: SheetAction? = nil, confirm: SheetAction? = nil, pushed: Bool = false) -> some View {
+        modifier(SheetChrome(title: title, cancel: cancel, confirm: confirm, pushed: pushed))
     }
 
     /// Apply to the sheet's root (outside its NavigationStack).
