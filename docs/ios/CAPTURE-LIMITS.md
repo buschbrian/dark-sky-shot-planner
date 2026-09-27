@@ -72,3 +72,18 @@ streams. The app picks this format (`CaptureEngine.bestFormat`).
   limit of 8.6 s at k = 1.
 
 Details and the remaining owner checks are in the PLAN.md log entry for M12.
+
+## Star-trail designer (integration note)
+
+Star-trail mode takes a duration and an interval from the screen
+(`CaptureModel.trailMinutes`, `trailInterval`). It saves every frame and
+builds the unaligned per-pixel maximum (`StackAccumulator(mode: .maximum)`).
+The Sky agent's star-trail designer is not on any branch yet. When it lands,
+it should set those two values and hand over the celestial pole's position
+for framing. The maximum does not need the pole, so nothing in the stack
+changes. Keep the interval equal to the exposure (1 s here) for unbroken
+trails; a longer interval leaves gaps.
+
+Field mode tints only what the app draws: the screen, the preview and the
+focus magnifier. Saved frames and stacks come straight from the camera and
+the stacker, and are never tinted.
