@@ -3,8 +3,9 @@
 Shared context for coding agents (Codex reads this; CLAUDE.md points here).
 This file ROUTES; rules live in scoped files. Keep it under 80 lines.
 
-"Should I go shoot tonight — where, when, how?" for Milky Way photography in
-the Mountain West (scope: ADR-0009, amending `autonomous-build-brief.md`).
+"Should I go shoot tonight — where, when, how, and what?" for Milky Way and
+other astrophotography in the Mountain West (scope: ADR-0009, amended by
+ADR-0013).
 Python pipelines publish PMTiles/JSON to `data/out/`; a Vite + TypeScript +
 MapLibre static site (no framework, ADR-0001) computes astronomy client-side;
 a native SwiftUI app lives in `ios/`; one stateless Worker in `worker/` serves
