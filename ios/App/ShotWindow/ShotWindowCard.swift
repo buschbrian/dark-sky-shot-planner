@@ -415,7 +415,7 @@ struct NextSuitableNight: View {
     let night: NightDate
     let horizon: HorizonProfile?
     let plan: ShotPlan
-    static let days = 7
+    nonisolated static let days = 7
 
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
