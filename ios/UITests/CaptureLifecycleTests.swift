@@ -61,12 +61,13 @@ final class CaptureLifecycleTests: XCTestCase {
     @MainActor
     func testLeavingAndBackgroundingEndTheRunCleanly() {
         let app = XCUIApplication()
-        app.launchArguments = ["-DarkSkyUITest"]
+        app.launchArguments = ["-DarkSkyUITest", "-capture.guideSeen", "YES"]
         app.launch()
 
         // 1. Leave during the countdown.
         openCapture(app)
-        app.buttons["10 s"].tap()
+        app.buttons["capture.timer.10 s"].swipeUpUntilVisible(in: app)
+        app.buttons["capture.timer.10 s"].tap()
         app.buttons["capture.start"].tap()
         XCTAssertTrue(status(app, contains: "Self-timer", timeout: 10))
         XCTAssertTrue(debugState(app).contains("idle:disabled"), debugState(app))
@@ -76,7 +77,8 @@ final class CaptureLifecycleTests: XCTestCase {
         snapshot("1-after-countdown-leave")
 
         // 2. Leave during acquisition; the frames shot are offered on return.
-        app.buttons["No timer"].tap()
+        app.buttons["capture.timer.No timer"].swipeUpUntilVisible(in: app)
+        app.buttons["capture.timer.No timer"].tap()
         app.buttons["capture.start"].tap()
         XCTAssertTrue(status(app, contains: "Frame 3 of", timeout: 60))
         back(app)
