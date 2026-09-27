@@ -166,10 +166,34 @@ nonisolated enum CaptureDebug {
         model.subExposure = camera.maxExposure
         model.fileFormat = .raw
         say("selftest: plan \(model.frameCount) frames x \(model.subExposure) s, ISO \(Int(model.iso)), f/\(model.aperture ?? 0), \(model.frameDimensions.map { "\($0.width)x\($0.height)" } ?? "?"), storage \(model.plan.map { CaptureModel.bytes($0.storedBytes) } ?? "?"), free \(CaptureModel.bytes(model.freeBytes)), battery \(model.batteryLevel), thermal \(CameraProbe.thermalName(model.thermal))")
+        say("selftest: exposure label '\(CaptureWording.exposurePerFrame(chosen: model.subExposure, maximum: camera.maxExposure))'; lowered '\(CaptureWording.exposurePerFrame(chosen: 0.5, maximum: camera.maxExposure))'")
+        say("selftest: resolution choices \(model.resolutionChoices.map { "\($0.title) \($0.width)x\($0.height) ~\(CaptureModel.bytes(model.frameBytes($0)))/frame" }); RAW named '\(model.rawTitle)'")
+        if let preset = model.preset {
+            say("selftest: recommended preset \(preset.exposure) s, ISO \(Int(preset.iso)), f/\(preset.aperture ?? 0), SNR gain \(preset.snrGain), timer \(preset.selfTimer) s, raw \(preset.raw)")
+        }
         model.start()
         await waitIdle(model, timeout: 300)
         for line in model.log { say("selftest log: \(line)") }
         say("selftest: phase \(model.phase)")
+        if let o = model.outcome {
+            say("selftest: outcome \(o.kind.rawValue): planned \(o.planned), saved \(o.saved), used \(o.used), aligned \(o.aligned.map(String.init) ?? "n/a"), rejected \(o.rejected), unaligned \(o.unalignedReason ?? "no"), total exposure \(o.integration) s")
+        }
+        if let d = model.durations {
+            say("selftest: durations per frame \(d.perFrame) s, integration \(d.integration) s, sequence \(d.sequence) s, NPF \(d.starTrailLimit.map { String(format: "%.2f", $0) } ?? "n/a") s")
+        }
+        if let stack = model.lastStack {
+            let t = Date()
+            let preview = StretchedPreview.make(url: stack, maxPixel: 1400)
+            say(String(format: "selftest: result preview %@ in %.2f s", preview.map { "\($0.width)x\($0.height)" } ?? "failed", Date().timeIntervalSince(t)))
+        }
+        if UserDefaults.standard.bool(forKey: "CaptureSelfTestNoPhotos") {
+            say("selftest: Photos step skipped (-CaptureSelfTestNoPhotos); files stay in Captures/\(model.lastFolder?.lastPathComponent ?? "?")")
+            model.leave(.leftScreen)
+            try? await Task.sleep(for: .seconds(1.5))
+            say("selftest: after leave, camera running \(model.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled)")
+            UIApplication.shared.isIdleTimerDisabled = true
+            return
+        }
         if let npf = model.npfSeconds, let gear = model.phoneGear {
             say(String(format: "selftest: phone gear focal %.2f mm, pitch %.3f um, crop %.2f, NPF(k=1) %.2f s",
                        gear.lens.focalLengthMM, gear.camera.pixelPitchUM, gear.camera.cropFactor, npf))
