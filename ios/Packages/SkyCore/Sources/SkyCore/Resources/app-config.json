@@ -22,6 +22,10 @@
   "gc_min_useful_altitude_deg": 12.0,
   "ar_overlay": {
     "heading_accuracy_confident_max_deg": 10.0,
+    "calibration_residual_max_deg": 1.5,
+    "heading_jump_disturbance_deg": 4.0,
+    "heading_drift_max_deg": 3.0,
+    "calibration_note": "iOS Night AR only, proposals to tune from field nights. calibration_residual_max_deg: a multi-point alignment whose RMS residual exceeds this is rejected (a misidentified target or a moved phone). heading_jump_disturbance_deg: a heading change the gyroscope does not explain, within a second and with the phone nearly still, above this marks a magnetic disturbance (car, tripod, rock). heading_drift_max_deg: unexplained heading change accumulated since the last calibration above this marks the overlay approximate until recalibrated.",
     "note": "iOS Night AR only. Above this CLHeading.headingAccuracy (degrees), or when it is negative (invalid), the overlay is drawn as approximate and offers heading calibration. 10 degrees is a proposal: a larger error can put the GC marker beside the Sagittarius star cloud instead of on it. Tune it from field nights in docs/ios/PLAN.md Log."
   },
   "freshness_days": {

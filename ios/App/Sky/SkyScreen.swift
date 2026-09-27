@@ -23,6 +23,18 @@ struct SkyScreen: View {
     @State private var calibrating = false
     @State private var calibrationChoice: CalibrationTarget?
     @State private var visible = false
+    @State private var layers = SkyLayers()
+    @State private var panel: SkyPanel?
+    @State private var findTarget: SkyFindTarget?
+    @State private var trail: StarTrailSequence?
+    @State private var look = SimulatedLook.initial
+    @State private var lookAtDragStart: SimulatedLook?
+    @State private var lookAtPinchStart: SimulatedLook?
+    @State private var realismCache = SkyRealismCache()
+    @State private var readout = SkyFrameReadout()
+    @State private var simulatedDisturbanceCleared = false
+    @State private var figureEightHidden = false
+    @Environment(\.skyRadiants) private var radiantProvider
 
     static let arConfig = try? AppConfig.bundled().arOverlay
 
@@ -53,8 +65,16 @@ struct SkyScreen: View {
             updateSensors()
         }
         .onChange(of: scenePhase) { updateSensors() }
+        #if DEBUG
+        .task(id: SimulatedSky.diagnostics) {
+            guard SimulatedSky.diagnostics else { return }
+            while !Task.isCancelled {
+                print("SKYDIAG \(Date.now.formatted(.iso8601)) \(diagnosticsLine(simulated: simulatedReason != nil).text)")
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+        #endif
         .onChange(of: simulatedByChoice) { updateSensors() }
-        .onChange(of: state.fieldMode, initial: true) { sensors.allowsSystemHeadingPrompt = !state.fieldMode }
     }
 
     @ViewBuilder private var content: some View {
@@ -126,7 +146,9 @@ struct SkyScreen: View {
                 backdrop(simulated: simulated != nil)
                 if simulated != nil, !SimulatedSky.sweeps {
                     overlay(place: place, model: model, horizon: horizon, size: geo.size,
-                            attitude: SimulatedSky.attitude, time: scrubTime ?? demoTime, simulated: true)
+                            attitude: look.attitude, time: scrubTime ?? demoTime, simulated: true)
+                        .contentShape(Rectangle())
+                        .gesture(lookGesture(size: geo.size))
                 } else {
                     TimelineView(.animation) { tick in
                         if simulated != nil {
@@ -151,8 +173,9 @@ struct SkyScreen: View {
 
     @ViewBuilder private func backdrop(simulated: Bool) -> some View {
         Group {
-            if simulated {
-                SimulatedBackdrop()
+            if simulated || layers.planetarium {
+                // The simulated sky is drawn per frame by the overlay's backdrop shader.
+                Color.black
             } else if camera.access == .granted {
                 CameraPreview(camera: camera)
             } else {
@@ -169,26 +192,78 @@ struct SkyScreen: View {
     ) -> some View {
         let start = ContinuousClock.now
         let scene = model.ephemeris.scene(at: time) ?? fallback.scene(place: place, at: time)
+        let planetarium = simulated || layers.planetarium
+        var backdropParams: SkyBackdropParams?
         let input = scene.map { scene in
-            SkyOverlayInput(
-                projector: SkyProjector(attitude: raw.applying(session.calibration), intrinsics: viewIntrinsics(size: size, simulated: simulated)),
+            let projector = SkyProjector(attitude: raw.applying(session.correction), intrinsics: viewIntrinsics(size: size, simulated: simulated))
+            var input = SkyOverlayInput(
+                projector: projector,
                 scene: scene, track: model.track, horizon: horizon,
-                style: style(simulated: simulated), timeZone: place.timeZone, crosshair: calibrating)
+                style: style(simulated: simulated), timeZone: place.timeZone, crosshair: calibrating,
+                planetarium: planetarium, showsMilkyWayBand: layers.milkyWay)
+            if let stars = model.stars, let observer = try? place.observer() {
+                let built = SkyRealismBuilder(
+                    stars: stars, observer: observer, projector: projector, time: time, scene: scene, layers: layers,
+                    horizon: realismCache.horizonLookup(horizon), horizonProfile: horizon, planetarium: planetarium,
+                    fieldMode: state.fieldMode, find: findTarget, trail: trail,
+                    radiants: radiants(at: time), cache: realismCache
+                ).build()
+                input.realism = built.frame
+                backdropParams = built.backdrop
+                readout.find = built.frame.find.map { ($0.name, $0.guidance) }
+                readout.trails = built.frame.trails
+                readout.limitingMagnitude = built.frame.limitingMagnitude
+                readout.announceFindProgress()
+            }
+            return input
         }
         let summary = input.map { summaries.summary(for: $0) } ?? ""
         meter.recordPrepare(ContinuousClock.now - start)
-        return Group {
+        return ZStack {
+            if let backdropParams {
+                SkyBackdropView(params: backdropParams)
+                    .accessibilityHidden(true)
+                    .allowsHitTesting(false)
+            }
             if let input {
                 SkyOverlayView(input: input, summary: summary, meter: meter)
             }
         }
     }
 
+    private func radiants(at time: Date) -> [SkyRadiant] {
+        (radiantProvider ?? SimulatedSky.demoRadiants)?.radiants(activeAt: time) ?? []
+    }
+
+    /// Drag to look around the simulated sky, pinch to change the lens.
+    private func lookGesture(size: CGSize) -> some Gesture {
+        let drag = DragGesture(minimumDistance: 4)
+            .onChanged { g in
+                let base = lookAtDragStart ?? look
+                if lookAtDragStart == nil { lookAtDragStart = look }
+                let degPerPoint = base.fieldOfViewDeg / max(size.height, 1)
+                look = base.panned(dx: g.translation.width * degPerPoint, dy: g.translation.height * degPerPoint)
+            }
+            .onEnded { _ in lookAtDragStart = nil }
+        let pinch = MagnifyGesture()
+            .onChanged { g in
+                let base = lookAtPinchStart ?? look
+                if lookAtPinchStart == nil { lookAtPinchStart = look }
+                look = base.zoomed(by: g.magnification)
+            }
+            .onEnded { _ in lookAtPinchStart = nil }
+        return drag.simultaneously(with: pinch)
+    }
+
     /// The camera model in view points: from where the preview layer says
     /// it draws the image when it can, else the same aspect-fill arithmetic.
     private func viewIntrinsics(size: CGSize, simulated: Bool) -> CameraIntrinsics {
-        let lens = simulated ? LensModel.assumed : (camera.lens ?? .assumed)
-        if !simulated, lens.source != .assumed, let rect = camera.displayedImageRect() {
+        if simulated {
+            return CameraIntrinsics(longSideFieldOfViewDeg: look.fieldOfViewDeg, width: 1080, height: 1920)
+                .aspectFilled(toWidth: size.width, height: size.height)
+        }
+        let lens = camera.lens ?? .assumed
+        if lens.source != .assumed, let rect = camera.displayedImageRect() {
             return lens.intrinsics.placed(
                 inImageRectX: rect.minX, y: rect.minY, width: rect.width, height: rect.height,
                 viewWidth: size.width, viewHeight: size.height)
@@ -221,8 +296,16 @@ struct SkyScreen: View {
                 FieldModeToggle().tint(palette.accent).accessibilityIdentifier("sky.fieldMode")
             }
             if let simulated {
-                SkyPill(text: "Simulated view · \(SimulatedSky.sweeps ? "sweeping around S" : "fixed attitude facing S, 20° up") · \(simulated)", color: palette.primary)
+                SkyPill(text: "Simulated view · \(SimulatedSky.sweeps ? "sweeping around S" : look.description) · \(simulated)", color: palette.primary)
                     .accessibilityIdentifier("sky.simulated")
+            }
+            if findTarget != nil {
+                TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                    if let find = readout.find {
+                        SkyPill(text: "\(find.name): \(find.guidance.spoken)", color: palette.accent)
+                            .accessibilityIdentifier("sky.find.guidance")
+                    }
+                }
             }
             HStack(spacing: 8) {
                 HeadingBadge(text: headingText(simulated: simulated != nil), style: style)
@@ -233,6 +316,16 @@ struct SkyScreen: View {
                 .buttonStyle(SkyButtonStyle())
                 .accessibilityIdentifier("sky.calibrate")
             }
+            if let config = Self.arConfig, !figureEightHidden, sensorQuality(simulated: simulated != nil).needsFigureEight(config: config) {
+                FigureEightGuide(quality: sensorQuality(simulated: simulated != nil), onHide: { figureEightHidden = true })
+            }
+            #if DEBUG
+            if SimulatedSky.diagnostics {
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    SensorDiagnosticsPanel(line: diagnosticsLine(simulated: simulated != nil).text)
+                }
+            }
+            #endif
             if isLive, camera.access == .denied || camera.access == .restricted {
                 HStack {
                     Text("Camera is off for Dark Sky, so the overlay is drawn on black.")
@@ -241,7 +334,7 @@ struct SkyScreen: View {
                 }
             }
             if !style.isConfident {
-                Text(approximateNote(style))
+                Text(approximateNote(style, simulated: simulated != nil))
                     .font(.caption).foregroundStyle(palette.marginal)
                     .padding(8)
                     .background(palette.background.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
@@ -254,18 +347,63 @@ struct SkyScreen: View {
                 }
             }
             Spacer()
+            if !calibrating {
+                HStack(spacing: 8) {
+                    panelButton("Find", .find, "sky.find")
+                    panelButton("Trails", .trails, "sky.trails")
+                    panelButton("Show", .layers, "sky.layers")
+                }
+            }
+            if !calibrating, let panel {
+                Group {
+                    switch panel {
+                    case .find:
+                        SkyFindPanel(
+                            items: { findItems($0, place: place, model: model, time: time) }, target: $findTarget,
+                            canPoint: simulated != nil, onPoint: { pointSimulated(at: findTarget, place: place, model: model, time: time) },
+                            onClose: { self.panel = nil })
+                    case .trails:
+                        SkyTrailPanel(
+                            sequence: $trail, start: time, timeZone: place.timeZone, readout: readout,
+                            canPoint: simulated != nil, onPointAtPole: { pointSimulatedAtPole(place: place, time: time) },
+                            onClose: { self.panel = nil })
+                    case .layers:
+                        SkyLayersPanel(layers: $layers, isLive: simulated == nil, limitingMagnitude: readout.limitingMagnitude,
+                                       onClose: { self.panel = nil })
+                    }
+                }
+                .padding(12)
+                .background(palette.background.opacity(0.8), in: RoundedRectangle(cornerRadius: 14))
+            }
             Group {
                 if calibrating {
                     CalibrationPanel(
                         targets: calibrationTargets(place: place, model: model, at: simulated == nil ? .now : time),
-                        choice: $calibrationChoice,
-                        isCalibrated: session.isCalibrated,
-                        onAlign: { align($0, place: place, time: simulated == nil ? .now : time, simulated: simulated != nil) },
+                        choice: Binding(get: { calibrationChoice }, set: { choice in
+                            calibrationChoice = choice
+                            if simulated != nil { pointSimulated(at: choice, place: place, model: model, time: time) }
+                        }), session: session,
+                        residualLimitDeg: Self.arConfig?.calibrationResidualMaxDeg,
+                        onAdd: { addAlignment($0, place: place, model: model, time: simulated == nil ? .now : time, simulated: simulated != nil) },
+                        onApply: { choice in
+                            let t = simulated == nil ? Date.now : time
+                            if let choice, !session.pending.contains(where: { $0.target == choice.name }) {
+                                addAlignment(choice, place: place, model: model, time: t, simulated: simulated != nil)
+                            }
+                            if session.apply(config: Self.arConfig, at: place, persist: simulated == nil) {
+                                sensors.resetDisturbance()
+                                simulatedDisturbanceCleared = true
+                                calibrating = false
+                            }
+                        },
                         onReset: {
                             session.reset(persist: simulated == nil)
                             calibrating = false
                         },
-                        onCancel: { calibrating = false })
+                        onCancel: {
+                            session.clearPending()
+                            calibrating = false
+                        })
                 } else {
                     // Live "Now" keeps ticking without redrawing the whole screen.
                     TimelineView(.periodic(from: .now, by: 15)) { tick in
@@ -284,6 +422,60 @@ struct SkyScreen: View {
         .padding(.bottom, 8)
     }
 
+    private func panelButton(_ title: String, _ which: SkyPanel, _ id: String) -> some View {
+        Button(title) { panel = panel == which ? nil : which }
+            .buttonStyle(SkyButtonStyle(prominent: panel == which))
+            .accessibilityAddTraits(panel == which ? .isSelected : [])
+            .accessibilityIdentifier(id)
+    }
+
+    // MARK: - Find
+
+    private func findItems(_ kind: SkyFindPanel.Kind, place: Place, model: SkyModel, time: Date) -> [SkyFindItem] {
+        guard let stars = model.stars, let observer = try? place.observer(),
+              let scene = model.ephemeris.scene(at: time) ?? fallback.scene(place: place, at: time) else { return [] }
+        let builder = SkyRealismBuilder(
+            stars: stars, observer: observer, projector: SkyProjector(attitude: look.attitude, intrinsics: LensModel.assumed.intrinsics),
+            time: time, scene: scene, layers: layers, horizon: HorizonLookup(nil), horizonProfile: nil, planetarium: false,
+            fieldMode: false, find: nil, trail: nil, radiants: radiants(at: time), cache: realismCache)
+        let rotation = SkyRotation.eqjToReference(at: time, observer: observer)
+        let targets: [SkyFindTarget] = switch kind {
+        case .constellations: stars.catalog.constellations.map { .constellation($0.abbreviation) }
+        case .stars: stars.catalog.names.keys.sorted { stars.catalog.star(hr: $0)!.vmag < stars.catalog.star(hr: $1)!.vmag }.map { .star(hr: $0) }
+        case .planets: NightSkyScene.objects.map { .body($0) }
+        case .showers: radiants(at: time).map { .radiant(id: $0.id) }
+        }
+        let items = targets.compactMap { t in
+            builder.resolve(t, rotation: rotation).map { SkyFindItem(target: t, name: $0.0, altitudeDeg: $0.1.altitudeDeg) }
+        }
+        // What is up first, then alphabetical (constellations) or by brightness (stars).
+        let up = items.filter { $0.altitudeDeg > 0 }, down = items.filter { $0.altitudeDeg <= 0 }
+        return kind == .constellations
+            ? up.sorted { $0.name < $1.name } + down.sorted { $0.name < $1.name }
+            : up + down
+    }
+
+    private func pointSimulated(at target: SkyFindTarget?, place: Place, model: SkyModel, time: Date) {
+        guard let target, let stars = model.stars, let observer = try? place.observer(),
+              let scene = model.ephemeris.scene(at: time) ?? fallback.scene(place: place, at: time) else { return }
+        let builder = SkyRealismBuilder(
+            stars: stars, observer: observer, projector: SkyProjector(attitude: look.attitude, intrinsics: LensModel.assumed.intrinsics),
+            time: time, scene: scene, layers: layers, horizon: HorizonLookup(nil), horizonProfile: nil, planetarium: false,
+            fieldMode: false, find: nil, trail: nil, radiants: radiants(at: time), cache: realismCache)
+        guard let (_, position) = builder.resolve(target, rotation: SkyRotation.eqjToReference(at: time, observer: observer)) else { return }
+        look.point(at: position)
+    }
+
+    /// Puts the pole a third of the way down the view (above the panels),
+    /// the usual circular-trails composition.
+    private func pointSimulatedAtPole(place: Place, time: Date) {
+        guard let observer = try? place.observer() else { return }
+        let pole = StarTrails.pole(at: time, observer: observer)
+        look.point(at: pole)
+        let lift = atan(2 * (0.5 - 1.0 / 3) * tan(look.fieldOfViewDeg / 2 * .pi / 180)) * 180 / .pi
+        look.pitchDeg = min(max(pole.altitudeDeg - lift, -10), 89)
+    }
+
     private func headingAccuracy(simulated: Bool) -> Double {
         simulated ? SimulatedSky.headingAccuracyDeg : sensors.headingAccuracyDeg
     }
@@ -291,7 +483,36 @@ struct SkyScreen: View {
     private func style(simulated: Bool) -> OverlayStyle {
         guard let config = Self.arConfig else { return .approximate(uncertaintyDeg: nil) }
         let heading = HeadingConfidence(headingAccuracyDeg: headingAccuracy(simulated: simulated), config: config)
-        return OverlayStyle(heading: heading, calibrated: session.isCalibrated)
+        let style = OverlayStyle(heading: heading, calibrated: session.isCalibrated)
+        // A magnetic disturbance or drift since calibration overrides everything until recalibrated.
+        switch disturbance(simulated: simulated) {
+        case .steady: return style
+        case .disturbed(let d), .drifted(let d):
+            if case .approximate(let u?) = style { return .approximate(uncertaintyDeg: max(u, abs(d))) }
+            return .approximate(uncertaintyDeg: style.isConfident ? abs(d) : nil)
+        }
+    }
+
+    private func disturbance(simulated: Bool) -> HeadingDisturbanceMonitor.State {
+        if simulated { return simulatedDisturbanceCleared ? .steady : SimulatedSky.disturbance }
+        return sensors.disturbance
+    }
+
+    private func diagnosticsLine(simulated: Bool) -> SensorDiagnosticsLine {
+        SensorDiagnosticsLine(
+            headingDeg: simulated ? look.attitude.headingDeg : sensors.rawHeadingDeg,
+            smoothingDeg: simulated ? 0 : sensors.smoothingDeg,
+            headingAccuracyDeg: headingAccuracy(simulated: simulated),
+            magnetic: simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy,
+            rateDegPerSecond: simulated ? 0 : sensors.headingRateDegPerSecond,
+            disturbance: disturbance(simulated: simulated),
+            correction: session.correction, pending: session.pending.count)
+    }
+
+    private func sensorQuality(simulated: Bool) -> SensorQuality {
+        SensorQuality(
+            magnetic: simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy,
+            headingAccuracyDeg: headingAccuracy(simulated: simulated))
     }
 
     private func headingText(simulated: Bool) -> String {
@@ -302,20 +523,31 @@ struct SkyScreen: View {
         } else {
             text += simulated ? " invalid" : (sensors.headingHardware ? " not valid yet" : " unavailable")
         }
+        text += " · magnetometer " + (simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy).label
         if let target = session.calibratedOn {
-            text += String(format: " · calibrated on %@ (%+.1f°)", target, session.calibration.offsetDeg)
+            let c = session.correction
+            text += c.targets.count > 1
+                ? String(format: " · calibrated on %@ (%+.1f°, residual %.2f°)", target, c.yawDeg, c.residualDeg)
+                : String(format: " · calibrated on %@ (%+.1f°)", target, c.yawDeg)
             if session.restored { text += ", restored" }
         }
         return text
     }
 
-    private func approximateNote(_ style: OverlayStyle) -> String {
+    private func approximateNote(_ style: OverlayStyle, simulated: Bool) -> String {
+        switch disturbance(simulated: simulated) {
+        case .disturbed(let d):
+            return String(format: "Magnetic disturbance: the heading jumped %.0f° while the phone was still. Step away from the car, tripod or rock, then recalibrate.", abs(d))
+        case .drifted(let d):
+            return String(format: "The compass has drifted %.1f° from the gyroscope since calibration. Recalibrate on a target.", abs(d))
+        case .steady: break
+        }
         let why = if case .approximate(let u?) = style {
             "The compass reports ±\(Int(u.rounded()))°, so positions are approximate (rings show the error)."
         } else {
             "No valid compass heading, so positions may be far off."
         }
-        return why + " Calibrate on the Moon, a planet or a saved peak."
+        return why + " Calibrate on the Moon, a planet, a bright star or a saved peak."
     }
 
     // MARK: - Calibration
@@ -325,6 +557,15 @@ struct SkyScreen: View {
         if let scene = model.ephemeris.scene(at: date) ?? fallback.scene(place: place, at: date) {
             for body in scene.bodies where body.object != .galacticCenter && body.position.altitudeDeg > 0 {
                 out.append(.body(body.object))
+            }
+        }
+        // Bright named stars well above the horizon, brightest first.
+        if let stars = model.stars, let observer = try? place.observer() {
+            let catalog = stars.catalog
+            for hr in catalog.names.keys.sorted(by: { catalog.star(hr: $0)!.vmag < catalog.star(hr: $1)!.vmag }) {
+                guard let i = catalog.index(ofHR: hr), catalog.stars[i].vmag < 1.6,
+                      stars.field.position(ofStarAt: i, at: date, observer: observer).altitudeDeg > 8 else { continue }
+                out.append(.star(hr: hr, name: catalog.names[hr]!))
             }
         }
         let here = GeoCoordinate(latitude: place.latitude, longitude: place.longitude)
@@ -337,14 +578,26 @@ struct SkyScreen: View {
         return out
     }
 
-    private func align(_ target: CalibrationTarget, place: Place, time: Date, simulated: Bool) {
-        let raw = simulated ? SimulatedSky.attitude : sensors.attitude()
-        guard let raw, let computed = target.azimuthDeg(from: place, at: time) else { return }
-        let aligned = SkyProjector(attitude: raw, intrinsics: LensModel.assumed.intrinsics).boresight.azimuthDeg
-        session.calibrate(
-            HeadingCalibration(computedAzimuthDeg: computed, alignedAzimuthDeg: aligned), on: target.name,
-            at: place, persist: !simulated)
-        calibrating = false
+    /// Records where the (heading-smoothed, uncorrected) sensors say the
+    /// crosshair points while the user holds `target` on it.
+    private func addAlignment(_ target: CalibrationTarget, place: Place, model: SkyModel, time: Date, simulated: Bool) {
+        let raw = simulated ? look.attitude : sensors.attitude()
+        guard let raw else { return }
+        var sensed = SkyProjector(attitude: raw, intrinsics: LensModel.assumed.intrinsics).boresight
+        if simulated, SimulatedSky.alignmentErrorDeg != 0 {
+            // Alternate the sign so repeated alignments disagree with each other.
+            let e = SimulatedSky.alignmentErrorDeg * (session.pending.count.isMultiple(of: 2) ? 1 : -1)
+            sensed = HorizontalPosition(altitudeDeg: sensed.altitudeDeg + e, azimuthDeg: sensed.azimuthDeg)
+        }
+        guard let truth = target.direction(from: place, at: time, stars: model.stars, sensedAltitudeDeg: sensed.altitudeDeg) else { return }
+        session.add(CalibrationObservation(target: target.name, trueDirection: truth, sensedDirection: sensed))
+    }
+
+    /// The simulated view has no hands to point it: picking a calibration
+    /// target turns it there, as a user would.
+    private func pointSimulated(at target: CalibrationTarget?, place: Place, model: SkyModel, time: Date) {
+        guard let target, let truth = target.direction(from: place, at: time, stars: model.stars, sensedAltitudeDeg: look.pitchDeg) else { return }
+        look.point(at: truth)
     }
 
     private func restoreCalibration(for place: Place, simulated: Bool) {
@@ -418,7 +671,9 @@ nonisolated struct SkyModel: Sendable {
     let window: TimeWindow
     let track: GCTrack
     let ephemeris: SkyEphemeris
+    let stars: SkyStars?
     let computeTime: Duration
+
 
     @concurrent
     static func compute(_ key: Key) async -> SkyModel? {
@@ -434,13 +689,66 @@ nonisolated struct SkyModel: Sendable {
             end = max(end, now.addingTimeInterval(3 * 3600))
         }
         guard let ephemeris = try? SkyEphemeris.compute(observer: observer, span: TimeWindow(start: start, end: end)) else { return nil }
-        return SkyModel(key: key, window: window, track: track, ephemeris: ephemeris, computeTime: ContinuousClock.now - clock)
+        let stars = SkyStars.compute(epoch: window.start.addingTimeInterval(window.duration / 2))
+        return SkyModel(key: key, window: window, track: track, ephemeris: ephemeris, stars: stars, computeTime: ContinuousClock.now - clock)
+    }
+}
+
+/// Where the simulated view looks: drag to turn, pinch to zoom. Starts
+/// facing south, 20° up, through a typical phone lens.
+struct SimulatedLook: Equatable {
+    var azimuthDeg = 180.0
+    var pitchDeg = 20.0
+    var fieldOfViewDeg = 68.0
+
+    var attitude: DeviceAttitude { .upright(facingAzimuth: azimuthDeg, pitchDeg: pitchDeg) }
+
+    /// `-SkyDemoLook "azimuth,pitch,fov"` starts the simulated view elsewhere (screenshots).
+    static var initial: SimulatedLook {
+        var look = SimulatedLook()
+        let parts = (UserDefaults.standard.string(forKey: "SkyDemoLook") ?? "").split(separator: ",").compactMap { Double($0) }
+        if parts.count >= 2 { (look.azimuthDeg, look.pitchDeg) = (parts[0], parts[1]) }
+        if parts.count >= 3 { look.fieldOfViewDeg = parts[2] }
+        return look
+    }
+
+    var description: String {
+        "facing \(CompassPoint.abbreviation(forAzimuth: azimuthDeg)), \(Int(pitchDeg.rounded()))° up, \(Int(fieldOfViewDeg.rounded()))° lens · drag to look, pinch to zoom"
+    }
+
+    /// Content follows the finger: dragging right turns left.
+    func panned(dx: Double, dy: Double) -> SimulatedLook {
+        var next = self
+        next.azimuthDeg = Geodesy.normalizedAzimuth(azimuthDeg - dx)
+        next.pitchDeg = min(max(pitchDeg + dy, -10), 89)
+        return next
+    }
+
+    func zoomed(by magnification: Double) -> SimulatedLook {
+        var next = self
+        next.fieldOfViewDeg = min(max(fieldOfViewDeg / max(magnification, 0.1), 15), 120)
+        return next
+    }
+
+    mutating func point(at position: HorizontalPosition) {
+        azimuthDeg = position.azimuthDeg
+        pitchDeg = min(max(position.altitudeDeg, -10), 89)
     }
 }
 
 /// The fixed, labelled stand-in for the sensors.
 enum SimulatedSky {
-    static let attitude = DeviceAttitude.upright(facingAzimuth: 180, pitchDeg: 20)
+    /// `-SkyDemoRadiants YES`: a Perseids radiant with typical IMO values
+    /// (labelled "demo", not checked against the 2026 calendar) so the
+    /// radiant drawing can be tested before the events code supplies real ones.
+    static var demoRadiants: (any SkyRadiantProviding)? {
+        guard defaults.bool(forKey: "SkyDemoRadiants") else { return nil }
+        func d(_ s: String) -> Date { (try? Date(s, strategy: .iso8601)) ?? .distantPast }
+        return StaticRadiants([SkyRadiant(
+            id: "PER", name: "Perseids (demo)", raDeg: 48, decDeg: 58,
+            activeFrom: d("2026-07-17T00:00:00Z"), activeUntil: d("2026-08-24T00:00:00Z"), peak: d("2026-08-13T01:00:00Z"),
+            zhr: 100, populationIndex: 2.2, driftRADegPerDay: 1.35, driftDecDegPerDay: 0.12)])
+    }
 
     /// Candlestick Camp (public NPS site) with its measured skyline, when no place is chosen.
     static func place(_ chosen: Place?) -> (place: Place, horizon: HorizonProfile?) {
@@ -461,6 +769,31 @@ enum SimulatedSky {
         guard let value = defaults.string(forKey: "SkyDemoHeadingAccuracy") else { return 3 }
         return value == "invalid" ? -1 : Double(value) ?? -1
     }
+
+    /// `-SkyDemoMagneticAccuracy uncalibrated|low|medium|high` simulates
+    /// Core Motion's magnetometer calibration state (default high).
+    static var magneticAccuracy: MagneticFieldAccuracy {
+        switch defaults.string(forKey: "SkyDemoMagneticAccuracy") {
+        case "uncalibrated": .uncalibrated
+        case "low": .low
+        case "medium": .medium
+        default: .high
+        }
+    }
+
+    /// `-SkyDemoDisturbance YES` simulates a magnetic disturbance (an 8°
+    /// heading jump while still) until the next calibration.
+    static var disturbance: HeadingDisturbanceMonitor.State {
+        defaults.bool(forKey: "SkyDemoDisturbance") ? .disturbed(jumpDeg: 8) : .steady
+    }
+
+    /// `-SkyDemoAlignmentError <deg>`: each simulated alignment is off by
+    /// this much in altitude, alternating up and down (tests the residual).
+    static var alignmentErrorDeg: Double { defaults.double(forKey: "SkyDemoAlignmentError") }
+
+    /// `-SkySensorDiagnostics YES` (Debug builds): the diagnostics panel and
+    /// a `SKYDIAG` stdout line every second.
+    static var diagnostics: Bool { defaults.bool(forKey: "SkySensorDiagnostics") }
 
     /// `-SkyDemoSweep YES` swings the simulated phone around the south at
     /// display rate, exercising the same per-frame path as the sensors.
