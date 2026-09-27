@@ -93,4 +93,6 @@ nonisolated struct ConditionsFetch: Sendable {
     /// The Worker's HTTP status (200, 304) and wall time, when it answered.
     var workerHTTPStatus: Int? = nil
     var workerDuration: Duration? = nil
+    /// The saved copy `updates(for:window:)` yields before its first fetch.
+    var isSavedCopy = false
 }

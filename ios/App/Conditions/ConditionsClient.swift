@@ -26,7 +26,7 @@ extension LiveConditionsProviding {
                 if let saved = await cachedConditions(for: place, window: window) {
                     continuation.yield(ConditionsFetch(
                         snapshot: saved, status: .offlineCache(fetchedAt: saved.fetchedUTC),
-                        nextRefresh: .now))
+                        nextRefresh: .now, isSavedCopy: true))
                 }
                 while !Task.isCancelled {
                     let result = await fetch(for: place, window: window)

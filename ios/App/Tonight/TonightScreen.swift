@@ -64,11 +64,11 @@ struct TonightScreen: View {
         }
         .task(id: LoadKey(place: state.place, night: night)) {
             guard let place = state.place else { return }
-            await model.load(place: place, night: night, provider: provider)
+            await model.load(place: place, night: night)
         }
         .task(id: WatchKey(place: state.place, night: night, active: scenePhase == .active)) {
             guard let place = state.place, scenePhase == .active else { return }
-            await model.watchForNewRuns(place: place, night: night, provider: provider)
+            await model.follow(place: place, night: night, provider: provider)
         }
         .task(id: state.place) {
             remembered = RememberedPlace.load()
@@ -147,6 +147,7 @@ struct TonightScreen: View {
 
     private func choose(_ night: NightDate) {
         state.chosenNight = night == state.tonight() ? nil : night
+        state.prefetchSkyEvents()
     }
 
     /// A zone guessed offline is looked up again once the phone can reach Apple.
