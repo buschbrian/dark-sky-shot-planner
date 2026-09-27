@@ -464,6 +464,7 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
 ### M10 — Exposure tools
 - Gear profiles (camera: sensor size, resolution/pixel pitch; lens: focal
   length, max aperture), entered by the owner, not scraped.
+- Curated, cited presets seed these profiles, still editable: ADR-0012, `config/gear-presets.json`.
 - NPF rule, 500 rule (labelled as the rough one), star-trail length,
   hyperfocal/DoF, stacking count for a target SNR, timelapse interval/frames.
 - Pure functions in SkyCore with published worked examples as tests.

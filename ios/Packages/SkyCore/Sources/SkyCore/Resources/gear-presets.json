@@ -1,0 +1,3710 @@
+{
+  "schema_version": 1,
+  "title": "Curated gear presets for the exposure tools (ADR-0012)",
+  "verified_on": "2026-09-27",
+  "compiled_from": "docs/gear/research/ (iphone, fullframe, apsc, lenses; 2026-09-27)",
+  "refresh": "Re-check every source_url at least once a year, and the iPhone rows each September when new iPhones ship. Never fetched at runtime.",
+  "bases": {
+    "sensor_size_basis": {
+      "manufacturer": "The maker's published sensor dimensions (or DPReview's mirror of them).",
+      "stated-pitch-x-pixels": "iPhone: pixel pitch x 4032 x 3024. Apple publishes no sensor size; this matches EXIF focal lengths better than optical-format strings.",
+      "optical-format estimate": "Converted from an inch-type string like 1/1.28\". Approximate; kept only as optical_format_estimate_mm."
+    },
+    "pixel_pitch_basis": {
+      "exif-measured": "From a real frame's EXIF on the owner's phone (CAPTURE-LIMITS.md). Authoritative.",
+      "stated": "Pitch printed by the source (GSMArena spec sheets for iPhones).",
+      "stated-native-x2-binned": "2 x the stated 48 MP pitch: the 12 MP quad-Bayer binned output the app captures.",
+      "sensor-width/pixels": "Sensor width ÷ image width x 1000 (the SkyCore formula)."
+    },
+    "focal_length_basis": {
+      "manufacturer": "The lens's marked focal length (zooms: the wide end).",
+      "exif-measured": "EXIF FocalLength of a real photo.",
+      "derived-from-equivalent": "Apple's 35 mm-equivalent ÷ crop factor of the pitch-implied sensor.",
+      "derived-from-measured-fov": "Measured horizontal field of view and the pitch-implied sensor width."
+    }
+  },
+  "renamed": [
+    {
+      "from": "iphone-13-pro-max-wide",
+      "to": "iphone-13-pro-max-main",
+      "reason": "module named 'main' like every other iPhone row"
+    },
+    {
+      "from": "iphone-13-pro-max-wide-lens",
+      "to": "iphone-13-pro-max-main-lens",
+      "reason": "follows the camera rename"
+    },
+    {
+      "from": "rokinon-14-2.4-mf-legacy",
+      "to": "samyang-14-2.8-mf-legacy",
+      "reason": "the lens is f/2.8; the old id said 2.4"
+    },
+    {
+      "from": "sigma-10-18-2.8-dc-dn-note",
+      "to": "sigma-10-18-2.8-dcdn",
+      "reason": "drop the stray '-note' suffix"
+    }
+  ],
+  "cameras": [
+    {
+      "id": "iphone-13-pro-max-main",
+      "brand": "Apple",
+      "model": "iPhone 13 Pro Max",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 7.661,
+      "sensor_height_mm": 5.746,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.9,
+      "pixel_pitch_basis": "stated",
+      "optical_format": "1/1.7\"",
+      "optical_format_estimate_mm": {
+        "w": 7.6,
+        "h": 5.7,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 13 Pro"
+      ],
+      "pairs_with": [
+        "iphone-13-pro-max-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_13_pro_max-11089.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena spec sheet: 12 MP, 1.9 µm, 1/1.7\"; Apple: f/1.5, 26 mm equiv.",
+      "notes": "12 MP native. ProRAW. Same hardware as iPhone 13 Pro."
+    },
+    {
+      "id": "iphone-13-pro-max-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 13 Pro Max",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 4.032,
+      "sensor_height_mm": 3.024,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.0,
+      "pixel_pitch_basis": "stated",
+      "optical_format": "1/3.4\"",
+      "optical_format_estimate_mm": {
+        "w": 3.6,
+        "h": 2.7,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 13 Pro"
+      ],
+      "pairs_with": [
+        "iphone-13-pro-max-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_13_pro_max-11089.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena spec sheet: 12 MP, 1.0 µm, 1/3.4\"; Apple: f/1.8, 13 mm equiv., 120°.",
+      "notes": "12 MP native, small sensor. Wide star-trail frames only."
+    },
+    {
+      "id": "iphone-13-pro-max-telephoto",
+      "brand": "Apple",
+      "model": "iPhone 13 Pro Max",
+      "module": "telephoto",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 4.032,
+      "sensor_height_mm": 3.024,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.0,
+      "pixel_pitch_basis": "stated",
+      "optical_format": "1/3.4\"",
+      "optical_format_estimate_mm": {
+        "w": 3.6,
+        "h": 2.7,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 13 Pro"
+      ],
+      "pairs_with": [
+        "iphone-13-pro-max-telephoto-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_13_pro_max-11089.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena spec sheet: 12 MP, 1.0 µm, 1/3.4\"; Apple: f/2.8, 77 mm equiv.",
+      "notes": "3x telephoto. Moon only; not for stars."
+    },
+    {
+      "id": "iphone-14-pro-max-main",
+      "brand": "Apple",
+      "model": "iPhone 14 Pro Max",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 9.838,
+      "sensor_height_mm": 7.379,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.44,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.22,
+      "optical_format": "1/1.28\"",
+      "optical_format_estimate_mm": {
+        "w": 9.8,
+        "h": 7.3,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 14 Pro"
+      ],
+      "pairs_with": [
+        "iphone-14-pro-max-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_14_pro-review-2480p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 48 MP 1/1.28\", 1.22 µm (2.44 µm binned); Apple: f/1.78, 24 mm equiv.",
+      "notes": "First 48 MP main camera. ProRAW. Same hardware as iPhone 14 Pro."
+    },
+    {
+      "id": "iphone-14-pro-max-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 14 Pro Max",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 14 Pro"
+      ],
+      "pairs_with": [
+        "iphone-14-pro-max-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_14_pro-review-2480p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/2.55\", 1.4 µm, 12 MP; Apple: f/2.2, 13 mm equiv., 120°.",
+      "notes": "12 MP native."
+    },
+    {
+      "id": "iphone-16-pro-max-main",
+      "brand": "Apple",
+      "model": "iPhone 16 Pro Max",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 9.838,
+      "sensor_height_mm": 7.379,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.44,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.22,
+      "optical_format": "1/1.28\"",
+      "optical_format_estimate_mm": {
+        "w": 9.8,
+        "h": 7.3,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 16 Pro"
+      ],
+      "pairs_with": [
+        "iphone-16-pro-max-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16_pro_max-review-2750p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/1.28\", 1.22–2.44 µm; Apple: f/1.78, 24 mm equiv.",
+      "notes": "ProRAW. Same hardware as iPhone 16 Pro. Focal length cross-checked by TidBITS EXIF (6.8 mm)."
+    },
+    {
+      "id": "iphone-16-pro-max-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 16 Pro Max",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 16 Pro"
+      ],
+      "pairs_with": [
+        "iphone-16-pro-max-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16_pro_max-review-2750p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/2.55\", 0.7–1.4 µm; Apple: f/2.2, 13 mm equiv.",
+      "notes": "First 48 MP ultra wide."
+    },
+    {
+      "id": "iphone-16-pro-max-telephoto",
+      "brand": "Apple",
+      "model": "iPhone 16 Pro Max",
+      "module": "telephoto",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 4.516,
+      "sensor_height_mm": 3.387,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.12,
+      "pixel_pitch_basis": "stated",
+      "optical_format": "1/3.06\"",
+      "optical_format_estimate_mm": {
+        "w": 4.1,
+        "h": 3.1,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 16 Pro"
+      ],
+      "pairs_with": [
+        "iphone-16-pro-max-telephoto-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16_pro_max-review-2750p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/3.06\", 1.12 µm, 12 MP; Apple: f/2.8, 120 mm equiv. (5x).",
+      "notes": "5x tetraprism. Moon only. Pitch x pixels (4.52 mm) matches the EXIF 15.7 mm / 120 mm equiv. to 0.3 %."
+    },
+    {
+      "id": "iphone-17-pro-max-main",
+      "brand": "Apple",
+      "model": "iPhone 17 Pro Max",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 9.838,
+      "sensor_height_mm": 7.379,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.44,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.22,
+      "optical_format": "1/1.28\"",
+      "optical_format_estimate_mm": {
+        "w": 9.8,
+        "h": 7.3,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 17 Pro"
+      ],
+      "pairs_with": [
+        "iphone-17-pro-max-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX903, 1/1.28\", 1.22–2.44 µm; Apple: f/1.78, 24 mm equiv.",
+      "notes": "ProRAW. Same hardware as iPhone 17 Pro (GSMArena)."
+    },
+    {
+      "id": "iphone-17-pro-max-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 17 Pro Max",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 17 Pro"
+      ],
+      "pairs_with": [
+        "iphone-17-pro-max-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX972, 1/2.55\", 0.7–1.4 µm; Apple: f/2.2, 13 mm equiv.",
+      "notes": "Same sensor family as the 16 and 18 Pro Max ultra wide."
+    },
+    {
+      "id": "iphone-17-pro-max-telephoto",
+      "brand": "Apple",
+      "model": "iPhone 17 Pro Max",
+      "module": "telephoto",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 17 Pro"
+      ],
+      "pairs_with": [
+        "iphone-17-pro-max-telephoto-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX973, 1/2.55\", 0.7–1.4 µm; Apple: f/2.8, 100 mm equiv. (4x).",
+      "notes": "First 48 MP telephoto. Moon only."
+    },
+    {
+      "id": "iphone-18-pro-max-main",
+      "brand": "Apple",
+      "model": "iPhone 18 Pro Max",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 9.999,
+      "sensor_height_mm": 7.5,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.48,
+      "pixel_pitch_basis": "exif-measured",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.22,
+      "optical_format": "1/1.28\"",
+      "optical_format_estimate_mm": {
+        "w": 9.6,
+        "h": 7.2,
+        "basis": "optical-format estimate"
+      },
+      "iso_range": "55–12,320 (measured, 4032×3024 format)",
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 18 Pro"
+      ],
+      "pairs_with": [
+        "iphone-18-pro-max-main-lens"
+      ],
+      "source_url": "docs/ios/CAPTURE-LIMITS.md",
+      "additional_sources": [
+        "https://www.gsmarena.com/apple_iphone_18_pro_max-review-3002p5.php",
+        "https://support.apple.com/en-us/148591"
+      ],
+      "verified_on": "2026-09-27",
+      "value_basis": "Measured on the owner's phone: EXIF 6.93 mm, 3.46 crop -> 2.48 µm at 12 MP (CAPTURE-LIMITS.md). GSMArena: IMX905 1/1.28\", 1.22–2.44 µm.",
+      "notes": "The owner's phone. 1.0 s max frame; ISO 55–12,320; f/1.48, 1.8, 2.8, 4.0; ProRAW only. EXIF pitch beats GSMArena's 2.44."
+    },
+    {
+      "id": "iphone-18-pro-max-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 18 Pro Max",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "iso_range": "15–3,600 (measured)",
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 18 Pro"
+      ],
+      "pairs_with": [
+        "iphone-18-pro-max-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_18_pro_max-review-3002p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX972, 1/2.55\", 0.7–1.4 µm; measured f/2.2, 103.6° FOV (CAPTURE-LIMITS.md).",
+      "notes": "Measured: ISO 15–3,600, 1.0 s max, 103.6° (Apple markets 120°). Wide star trails."
+    },
+    {
+      "id": "iphone-18-pro-max-telephoto",
+      "brand": "Apple",
+      "model": "iPhone 18 Pro Max",
+      "module": "telephoto",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "iso_range": "15–7,680 (measured)",
+      "proraw": true,
+      "also_applies_to": [
+        "iPhone 18 Pro"
+      ],
+      "pairs_with": [
+        "iphone-18-pro-max-telephoto-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_18_pro_max-review-3002p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX973, 1/2.55\", 0.7–1.4 µm; measured f/2.7988, 19.0° FOV (CAPTURE-LIMITS.md).",
+      "notes": "Measured: ISO 15–7,680, 1.0 s max, 19.0°. Moon only."
+    },
+    {
+      "id": "iphone-air-main",
+      "brand": "Apple",
+      "model": "iPhone Air",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 8.064,
+      "sensor_height_mm": 6.048,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.0,
+      "pixel_pitch_basis": "stated-native-x2-binned",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.0,
+      "optical_format": "1/1.56\"",
+      "optical_format_estimate_mm": {
+        "w": 6.9,
+        "h": 5.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [],
+      "pairs_with": [
+        "iphone-air-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_air-review-2885p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX904, 1/1.56\", 1.0 µm, 48 MP; Apple: f/1.6, 26 mm equiv.",
+      "notes": "Single rear camera, no zoom lens. No ProRAW (Pro models only)."
+    },
+    {
+      "id": "iphone-17-main",
+      "brand": "Apple",
+      "model": "iPhone 17",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 8.064,
+      "sensor_height_mm": 6.048,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.0,
+      "pixel_pitch_basis": "stated-native-x2-binned",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.0,
+      "optical_format": "1/1.56\"",
+      "optical_format_estimate_mm": {
+        "w": 6.9,
+        "h": 5.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [],
+      "pairs_with": [
+        "iphone-17-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17-review-2886p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX904, 1/1.56\", 1.0 µm, 48 MP; Apple: f/1.6, 26 mm equiv.",
+      "notes": "No ProRAW. Its 2x mode is a crop of this sensor, not a lens."
+    },
+    {
+      "id": "iphone-17-ultrawide",
+      "brand": "Apple",
+      "model": "iPhone 17",
+      "module": "ultra-wide",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated-native-x2-binned",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [],
+      "pairs_with": [
+        "iphone-17-ultrawide-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17-review-2886p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: Sony IMX972, 1/2.55\", 0.7 µm, 48 MP; Apple: f/2.2, 13 mm equiv.",
+      "notes": "No ProRAW. First 48 MP ultra wide on a non-Pro iPhone."
+    },
+    {
+      "id": "iphone-16-main",
+      "brand": "Apple",
+      "model": "iPhone 16",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 8.064,
+      "sensor_height_mm": 6.048,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.0,
+      "pixel_pitch_basis": "stated-native-x2-binned",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.0,
+      "optical_format": "1/1.56\"",
+      "optical_format_estimate_mm": {
+        "w": 6.9,
+        "h": 5.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [
+        "iPhone 16 Plus"
+      ],
+      "pairs_with": [
+        "iphone-16-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16-review-2749p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/1.56\", 1.0 µm, 48 MP (IMX904); Apple: f/1.6, 26 mm equiv.",
+      "notes": "No ProRAW. iPhone 16 Plus presumed identical (not re-checked)."
+    },
+    {
+      "id": "iphone-15-main",
+      "brand": "Apple",
+      "model": "iPhone 15",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 8.064,
+      "sensor_height_mm": 6.048,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 2.0,
+      "pixel_pitch_basis": "stated-native-x2-binned",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 1.0,
+      "proraw": false,
+      "also_applies_to": [
+        "iPhone 15 Plus"
+      ],
+      "pairs_with": [
+        "iphone-15-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_15-review-2619p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 48 MP, 1.0 µm quad-Bayer, no optical format given; Apple: f/1.6, 26 mm equiv.",
+      "notes": "No ProRAW. No optical format published, so size is from pitch only."
+    },
+    {
+      "id": "iphone-14-main",
+      "brand": "Apple",
+      "model": "iPhone 14",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 7.661,
+      "sensor_height_mm": 5.746,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.9,
+      "pixel_pitch_basis": "stated",
+      "proraw": false,
+      "also_applies_to": [
+        "iPhone 14 Plus"
+      ],
+      "pairs_with": [
+        "iphone-14-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_14-review-2481p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 12 MP, 1.9 µm (lifted from the 13 Pro); Apple: f/1.5, 26 mm equiv.",
+      "notes": "No ProRAW. 12 MP native."
+    },
+    {
+      "id": "iphone-16e-main",
+      "brand": "Apple",
+      "model": "iPhone 16e",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [],
+      "pairs_with": [
+        "iphone-16e-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16e-review-2805p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/2.55\", 0.7–1.4 µm, 48 MP; Apple: f/1.6, 26 mm equiv.",
+      "notes": "Single rear camera; smallest main sensor here. No ProRAW."
+    },
+    {
+      "id": "iphone-17e-main",
+      "brand": "Apple",
+      "model": "iPhone 17e",
+      "module": "main",
+      "category": "iphone",
+      "mount": "fixed (built-in)",
+      "sensor_width_mm": 5.645,
+      "sensor_height_mm": 4.234,
+      "sensor_size_basis": "stated-pitch-x-pixels",
+      "resolution_px": {
+        "w": 4032,
+        "h": 3024
+      },
+      "pixel_pitch_um": 1.4,
+      "pixel_pitch_basis": "stated",
+      "native_resolution_px": {
+        "w": 8064,
+        "h": 6048
+      },
+      "native_pixel_pitch_um": 0.7,
+      "optical_format": "1/2.55\"",
+      "optical_format_estimate_mm": {
+        "w": 5.6,
+        "h": 4.2,
+        "basis": "optical-format estimate"
+      },
+      "proraw": false,
+      "also_applies_to": [],
+      "pairs_with": [
+        "iphone-17e-main-lens"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17e-review-2945p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "GSMArena review: 1/2.55\", 0.7–1.4 µm, 48 MP (reuses the 16e camera); Apple: f/1.6, 26 mm equiv.",
+      "notes": "Single rear camera, same hardware as 16e. No ProRAW."
+    },
+    {
+      "id": "sony-a7-iv",
+      "brand": "Sony",
+      "model": "a7 IV (ILCE-7M4)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.6,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 7008,
+        "h": 4672
+      },
+      "pixel_pitch_um": 5.08,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. 50–204,800)",
+      "launch_year": 2021,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a7iv/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Bulb timer and interval shooting built in. Star-eater filtering reduced since the a7 III generation; not Sony-confirmed gone."
+    },
+    {
+      "id": "sony-a7-iii",
+      "brand": "Sony",
+      "model": "a7 III (ILCE-7M3)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.8,
+      "sensor_height_mm": 23.8,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 5.97,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. 50–204,800)",
+      "launch_year": 2018,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a7iii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Used favourite. Sony visibly reduced star-eater on this body (PetaPixel 2018). Interval shooting arrived in firmware 3.0."
+    },
+    {
+      "id": "sony-a7s-iii",
+      "brand": "Sony",
+      "model": "a7S III (ILCE-7SM3)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.6,
+      "sensor_height_mm": 23.8,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 4240,
+        "h": 2832
+      },
+      "pixel_pitch_um": 8.4,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "80–102,400 native (ext. 40–409,600)",
+      "launch_year": 2020,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a7siii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "12 MP with 8.4 µm pixels: high-ISO cleanliness over resolution. Dual gain near ISO 2000 (DPReview measurement)."
+    },
+    {
+      "id": "sony-a7r-v",
+      "brand": "Sony",
+      "model": "a7R V (ILCE-7RM5)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.7,
+      "sensor_height_mm": 23.8,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 9504,
+        "h": 6336
+      },
+      "pixel_pitch_um": 3.76,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–32,000 native (ext. 50–102,400)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a7rv/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "60 MP: shortest NPF of these bodies at a given lens. Community reports reduced raw filtering."
+    },
+    {
+      "id": "sony-a7c-ii",
+      "brand": "Sony",
+      "model": "a7C II (ILCE-7CM2)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.6,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 7008,
+        "h": 4672
+      },
+      "pixel_pitch_um": 5.08,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. 50–204,800)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a7cii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "a7 IV sensor in a compact body."
+    },
+    {
+      "id": "sony-a1-ii",
+      "brand": "Sony",
+      "model": "a1 II (ILCE-1M2)",
+      "category": "full-frame",
+      "mount": "Sony E",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 8640,
+        "h": 5760
+      },
+      "pixel_pitch_um": 4.16,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–32,000 native (ext. 50–102,400)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a1ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 4.15 µm (within 0.1 %).",
+      "notes": "Flagship all-rounder; astro-capable, not astro-optimised."
+    },
+    {
+      "id": "nikon-z6-iii",
+      "brand": "Nikon",
+      "model": "Z6 III",
+      "category": "full-frame",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6048,
+        "h": 4032
+      },
+      "pixel_pitch_um": 5.94,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–64,000 native (ext. 50–204,800)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_z6iii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Starlight View and AF to -10 EV; base-ISO dynamic range ~0.8 EV below the Z6 II (independent review)."
+    },
+    {
+      "id": "nikon-z6-ii",
+      "brand": "Nikon",
+      "model": "Z6 II",
+      "category": "full-frame",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6048,
+        "h": 4024
+      },
+      "pixel_pitch_um": 5.94,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. 50–204,800)",
+      "launch_year": 2020,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_z6ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "PetaPixel's 2026 nightscape pick; ISO-invariant, low read noise."
+    },
+    {
+      "id": "nikon-z8",
+      "brand": "Nikon",
+      "model": "Z8",
+      "category": "full-frame",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 8256,
+        "h": 5504
+      },
+      "pixel_pitch_um": 4.35,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "64–25,600 native",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_z8/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "45.7 MP stacked sensor; intervalometer works with long shutter speeds. Extended ISO unpublished."
+    },
+    {
+      "id": "nikon-zf",
+      "brand": "Nikon",
+      "model": "Z f",
+      "category": "full-frame",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6048,
+        "h": 4032
+      },
+      "pixel_pitch_um": 5.94,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–64,000 native (ext. 50–204,800)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_zf/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Same 24.5 MP generation as the Z6 III, retro body."
+    },
+    {
+      "id": "nikon-z5-ii",
+      "brand": "Nikon",
+      "model": "Z5 II",
+      "category": "full-frame",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6048,
+        "h": 4032
+      },
+      "pixel_pitch_um": 5.94,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–64,000 native (ext. 50–204,800)",
+      "launch_year": 2025,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_z5ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Budget full frame with Starlight View (Capture the Atlas 2026)."
+    },
+    {
+      "id": "nikon-d850",
+      "brand": "Nikon",
+      "model": "D850",
+      "category": "full-frame",
+      "mount": "Nikon F",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 8256,
+        "h": 5504
+      },
+      "pixel_pitch_um": 4.35,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "64–25,600 native (ext. 32–102,400)",
+      "launch_year": 2017,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_d850/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Used DSLR. Watch for Nikon lossy-raw ring artifacts in large stacks (markshelley.co.uk)."
+    },
+    {
+      "id": "nikon-d750",
+      "brand": "Nikon",
+      "model": "D750",
+      "category": "full-frame",
+      "mount": "Nikon F",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6016,
+        "h": 4016
+      },
+      "pixel_pitch_um": 5.97,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–12,800 native (ext. 50–51,200)",
+      "launch_year": 2014,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/nikon/slrs/nikon_d750/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Used DSLR, often cited for ISO invariance."
+    },
+    {
+      "id": "canon-r6-mark-ii",
+      "brand": "Canon",
+      "model": "EOS R6 Mark II",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 36.0,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 6.0,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–102,400 native (ext. 50–204,800)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/canon/slrs/canon_eosr6ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Canon's interval timer cannot run with Bulb: sequences past 30 s need an external intervalometer."
+    },
+    {
+      "id": "canon-r6-mark-iii",
+      "brand": "Canon",
+      "model": "EOS R6 Mark III",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 35.9,
+      "sensor_height_mm": 23.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6960,
+        "h": 4640
+      },
+      "pixel_pitch_um": 5.16,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–64,000 native (ext. 50–102,800)",
+      "launch_year": 2025,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://petapixel.com/2025/11/05/the-canon-r6-iii-is-a-hybrid-powerhouse-with-32-5mp-sensor/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Announced 2025-11-05; little astro field testing yet. IBIS rating and extended ISO unconfirmed."
+    },
+    {
+      "id": "canon-r8",
+      "brand": "Canon",
+      "model": "EOS R8",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 36.0,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 6.0,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–102,400 native",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/canon/slrs/canon_eosr8/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Budget full frame, no IBIS (irrelevant on a tripod). Max mechanical shutter 1/4000 s."
+    },
+    {
+      "id": "canon-r5-mark-ii",
+      "brand": "Canon",
+      "model": "EOS R5 Mark II",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 36.0,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 8192,
+        "h": 5464
+      },
+      "pixel_pitch_um": 4.39,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. 50–102,400)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/canon/slrs/canon_eosr5ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 4.39 µm (within 0.1 %).",
+      "notes": "High-resolution all-rounder, not an astro specialist."
+    },
+    {
+      "id": "canon-eos-r",
+      "brand": "Canon",
+      "model": "EOS R",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 36.0,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6720,
+        "h": 4480
+      },
+      "pixel_pitch_um": 5.36,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–40,000 native",
+      "launch_year": 2018,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/canon/slrs/canon_eosr/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Donor body of the EOS Ra; discontinued."
+    },
+    {
+      "id": "canon-eos-ra",
+      "brand": "Canon",
+      "model": "EOS Ra",
+      "category": "full-frame",
+      "mount": "Canon RF",
+      "sensor_width_mm": 36.0,
+      "sensor_height_mm": 24.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6720,
+        "h": 4480
+      },
+      "pixel_pitch_um": 5.36,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–40,000 native",
+      "launch_year": 2019,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.canon.co.uk/cameras/eos-ra/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Astro model: ~4x H-alpha transmission, 30x live-view zoom. Discontinued September 2021, no successor."
+    },
+    {
+      "id": "panasonic-s5-ii",
+      "brand": "Panasonic",
+      "model": "Lumix S5 II (and S5 IIX, stills-identical variant)",
+      "category": "full-frame",
+      "mount": "L-Mount",
+      "sensor_width_mm": 35.6,
+      "sensor_height_mm": 23.8,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 5.93,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100–51,200 native (ext. ?–204,800)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/panasonic/slrs/panasonic_dcs5ii/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Panasonic states Dual Native ISO. S5 IIX is stills-identical. Bulb/interval behaviour unconfirmed."
+    },
+    {
+      "id": "fujifilm-x-t5",
+      "brand": "Fujifilm",
+      "model": "X-T5",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 7728,
+        "h": 5152
+      },
+      "pixel_pitch_um": 3.04,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "125-12800 standard (64-51200 extended)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/products/cameras/x-t5/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "40 MP X-Trans 5 HR, IBIS, built-in intervalometer. No star-eater reports found."
+    },
+    {
+      "id": "fujifilm-x-h2",
+      "brand": "Fujifilm",
+      "model": "X-H2",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 7728,
+        "h": 5152
+      },
+      "pixel_pitch_um": 3.04,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "125-12800 standard (64-51200 extended)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/products/cameras/x-h2/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Same 40 MP sensor as the X-T5. Pixel Shift is tripod-only and not for astro."
+    },
+    {
+      "id": "fujifilm-x-t50",
+      "brand": "Fujifilm",
+      "model": "X-T50",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 7728,
+        "h": 5152
+      },
+      "pixel_pitch_um": 3.04,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "125-12800 standard (64-51200 extended)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://amateurphotographer.com/latest/photo-news/fujifilm-announce-the-new-40mp-x-t50-with-ibis/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "X-T5 sensor in a smaller body with IBIS."
+    },
+    {
+      "id": "fujifilm-x-s20",
+      "brand": "Fujifilm",
+      "model": "X-S20",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6240,
+        "h": 4160
+      },
+      "pixel_pitch_um": 3.77,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "160-12800 standard (80-51200 extended)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/global/products/cameras/x-s20/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.77 µm (within 0.1 %).",
+      "notes": "26 MP X-Trans 4: larger pixels than the 40 MP bodies."
+    },
+    {
+      "id": "fujifilm-x-t30-iii",
+      "brand": "Fujifilm",
+      "model": "X-T30 III",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6240,
+        "h": 4160
+      },
+      "pixel_pitch_um": 3.77,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "160-12800 standard (80-51200 extended)",
+      "launch_year": 2025,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/news/introducing-fujifilm-x-t30-iii/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.77 µm (within 0.1 %).",
+      "notes": "Announced 2025-10-23. Shutter range and intervalometer unconfirmed."
+    },
+    {
+      "id": "fujifilm-x-t30-ii",
+      "brand": "Fujifilm",
+      "model": "X-T30 II",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6240,
+        "h": 4160
+      },
+      "pixel_pitch_um": 3.77,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "160-12800 standard (80-51200 extended)",
+      "launch_year": 2021,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/fujifilm/slrs/fujifilm_xt30ii/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.77 µm (within 0.1 %).",
+      "notes": "Discontinued; still common used. No IBIS."
+    },
+    {
+      "id": "fujifilm-x-m5",
+      "brand": "Fujifilm",
+      "model": "X-M5",
+      "category": "aps-c",
+      "mount": "Fujifilm X",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6240,
+        "h": 4160
+      },
+      "pixel_pitch_um": 3.77,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "160-12800 standard (80-51200 extended)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/products/cameras/x-m5/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.77 µm (within 0.1 %).",
+      "notes": "No IBIS. Shutter range and intervalometer unconfirmed."
+    },
+    {
+      "id": "sony-a6700",
+      "brand": "Sony",
+      "model": "a6700",
+      "category": "aps-c",
+      "mount": "Sony E",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6192,
+        "h": 4128
+      },
+      "pixel_pitch_um": 3.8,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (50-102400 extended)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/sony/slrs/sony_a6700/specifications",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.8 µm (within 0.1 %).",
+      "notes": "IBIS. No dated report of star-eater on this body; community signal mixed and unverified."
+    },
+    {
+      "id": "sony-a6400",
+      "brand": "Sony",
+      "model": "a6400",
+      "category": "aps-c",
+      "mount": "Sony E",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 3.92,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (extended to 102400 with multi-frame NR)",
+      "launch_year": 2019,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.neocamera.com/camera/sony/a6400",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "No IBIS. Older sensor generation; some community reports of long-exposure filtering."
+    },
+    {
+      "id": "sony-a6100",
+      "brand": "Sony",
+      "model": "a6100",
+      "category": "aps-c",
+      "mount": "Sony E",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 3.92,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (extended to 51200 with multi-frame NR)",
+      "launch_year": 2019,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://petapixel.com/2021/12/23/sony-suspends-a7c-and-a6600-permanently-ends-a7-ii-and-a6100/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Discontinued 2021; common used. No IBIS."
+    },
+    {
+      "id": "sony-zv-e10-ii",
+      "brand": "Sony",
+      "model": "ZV-E10 II",
+      "category": "aps-c",
+      "mount": "Sony E",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.6,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6192,
+        "h": 4128
+      },
+      "pixel_pitch_um": 3.8,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (50-102400 extended)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/reviews/8510905811/sony-zv-e10-ii-vlogging-camera-review/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.8 µm (within 0.1 %).",
+      "notes": "Electronic shutter only, no IBIS. Vlogging-first."
+    },
+    {
+      "id": "canon-eos-r7",
+      "brand": "Canon",
+      "model": "EOS R7",
+      "category": "aps-c",
+      "mount": "Canon RF",
+      "sensor_width_mm": 22.3,
+      "sensor_height_mm": 14.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6960,
+        "h": 4640
+      },
+      "pixel_pitch_um": 3.2,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (expandable to 51200)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.canon-europe.com/cameras/eos-r7/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.2 µm (within 0.1 %).",
+      "notes": "32.5 MP, IBIS, built-in intervalometer and bulb timer. Canon APS-C is 1.61x."
+    },
+    {
+      "id": "canon-eos-r10",
+      "brand": "Canon",
+      "model": "EOS R10",
+      "category": "aps-c",
+      "mount": "Canon RF",
+      "sensor_width_mm": 22.3,
+      "sensor_height_mm": 14.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 3.72,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (expandable to 51200)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.canon-europe.com/cameras/eos-r10/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "No IBIS."
+    },
+    {
+      "id": "canon-eos-r50",
+      "brand": "Canon",
+      "model": "EOS R50",
+      "category": "aps-c",
+      "mount": "Canon RF",
+      "sensor_width_mm": 22.3,
+      "sensor_height_mm": 14.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6000,
+        "h": 4000
+      },
+      "pixel_pitch_um": 3.72,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-32000 standard (expandable to 51200)",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.canon.co.uk/cameras/eos-r50/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "No IBIS. Best-selling camera in Japan in 2026 (Digital Camera World). Shutter specs unconfirmed."
+    },
+    {
+      "id": "canon-eos-90d",
+      "brand": "Canon",
+      "model": "EOS 90D",
+      "category": "aps-c",
+      "mount": "Canon EF",
+      "sensor_width_mm": 22.3,
+      "sensor_height_mm": 14.9,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 6960,
+        "h": 4640
+      },
+      "pixel_pitch_um": 3.2,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-25600 standard (expandable to 51200)",
+      "launch_year": 2019,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.canon-europe.com/cameras/eos-90d/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.2 µm (within 0.1 %).",
+      "notes": "DSLR, discontinued, no IBIS. EF mount body; also takes EF-S lenses."
+    },
+    {
+      "id": "nikon-z50ii",
+      "brand": "Nikon",
+      "model": "Z50II",
+      "category": "aps-c",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.7,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5568,
+        "h": 3712
+      },
+      "pixel_pitch_um": 4.22,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-51200 standard (expandable to 204800)",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/z50ii/1784/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "20.9 MP: the largest APS-C pixels here. No IBIS."
+    },
+    {
+      "id": "nikon-z-fc",
+      "brand": "Nikon",
+      "model": "Z fc",
+      "category": "aps-c",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.7,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5568,
+        "h": 3712
+      },
+      "pixel_pitch_um": 4.22,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-51200 standard (expandable to 204800)",
+      "launch_year": 2021,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/z-fc/1671/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "20.9 MP, no IBIS."
+    },
+    {
+      "id": "nikon-z30",
+      "brand": "Nikon",
+      "model": "Z30",
+      "category": "aps-c",
+      "mount": "Nikon Z",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.7,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5568,
+        "h": 3712
+      },
+      "pixel_pitch_um": 4.22,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-51200 standard (expandable to 204800)",
+      "launch_year": 2022,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/z-30/1737/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "No IBIS and no viewfinder, so star focus is on the rear screen."
+    },
+    {
+      "id": "nikon-d7500",
+      "brand": "Nikon",
+      "model": "D7500",
+      "category": "aps-c",
+      "mount": "Nikon F",
+      "sensor_width_mm": 23.5,
+      "sensor_height_mm": 15.7,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5568,
+        "h": 3712
+      },
+      "pixel_pitch_um": 4.22,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-51200 standard (expandable to ISO 50-1640000 with boost)",
+      "launch_year": 2017,
+      "status": "discontinued",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/d7500/1581/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 4.2 µm (within 0.5 %).",
+      "notes": "DSLR, discontinued; common used budget astro body."
+    },
+    {
+      "id": "om-system-om-1-mark-ii",
+      "brand": "OM System",
+      "model": "OM-1 Mark II",
+      "category": "mft",
+      "mount": "Micro Four Thirds",
+      "sensor_width_mm": 17.3,
+      "sensor_height_mm": 13.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5184,
+        "h": 3888
+      },
+      "pixel_pitch_um": 3.34,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "ISO LOW (~80) to 102400",
+      "launch_year": 2024,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://explore.omsystem.com/us/en/om-1-mark-ii",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels.",
+      "notes": "Starry Sky AF, Live Composite and Live Bulb for trails in camera. 8.5-stop IBIS."
+    },
+    {
+      "id": "panasonic-lumix-g9-ii",
+      "brand": "Panasonic",
+      "model": "Lumix G9 II",
+      "category": "mft",
+      "mount": "Micro Four Thirds",
+      "sensor_width_mm": 17.3,
+      "sensor_height_mm": 13.0,
+      "sensor_size_basis": "manufacturer",
+      "resolution_px": {
+        "w": 5776,
+        "h": 4336
+      },
+      "pixel_pitch_um": 3.0,
+      "pixel_pitch_basis": "sensor-width/pixels",
+      "iso_range": "100-25600 standard",
+      "launch_year": 2023,
+      "status": "current",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/reviews/panasonic-lumix-dc-g9-ii-review/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Sensor size and resolution: manufacturer spec (see source_url); pitch = width ÷ pixels. Research stated 3.0 µm (within 0.2 %).",
+      "notes": "Dual native ISO, 8-stop IBIS. No Starry-Sky-AF equivalent confirmed."
+    }
+  ],
+  "lenses": [
+    {
+      "id": "iphone-13-pro-max-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 13 Pro Max Wide (main)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 5.75,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.5,
+      "pairs_with": [
+        "iphone-13-pro-max-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/111870",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.52 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-13-pro-max-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 13 Pro Max Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 1.51,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 1.8,
+      "pairs_with": [
+        "iphone-13-pro-max-ultrawide"
+      ],
+      "source_url": "https://support.apple.com/en-us/111870",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "13 mm equiv. ÷ crop 8.58 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-13-pro-max-telephoto-lens",
+      "brand": "Apple",
+      "name": "iPhone 13 Pro Max Telephoto (3x)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 8.97,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 77,
+      "max_f_number": 2.8,
+      "pairs_with": [
+        "iphone-13-pro-max-telephoto"
+      ],
+      "source_url": "https://support.apple.com/en-us/111870",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "77 mm equiv. ÷ crop 8.58 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-14-pro-max-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 14 Pro Max Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.82,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 24,
+      "max_f_number": 1.78,
+      "pairs_with": [
+        "iphone-14-pro-max-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/111846",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "24 mm equiv. ÷ crop 3.52 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-14-pro-max-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 14 Pro Max Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 2.12,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 2.2,
+      "pairs_with": [
+        "iphone-14-pro-max-ultrawide"
+      ],
+      "source_url": "https://support.apple.com/en-us/111846",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "13 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-16-pro-max-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 16 Pro Max Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.8,
+      "focal_length_basis": "exif-measured",
+      "equivalent_focal_mm": 24,
+      "max_f_number": 1.78,
+      "pairs_with": [
+        "iphone-16-pro-max-main"
+      ],
+      "source_url": "https://tidbits.com/2025/09/25/tracking-my-iphone-camera-usage-with-a-deep-dive-into-exif-data/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length from EXIF",
+      "notes": "EXIF FocalLength of a real frame (TidBITS, iPhone 16 Pro); 24 mm equiv. ÷ crop gives 6.82 mm."
+    },
+    {
+      "id": "iphone-16-pro-max-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 16 Pro Max Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 2.2,
+      "focal_length_basis": "exif-measured",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 2.2,
+      "pairs_with": [
+        "iphone-16-pro-max-ultrawide"
+      ],
+      "source_url": "https://tidbits.com/2025/09/25/tracking-my-iphone-camera-usage-with-a-deep-dive-into-exif-data/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length from EXIF",
+      "notes": "EXIF FocalLength of a real frame (TidBITS, iPhone 16 Pro); 13 mm equiv. ÷ crop gives 2.12 mm."
+    },
+    {
+      "id": "iphone-16-pro-max-telephoto-lens",
+      "brand": "Apple",
+      "name": "iPhone 16 Pro Max Telephoto (5x)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 15.7,
+      "focal_length_basis": "exif-measured",
+      "equivalent_focal_mm": 120,
+      "max_f_number": 2.8,
+      "pairs_with": [
+        "iphone-16-pro-max-telephoto"
+      ],
+      "source_url": "https://tidbits.com/2025/09/25/tracking-my-iphone-camera-usage-with-a-deep-dive-into-exif-data/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length from EXIF",
+      "notes": "EXIF FocalLength of a real frame (TidBITS, iPhone 16 Pro); 120 mm equiv. ÷ crop gives 15.66 mm."
+    },
+    {
+      "id": "iphone-17-pro-max-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 17 Pro Max Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.82,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 24,
+      "max_f_number": 1.78,
+      "pairs_with": [
+        "iphone-17-pro-max-main"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "24 mm equiv. ÷ crop 3.52 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-17-pro-max-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 17 Pro Max Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 2.12,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 2.2,
+      "pairs_with": [
+        "iphone-17-pro-max-ultrawide"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "13 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-17-pro-max-telephoto-lens",
+      "brand": "Apple",
+      "name": "iPhone 17 Pro Max Telephoto (4x)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 16.31,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 100,
+      "max_f_number": 2.8,
+      "pairs_with": [
+        "iphone-17-pro-max-telephoto"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17_pro_max-review-2884p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "100 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-18-pro-max-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 18 Pro Max Main (variable aperture)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.93,
+      "focal_length_basis": "exif-measured",
+      "equivalent_focal_mm": 24,
+      "max_f_number": 1.48,
+      "aperture_stops": [
+        1.48,
+        1.8,
+        2.8,
+        4.0
+      ],
+      "pairs_with": [
+        "iphone-18-pro-max-main"
+      ],
+      "source_url": "docs/ios/CAPTURE-LIMITS.md",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length from EXIF",
+      "notes": "EXIF FocalLength of a real frame on the owner's phone (CAPTURE-LIMITS.md)."
+    },
+    {
+      "id": "iphone-18-pro-max-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 18 Pro Max Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 2.22,
+      "focal_length_basis": "derived-from-measured-fov",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 2.2,
+      "pairs_with": [
+        "iphone-18-pro-max-ultrawide"
+      ],
+      "source_url": "https://support.apple.com/en-us/148591",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived from measured FOV",
+      "notes": "From the measured 103.6° horizontal FOV and the 5.645 mm pitch-implied width; Apple's 13 mm equivalent gives 2.12 mm, the 16 Pro EXIF 2.2 mm."
+    },
+    {
+      "id": "iphone-18-pro-max-telephoto-lens",
+      "brand": "Apple",
+      "name": "iPhone 18 Pro Max Telephoto (4x)",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 16.31,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 100,
+      "max_f_number": 2.8,
+      "pairs_with": [
+        "iphone-18-pro-max-telephoto"
+      ],
+      "source_url": "https://support.apple.com/en-us/148591",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "100 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal). The measured 19.0° FOV implies 16.87 mm; EXIF not yet read."
+    },
+    {
+      "id": "iphone-air-main-lens",
+      "brand": "Apple",
+      "name": "iPhone Air Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.06,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-air-main"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_air-review-2885p6.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.29 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-17-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 17 Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.06,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-17-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/125089",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.29 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-17-ultrawide-lens",
+      "brand": "Apple",
+      "name": "iPhone 17 Ultra Wide",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 2.12,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 13,
+      "max_f_number": 2.2,
+      "pairs_with": [
+        "iphone-17-ultrawide"
+      ],
+      "source_url": "https://support.apple.com/en-us/125089",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "13 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-16-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 16 Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.06,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-16-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/121029",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.29 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-15-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 15 Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 6.06,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-15-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/111831",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.29 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-14-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 14 Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 5.75,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.5,
+      "pairs_with": [
+        "iphone-14-main"
+      ],
+      "source_url": "https://support.apple.com/en-us/111850",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 4.52 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-16e-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 16e Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 4.24,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-16e-main"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_16e-review-2805p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "iphone-17e-main-lens",
+      "brand": "Apple",
+      "name": "iPhone 17e Main",
+      "category": "iphone",
+      "mount": [
+        "fixed (built-in)"
+      ],
+      "focal_length_mm": 4.24,
+      "focal_length_basis": "derived-from-equivalent",
+      "equivalent_focal_mm": 26,
+      "max_f_number": 1.6,
+      "pairs_with": [
+        "iphone-17e-main"
+      ],
+      "source_url": "https://www.gsmarena.com/apple_iphone_17e-review-2945p5.php",
+      "verified_on": "2026-09-27",
+      "value_basis": "Apple tech specs (f-number, equivalent focal length); focal length derived",
+      "notes": "26 mm equiv. ÷ crop 6.13 (pitch-implied sensor diagonal)."
+    },
+    {
+      "id": "sigma-14-1.4-dgdn",
+      "brand": "Sigma",
+      "name": "14mm F1.4 DG DN Art",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "L-Mount"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": false,
+      "weight_g": 1160,
+      "coma": "Reviewers report coma and astigmatism very well controlled even wide open at f/1.4, with well-defined star points to the corners; some reports of sample variation.",
+      "coma_source_url": "https://petapixel.com/2023/06/08/sigma-14mm-f-1-4-dg-dn-art-review-a-nocturnal-monster/",
+      "launch_year": 2023,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/14mm-f1-4-dg-dn-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sigma-14-24-2.8-dgdn",
+      "brand": "Sigma",
+      "name": "14-24mm F2.8 DG DN Art",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "L-Mount"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        14,
+        24
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 795,
+      "coma": "Reviewed as excellent corner sharpness with well-controlled coma across the zoom range at f/2.8; Digital Camera World and Cameralabs both rate it among the sharpest ultra-wide zooms.",
+      "coma_source_url": "https://www.cameralabs.com/sigma-14-24mm-f2-8-dg-dn-art-review/",
+      "launch_year": 2022,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/14-24mm-f2-8-dg-dn-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 14–24 mm; preset at the wide end."
+    },
+    {
+      "id": "sigma-20-1.4-dgdn",
+      "brand": "Sigma",
+      "name": "20mm F1.4 DG DN Art",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "L-Mount"
+      ],
+      "focal_length_mm": 20,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 630,
+      "coma": "Capture the Atlas calls it the \"best overall lens for Milky Way photography\"; Fstoppers' astronomy-focused review found coma extremely well controlled with only slight winging at extreme corners.",
+      "coma_source_url": "https://fstoppers.com/originals/sigma-20mm-f14-art-special-astronomy-review-104169",
+      "launch_year": 2022,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/20mm-f1-4-dg-dn-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sigma-24-1.4-dgdn",
+      "brand": "Sigma",
+      "name": "24mm F1.4 DG DN Art",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "L-Mount"
+      ],
+      "focal_length_mm": 24,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 510,
+      "coma": "Called out by AstroBackyard as its top pick for Milky Way single-frame shots for its sharpness and light gathering.",
+      "coma_source_url": "https://astrobackyard.com/best-milky-way-lens/",
+      "launch_year": 2021,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/24mm-f1-4-dg-dn-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sigma-15-1.4-fisheye-dgdn",
+      "brand": "Sigma",
+      "name": "15mm F1.4 DG DN Diagonal Fisheye Art",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "L-Mount"
+      ],
+      "focal_length_mm": 15,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": true,
+      "autofocus": true,
+      "infinity_hard_stop": false,
+      "weight_g": null,
+      "coma": "Sigma states the design specifically corrects sagittal coma flare for astrophotography; PetaPixel's 2024 review calls the design strong for star points across the 180° field.",
+      "coma_source_url": "https://petapixel.com/2024/02/27/sigma-15mm-f-1-4-dg-dn-art-review-wide-weird-and-wonderful/",
+      "launch_year": 2024,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/15mm-f1-4-dg-dn-diagonal-fisheye-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Fisheye: NPF assumes a rectilinear lens, so treat it as a centre-of-frame guide."
+    },
+    {
+      "id": "sony-fe-14-1.8-gm",
+      "brand": "Sony",
+      "name": "FE 14mm F1.8 GM",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 460,
+      "coma": "Photography Life reports coma essentially eliminated wide open, pinpoint stars to the corners; LensTip measured relatively high astigmatism (~25.7%) increasing off-axis.",
+      "coma_source_url": "https://www.lenstip.com/606.7-Lens_review-Sony_FE_14_mm_f_1.8_GM_Coma__astigmatism_and_bokeh.html",
+      "launch_year": 2021,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sony.com/electronics/camera-lenses/sel14f18gm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sony-fe-20-1.8-g",
+      "brand": "Sony",
+      "name": "FE 20mm F1.8 G",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 20,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 373,
+      "coma": "Capture the Atlas notes it as \"lightweight (373g), sharp corners, popular choice\" for Milky Way work.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2020,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.sony.com/electronics/camera-lenses/sel20f18g",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sony-fe-24-1.4-gm",
+      "brand": "Sony",
+      "name": "FE 24mm F1.4 GM",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 24,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 445,
+      "coma": "Not independently sourced in this pass; general reputation as a sharp GM prime but no dedicated astro/coma citation captured.",
+      "coma_source_url": null,
+      "launch_year": 2018,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sony.com/electronics/camera-lenses/sel24f14gm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sony-fe-12-24-2.8-gm",
+      "brand": "Sony",
+      "name": "FE 12-24mm F2.8 GM",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 12,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        12,
+        24
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 847,
+      "coma": "Not independently sourced in this pass for coma-specific ratings; included on spec completeness and Capture the Atlas's zoom recommendations for ultra-wide astro/landscape crossover.",
+      "coma_source_url": null,
+      "launch_year": 2020,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sony.com/electronics/camera-lenses/sel1224gm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 12–24 mm; preset at the wide end."
+    },
+    {
+      "id": "nikon-z-14-24-2.8-s",
+      "brand": "Nikon",
+      "name": "NIKKOR Z 14-24mm f/2.8 S",
+      "category": "full-frame",
+      "mount": [
+        "Nikon Z"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        14,
+        24
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 650,
+      "coma": "Not independently sourced for coma in this pass; included for spec completeness as Nikon's flagship ultra-wide zoom, widely used for Milky Way landscapes per Nikon's own marketing and Photography Life's review.",
+      "coma_source_url": "https://photographylife.com/reviews/nikon-z-14-24-mm-f-2-8-s",
+      "launch_year": 2020,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/nikkor-z-14-24mm-f28-s/20097/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 14–24 mm; preset at the wide end."
+    },
+    {
+      "id": "nikon-z-20-1.8-s",
+      "brand": "Nikon",
+      "name": "NIKKOR Z 20mm f/1.8 S",
+      "category": "full-frame",
+      "mount": [
+        "Nikon Z"
+      ],
+      "focal_length_mm": 20,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 505,
+      "coma": "Mixed reviews: Photography Life/Digital Camera World call coma/astigmatism minimal even wide open; LensTip measured astigmatism at 12.9% (\"borderline medium/high\") with coma pronounced in corners on some samples.",
+      "coma_source_url": "https://www.lenstip.com/587.7-Lens_review-Nikon_Nikkor_Z_20_mm_f_1.8_S_Coma__astigmatism_and_bokeh.html",
+      "launch_year": 2020,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/nikkor-z-20mm-f18-s/20093/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "nikon-z-14-30-4-s",
+      "brand": "Nikon",
+      "name": "NIKKOR Z 14-30mm f/4 S",
+      "category": "full-frame",
+      "mount": [
+        "Nikon Z"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 4.0,
+      "focal_range_mm": [
+        14,
+        30
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 485,
+      "coma": "f/4 max aperture limits its use wide open for faint Milky Way detail versus f/2.8 or faster options; included as a lightweight, filter-friendly landscape-astro crossover choice rather than a fast-aperture pick.",
+      "coma_source_url": null,
+      "launch_year": 2019,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.nikonusa.com/p/nikkor-z-14-30mm-f4-s/20070/overview",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 14–30 mm; preset at the wide end."
+    },
+    {
+      "id": "canon-rf-15-35-2.8l",
+      "brand": "Canon",
+      "name": "RF 15-35mm F2.8L IS USM",
+      "category": "full-frame",
+      "mount": [
+        "Canon RF"
+      ],
+      "focal_length_mm": 15,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        15,
+        35
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 840,
+      "coma": "AstroBackyard's 2026 guide lists it as one of the most versatile Canon lenses for Milky Way and landscape, calling it fast and sharp.",
+      "coma_source_url": "https://astrobackyard.com/best-milky-way-lens/",
+      "launch_year": 2020,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.usa.canon.com/shop/p/rf15-35mm-f-2-8l-is-usm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 15–35 mm; preset at the wide end."
+    },
+    {
+      "id": "canon-rf-16-2.8-stm",
+      "brand": "Canon",
+      "name": "RF 16mm F2.8 STM",
+      "category": "full-frame",
+      "mount": [
+        "Canon RF"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 165,
+      "coma": "f/2.8 max aperture and budget optical design limit low-light astro performance versus faster primes in this list; included as the most affordable/lightest Canon RF wide-angle option, popular as a travel/backup lens.",
+      "coma_source_url": null,
+      "launch_year": 2021,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://en.canon-cna.com/lenses/rf-16mm-f2-8-stm/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "canon-rf-24-1.4l-vcm",
+      "brand": "Canon",
+      "name": "RF 24mm F1.4L VCM",
+      "category": "full-frame",
+      "mount": [
+        "Canon RF"
+      ],
+      "focal_length_mm": 24,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 515,
+      "coma": "Space.com's dedicated stargazing-kit review calls it a strong, compact fast-aperture pick for astrophotography.",
+      "coma_source_url": "https://www.space.com/stargazing/skywatching-kit/canon-rf-24mm-f-1-4l-vcm-lens-review",
+      "launch_year": 2024,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.usa.canon.com/shop/p/rf24mm-f-1-4l-vcm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "canon-rf-10-20-4l",
+      "brand": "Canon",
+      "name": "RF 10-20mm F4L IS STM",
+      "category": "full-frame",
+      "mount": [
+        "Canon RF"
+      ],
+      "focal_length_mm": 10,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 4.0,
+      "focal_range_mm": [
+        10,
+        20
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 570,
+      "coma": "f/4 aperture limits use for faint Milky Way detail; included for its extreme field of view (rectilinear ultra-wide) as a specialty landscape-astro option rather than a fast-aperture recommendation.",
+      "coma_source_url": null,
+      "launch_year": 2021,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://en.canon-cna.com/lenses/rf-10-20mm-f4l-is-stm/specifications/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 10–20 mm; preset at the wide end."
+    },
+    {
+      "id": "samyang-rokinon-14-2.8-af",
+      "brand": "Samyang/Rokinon",
+      "name": "AF 14mm F2.8",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Canon EF",
+        "Canon RF",
+        "Nikon F"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 484,
+      "coma": "Capture the Atlas calls it \"best affordable lens\" but flags inconsistent quality control across copies.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2018,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.rokinon.com/products/14mm-f2-8-af-ed-as-if-umc-full-frame",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "samyang-rokinon-24-1.4-mf",
+      "brand": "Samyang/Rokinon",
+      "name": "24mm F1.4 ED AS IF UMC (manual focus)",
+      "category": "full-frame",
+      "mount": [
+        "Canon EF",
+        "Nikon F",
+        "Sony E"
+      ],
+      "focal_length_mm": 24,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 565,
+      "coma": "Long-standing reputation among astro-landscape shooters as a well-corrected, affordable fast 24mm; frequently referenced in older Lonely Speck-era astro-lens lists as a coma-favorable Samyang/Rokinon design.",
+      "coma_source_url": "https://www.lonelyspeck.com/lonely-specks-ultimate-list-of-best-astrophotography-lenses/",
+      "launch_year": 2015,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://rokinon.com/products/24mm-f1-4-full-frame-wide-angle",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "viltrox-af-16-1.8-fe",
+      "brand": "Viltrox",
+      "name": "AF 16mm F1.8 FE",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Nikon Z",
+        "L-Mount"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": false,
+      "weight_g": 553,
+      "coma": "Reviews vary: phillipreeve.net and PetaPixel found coma control outstanding for the price, matching premium lenses; one reviewer (Silvana Della Camera) found astigmatism visible wide open in corners, improving but not…",
+      "coma_source_url": "https://petapixel.com/2023/07/17/viltrox-af-16mm-f-1-8-fe-lens-review-it-has-no-business-being-this-cheap/",
+      "launch_year": 2023,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://viltrox.com/products/viltrox-af-16mm-f1-8-fe",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "laowa-15-2-zerod-ff",
+      "brand": "Laowa (Venus Optics)",
+      "name": "15mm f/2 Zero-D FF",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Nikon Z",
+        "Canon RF",
+        "L-Mount"
+      ],
+      "focal_length_mm": 15,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.0,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 500,
+      "coma": "Capture the Atlas describes it as \"manual focus, compact, affordable\" among recommended full-frame astro primes; no dedicated numeric coma test captured in this pass.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2017,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.venuslens.net/product/laowa-15mm-f2/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "laowa-12-2.8-zerod-lite-ff",
+      "brand": "Laowa (Venus Optics)",
+      "name": "12mm f/2.8 Lite Zero-D FF",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Nikon Z"
+      ],
+      "focal_length_mm": 12,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 377,
+      "coma": "Fstoppers and DustinAbbott.net's 2025 reviews of the new AF Lite version note strong rectilinear correction (Zero-D) but no dedicated coma/astigmatism numeric test was captured in this pass.",
+      "coma_source_url": "https://dustinabbott.net/2025/07/laowa-af-12mm-f2-8-zero-d-review-z-mount/",
+      "launch_year": 2025,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.venuslens.net/product/laowa-12mm-f-2-8-lite-zero-d-ff/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "laowa-10-2.8-zerod-ff",
+      "brand": "Laowa (Venus Optics)",
+      "name": "10mm f/2.8 Zero-D FF",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Nikon Z",
+        "Canon RF",
+        "L-Mount"
+      ],
+      "focal_length_mm": 10,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 420,
+      "coma": "PhotoPills' 2026 guide highlights its 130.4° angle of view and minimal distortion; no independent numeric coma test captured in this pass.",
+      "coma_source_url": "https://www.photopills.com/articles/best-lens-for-shooting-milky-way",
+      "launch_year": 2024,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.venuslens.net/product/laowa-10mm-f-2-8-ff-zero-d/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "irix-15-2.4-blackstone",
+      "brand": "Irix",
+      "name": "15mm f/2.4 Blackstone",
+      "category": "full-frame",
+      "mount": [
+        "Canon EF",
+        "Nikon F",
+        "Pentax K",
+        "Sony E"
+      ],
+      "focal_length_mm": 15,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.4,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 630,
+      "coma": "DustinAbbott.net's Blackstone review and PentaxForums rate it well-corrected for coma at f/2.4, a longtime favorite among dedicated night-sky manual-focus shooters for its true infinity click-stop.",
+      "coma_source_url": "https://dustinabbott.net/2018/08/irix-15mm-f-2-4-blackstone-edition-review/",
+      "launch_year": 2017,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.irixusa.com/irix-15-mm-f-2-4",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Canon RF listed by the research only 'via adapter/native per Irix lineup'; left out of mounts until confirmed."
+    },
+    {
+      "id": "tamron-17-28-2.8",
+      "brand": "Tamron",
+      "name": "17-28mm F/2.8 Di III RXD",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 17,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        17,
+        28
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 420,
+      "coma": "Capture the Atlas notes it as \"lightweight, weather-sealed, affordable\"; no independent numeric coma test captured in this pass.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2019,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.tamron.com/global/consumer/lenses/a046/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 17–28 mm; preset at the wide end."
+    },
+    {
+      "id": "tokina-atxi-11-20-2.8-cf",
+      "brand": "Tokina",
+      "name": "atx-i 11-20mm F2.8 CF",
+      "category": "aps-c",
+      "mount": [
+        "Canon EF",
+        "Nikon F"
+      ],
+      "focal_length_mm": 11,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        11,
+        20
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 550,
+      "coma": "Manufacturer and retailer copy both describe it as well-suited to astrophotography via low distortion and low light falloff; no independent third-party coma test captured in this pass.",
+      "coma_source_url": null,
+      "launch_year": 2019,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://tokinalens.com/product/atx_i_11_20mm_f2_8_cf/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "APS-C-format DSLR lens (Tokina); the research JSON had it as full frame. Zoom 11–20 mm; preset at the wide end."
+    },
+    {
+      "id": "ttartisan-11-2.8-fisheye-ff",
+      "brand": "TTArtisan",
+      "name": "11mm f/2.8 Fisheye",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Canon RF",
+        "Nikon Z",
+        "L-Mount"
+      ],
+      "focal_length_mm": 11,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": true,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 500,
+      "coma": "phillipreeve.net's review notes solid full-frame fisheye correction for the price; used by two photographers in Capture the Atlas's 2026 Milky Way Photographer of the Year winning set per their gear analysis.",
+      "coma_source_url": "https://phillipreeve.net/blog/review-ttartisan-11mm-2-8-fisheye/",
+      "launch_year": 2021,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.ttartisan.com/?full-frame-lenses%2F62.html=",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Fisheye: NPF assumes a rectilinear lens, so treat it as a centre-of-frame guide."
+    },
+    {
+      "id": "viltrox-af-20-2.8-fe",
+      "brand": "Viltrox",
+      "name": "AF 20mm F2.8 FE (Air)",
+      "category": "full-frame",
+      "mount": [
+        "Sony E",
+        "Nikon Z",
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 20,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 157,
+      "coma": "Budget f/2.8 design; DustinAbbott.net and OpticalLimits both call it strong value but note it's not as fast as premium f/1.4–f/1.8 primes for faint Milky Way detail.",
+      "coma_source_url": "https://opticallimits.com/sony/viltrox-af-20mm-f-2-8-fe-review/",
+      "launch_year": 2023,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://viltrox.com/products/viltrox-af-20mm-f2-8",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "samyang-af-18-2.8-fe",
+      "brand": "Samyang/Rokinon",
+      "name": "AF 18mm F2.8 FE",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 18,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 145,
+      "coma": "f/2.8 aperture and compact pancake design trade some low-light speed for portability; no dedicated coma test captured in this pass.",
+      "coma_source_url": null,
+      "launch_year": 2020,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://samyangus.com/products/18mm-f2-8-af-compact-full-frame-sony-e",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "canon-ef-16-35-2.8l-iii",
+      "brand": "Canon",
+      "name": "EF 16-35mm f/2.8L III USM",
+      "category": "full-frame",
+      "mount": [
+        "Canon EF"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        16,
+        35
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 790,
+      "coma": "Digital Camera World's 2026 astro buying guide calls it excellent, surpassing predecessors in sharpness, ideal for full-frame astro landscapes — still a popular adapted legacy choice for RF shooters via the EF-RF…",
+      "coma_source_url": "https://www.digitalcameraworld.com/buying-guides/best-lenses-for-astrophotography",
+      "launch_year": 2016,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.usa.canon.com/shop/p/ef16-35mm-f-2-8l-iii-usm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 16–35 mm; preset at the wide end."
+    },
+    {
+      "id": "samyang-14-2.8-mf-legacy",
+      "brand": "Samyang/Rokinon",
+      "name": "14mm f/2.8 IF ED UMC (manual focus, legacy EF/F)",
+      "category": "full-frame",
+      "mount": [
+        "Canon EF",
+        "Nikon F"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": null,
+      "coma": "Historically one of the most-cited budget astro lenses in Lonely Speck-era guides; largely superseded by the AF version for new purchases in 2026 but still in wide use as a used/legacy lens on adapted…",
+      "coma_source_url": "https://en.wikipedia.org/wiki/Samyang_14mm_f/2.8_IF_ED_UMC_Aspherical",
+      "launch_year": 2011,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://en.wikipedia.org/wiki/Samyang_14mm_f/2.8_IF_ED_UMC_Aspherical",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sigma-14-1.8-dg-hsm-legacy",
+      "brand": "Sigma",
+      "name": "14mm F1.8 DG HSM Art (legacy DSLR)",
+      "category": "full-frame",
+      "mount": [
+        "Canon EF",
+        "Nikon F",
+        "Sigma SA"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 1170,
+      "coma": "Widely cited as merging an ultra-wide 14mm with a bright f/1.8 aperture, though multiple reviews note noticeable coma and astigmatism wide open, more pronounced toward the corners.",
+      "coma_source_url": null,
+      "launch_year": 2017,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/14mm-f1-4-dg-a",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "source_url points at a Sigma 14mm f/1.4 DG page, not this lens; coma note is lower-confidence."
+    },
+    {
+      "id": "sony-fe-16-35-2.8-gm",
+      "brand": "Sony",
+      "name": "FE 16-35mm F2.8 GM",
+      "category": "full-frame",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        16,
+        35
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": null,
+      "coma": "WebSearch's 2026 results describe it as \"very versatile\" and \"the best Sony wide-angle zoom lens for shooting the Milky Way\" in aggregated buying-guide coverage; no single named review captured with specific coma data…",
+      "coma_source_url": null,
+      "launch_year": 2017,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.sony.com/electronics/camera-lenses/sel1635gm",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 16–35 mm; preset at the wide end."
+    },
+    {
+      "id": "sigma-10-18-2.8-dcdn",
+      "brand": "Sigma",
+      "name": "10-18mm F2.8 DC DN Contemporary",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Canon RF",
+        "L-Mount",
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 10,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        10,
+        18
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": null,
+      "coma": "Capture the Atlas's 2026 guide lists it among recommended APS-C zoom options for Milky Way work, available across four mounts including Fujifilm X.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2022,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/10-18mm-f2-8-dc-dn-c",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 10–18 mm; preset at the wide end."
+    },
+    {
+      "id": "sigma-16-1.4-dcdn",
+      "brand": "Sigma",
+      "name": "16mm F1.4 DC DN Contemporary",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "L-Mount",
+        "Canon EF-M",
+        "Micro Four Thirds",
+        "Nikon Z"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 405,
+      "coma": "Widely regarded as one of the sharpest fast APS-C primes; frequently recommended for Milky Way work at 24mm-equivalent framing.",
+      "coma_source_url": "https://opticallimits.com/sony/sigma-16mm-f-1-4-dc-dn-contemporary-review/",
+      "launch_year": 2017,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.sigmaphoto.com/16mm-f1-4-dc-dn-c",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "viltrox-af-13-1.4-apsc",
+      "brand": "Viltrox",
+      "name": "AF 13mm F1.4",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Nikon Z"
+      ],
+      "focal_length_mm": 13,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 420,
+      "coma": "PetaPixel's 2022 review calls it a great lens for the price; no independent numeric coma/astigmatism test captured in this pass.",
+      "coma_source_url": "https://petapixel.com/2022/06/20/viltrox-af-13mm-f-1-4-stm-xf-lens-review-great-lens-better-price/",
+      "launch_year": 2022,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://viltrox.com/products/viltrox-af-13mm-f1-4-lens-for-fujifilm-x-mount",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "viltrox-af-23-1.4-apsc",
+      "brand": "Viltrox",
+      "name": "AF 23mm F1.4",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Nikon Z",
+        "Canon EF-M"
+      ],
+      "focal_length_mm": 23,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 260,
+      "coma": "Fstoppers' review says it outperforms Fujifilm's own equivalent at a much lower price; not a primary ultra-wide astro pick (23mm/~35mm-equivalent is closer to a standard focal length than a Milky Way wide-field lens),…",
+      "coma_source_url": "https://fstoppers.com/originals/fstoppers-reviews-viltrox-23mm-f14-aps-c-dont-buy-fuji-equivalent-504111",
+      "launch_year": 2021,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://viltrox.com/products/viltrox-23mm-f14-xf-mount",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "samyang-rokinon-12-2-ncscs",
+      "brand": "Samyang/Rokinon",
+      "name": "12mm F2.0 NCS CS",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Canon EF-M",
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 12,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.0,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 245,
+      "coma": "Capture the Atlas's 2026 APS-C list describes it as its best all-around APS-C option; Samyang/Rokinon's manual primes are generally well regarded for coma control per Lonely Speck's brand-level guidance.",
+      "coma_source_url": "https://capturetheatlas.com/best-lenses-milky-way-photography/",
+      "launch_year": 2014,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.rokinon.com/products/12mm-f2-0-high-speed-wide-angle",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "fujifilm-xf-16-1.4-r-wr",
+      "brand": "Fujifilm",
+      "name": "XF 16mm F1.4 R WR",
+      "category": "aps-c",
+      "mount": [
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.4,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 375,
+      "coma": "Long-standing favorite fast Fujifilm astro prime (24mm-equivalent); no single numeric coma test captured in this pass, but broadly regarded as excellent wide open.",
+      "coma_source_url": null,
+      "launch_year": 2015,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/products/lenses/xf16mmf14-r-wr/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "fujifilm-xf-14-2.8-r",
+      "brand": "Fujifilm",
+      "name": "XF 14mm F2.8 R",
+      "category": "aps-c",
+      "mount": [
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 14,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": true,
+      "weight_g": 235,
+      "coma": "f/2.8 max aperture is slower than the XF 16mm f/1.4; valued instead for its true manual-focus clutch with hard infinity stop, useful for repeatable astro focus.",
+      "coma_source_url": null,
+      "launch_year": 2014,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://shopusa.fujifilm-x.com/xf14mmf2-8-xf14mmf2-8/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "fujifilm-xf-8-16-2.8-r-lm-wr",
+      "brand": "Fujifilm",
+      "name": "XF 8-16mm F2.8 R LM WR",
+      "category": "aps-c",
+      "mount": [
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 8,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "focal_range_mm": [
+        8,
+        16
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 805,
+      "coma": "Photography Life's review calls it a professional-grade ultra-wide zoom with field-curvature correction; a premium option at the top of the Fujifilm X wide-zoom line.",
+      "coma_source_url": "https://photographylife.com/reviews/fuji-xf-8-16mm-f2-8-r-lm-wr",
+      "launch_year": 2019,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.fujifilm-x.com/en-us/products/lenses/xf8-16mmf28-r-lm-wr/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 8–16 mm; preset at the wide end."
+    },
+    {
+      "id": "fujifilm-xf-8-3.5-r-wr",
+      "brand": "Fujifilm",
+      "name": "XF 8mm F3.5 R WR",
+      "category": "aps-c",
+      "mount": [
+        "Fujifilm X"
+      ],
+      "focal_length_mm": 8,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 3.5,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 215,
+      "coma": "Slower f/3.5 aperture limits Milky Way suitability compared to faster options; included for completeness as Fujifilm's smallest/lightest rectilinear ultra-wide (12mm-equivalent).",
+      "coma_source_url": null,
+      "launch_year": 2021,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://eshop.fujifilm-x.com/uk/fujinon-xf8mmf3-5-r-wr-camera-lens.html",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "sony-e-11-1.8",
+      "brand": "Sony",
+      "name": "E 11mm F1.8",
+      "category": "aps-c",
+      "mount": [
+        "Sony E"
+      ],
+      "focal_length_mm": 11,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 181,
+      "coma": "DustinAbbott.net's review calls it a \"tiny beast\" with strong optical performance for its size; widely used as a compact fast APS-C wide-angle for Milky Way work.",
+      "coma_source_url": "https://dustinabbott.net/2022/06/sony-e-11mm-f1-8-review/",
+      "launch_year": 2022,
+      "price_tier": "mid",
+      "pairs_with": [],
+      "source_url": "https://www.bhphotovideo.com/c/product/1709231-REG/sony_e_11mm_f_1_8_lens.html",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "laowa-9-2.8-zerod",
+      "brand": "Laowa (Venus Optics)",
+      "name": "9mm f/2.8 Zero-D",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Canon EF-M"
+      ],
+      "focal_length_mm": 9,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.8,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 215,
+      "coma": "Marketed and reviewed as the world's widest rectilinear f/2.8 lens for mirrorless APS-C at launch; Digital Camera World's review notes strong distortion control (Zero-D) though no dedicated coma/astigmatism figure…",
+      "coma_source_url": "https://www.digitalcameraworld.com/reviews/laowa-9mm-f28-zero-d-lens-review",
+      "launch_year": 2018,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.venuslens.net/product/9mm/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "ttartisan-7.5-2-fisheye-apsc",
+      "brand": "TTArtisan",
+      "name": "7.5mm f/2 Fisheye",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Canon EF-M",
+        "Canon RF",
+        "Nikon Z",
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 7.5,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.0,
+      "fisheye": true,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 355,
+      "coma": "A budget circular-image-style fisheye popular for 180° (150° on MFT) creative Milky Way arcs; no dedicated coma test captured in this pass since fisheye designs are evaluated differently from rectilinear coma testing.",
+      "coma_source_url": null,
+      "launch_year": 2021,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.ttartisan.com/?aps-c-lenses%2F72.html=",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Fisheye: NPF assumes a rectilinear lens, so treat it as a centre-of-frame guide."
+    },
+    {
+      "id": "meike-6.5-2-fisheye-apsc",
+      "brand": "Meike",
+      "name": "6.5mm f/2 Circular Fisheye",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Canon EF-M",
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 6.5,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.0,
+      "fisheye": true,
+      "autofocus": false,
+      "infinity_hard_stop": null,
+      "weight_g": 300,
+      "coma": "Produces a full circular (not full-frame) image with a 190° field of view — a specialty creative/scientific format, not a typical rectilinear Milky Way lens; no coma test applicable in the conventional sense.",
+      "coma_source_url": null,
+      "launch_year": 2017,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://meikeglobal.com/products/meike-6-5mm-ultra-wide-f-2-0-circular-fisheye-lens-for-sony-a9-a7iii-a7riii-a6500-a6000-a6100-a6300-nex3-nex3n-nex5-nex5t-nex5r-nex6-nex7-a7ii-a7sii-a7rii-mirorrless-cameras",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Fisheye: NPF assumes a rectilinear lens, so treat it as a centre-of-frame guide. Circular 190° image: NPF is only indicative at the centre."
+    },
+    {
+      "id": "sirui-16-1.2-sniper-apsc",
+      "brand": "Sirui",
+      "name": "Sniper 16mm F1.2 AF",
+      "category": "aps-c",
+      "mount": [
+        "Sony E",
+        "Fujifilm X",
+        "Nikon Z"
+      ],
+      "focal_length_mm": 16,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.2,
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 384,
+      "coma": "Very fast f/1.2 aperture is notable for a budget APS-C prime; no dedicated coma/astigmatism test captured in this pass, so optical night-sky performance is unverified beyond general reviews (CineD, Camera Jabber)…",
+      "coma_source_url": null,
+      "launch_year": 2024,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://store.sirui.com/products/sirui-sniper-series-16-75mm-f1-2-aps-c-frame-autofocus-lens-set",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "laowa-7.5-2-mft",
+      "brand": "Laowa (Venus Optics)",
+      "name": "7.5mm f/2 MFT",
+      "category": "mft",
+      "mount": [
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 7.5,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 2.0,
+      "fisheye": false,
+      "autofocus": false,
+      "infinity_hard_stop": true,
+      "weight_g": 170,
+      "coma": "Equivalent to 15mm full-frame field of view; long-standing favorite compact fast MFT wide-angle for astro-landscape work, widely covered in MFT gear guides though no dedicated numeric coma test was captured in this pass.",
+      "coma_source_url": null,
+      "launch_year": 2015,
+      "price_tier": "budget",
+      "pairs_with": [],
+      "source_url": "https://www.venuslens.net/product/laowa-7-5mm-f2/",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": ""
+    },
+    {
+      "id": "olympus-8-1.8-fisheye-pro",
+      "brand": "OM System / Olympus",
+      "name": "M.Zuiko Digital ED 8mm F1.8 Fisheye PRO",
+      "category": "mft",
+      "mount": [
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 8,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.8,
+      "fisheye": true,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 315,
+      "coma": "Fast f/1.8 aperture on a 16mm-equivalent circular/diagonal fisheye design is popular for MFT astro-landscape shooters wanting an ultra-wide fast option; no dedicated coma test captured in this pass (fisheye designs are…",
+      "coma_source_url": null,
+      "launch_year": 2015,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.dpreview.com/products/om-system-olympus/lenses/oly_8_2p8_fisheye",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Fisheye: NPF assumes a rectilinear lens, so treat it as a centre-of-frame guide. source_url is a DPReview page whose slug reads 8mm f/2.8; re-check."
+    },
+    {
+      "id": "panasonic-leica-10-25-1.7",
+      "brand": "Panasonic (Leica DG)",
+      "name": "Leica DG Vario-Summilux 10-25mm F1.7 ASPH",
+      "category": "mft",
+      "mount": [
+        "Micro Four Thirds"
+      ],
+      "focal_length_mm": 10,
+      "focal_length_basis": "manufacturer",
+      "max_f_number": 1.7,
+      "focal_range_mm": [
+        10,
+        25
+      ],
+      "fisheye": false,
+      "autofocus": true,
+      "infinity_hard_stop": null,
+      "weight_g": 690,
+      "coma": "A constant-f/1.7 standard zoom (20–50mm equivalent) rather than an ultra-wide astro prime; included for completeness as a popular fast MFT zoom sometimes used for wider Milky Way framing at its 10mm end.",
+      "coma_source_url": null,
+      "launch_year": 2019,
+      "price_tier": "premium",
+      "pairs_with": [],
+      "source_url": "https://www.panasonic.com/au/consumer/lumix-cameras-video-cameras/lumix-camera-lenses/lumix-g-lenses/h-x1025.html",
+      "verified_on": "2026-09-27",
+      "value_basis": "Focal length and max aperture: manufacturer spec (see source_url).",
+      "notes": "Zoom 10–25 mm; preset at the wide end."
+    }
+  ],
+  "excluded": [
+    {
+      "id": "iphone-14-pro-max-telephoto",
+      "table": "cameras",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No sensor size or pixel pitch from any source (Apple states only 12 MP, 77 mm, f/2.8): cannot form a CameraProfile."
+    },
+    {
+      "id": "iphone-14-pro-max-telephoto-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "Its camera row is excluded, so there is no sensor to derive the real focal length from."
+    },
+    {
+      "id": "iphone-13-main",
+      "table": "cameras",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "iPhone 13: pitch 1.7 µm is known but no equivalent or real focal length is sourced (Apple's page gives only f/1.6, re-checked 2026-09-27), so there is no lens to pair it with."
+    },
+    {
+      "id": "iphone-13-mini-main",
+      "table": "cameras",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "iPhone 13 mini: pitch 1.7 µm is known but no equivalent or real focal length is sourced (Apple's page gives only f/1.6, re-checked 2026-09-27), so there is no lens to pair it with."
+    },
+    {
+      "id": "iphone-13-main-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No focal length (real or 35 mm-equivalent) from a primary source; Apple's spec page lists only the f-number and 120° FOV."
+    },
+    {
+      "id": "iphone-13-mini-main-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No focal length (real or 35 mm-equivalent) from a primary source; Apple's spec page lists only the f-number and 120° FOV."
+    },
+    {
+      "id": "iphone-13-ultrawide-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No focal length (real or 35 mm-equivalent) from a primary source; Apple's spec page lists only the f-number and 120° FOV."
+    },
+    {
+      "id": "ipad-pro-13-m5-main",
+      "table": "cameras",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "Apple publishes only '12MP Wide, f/1.8'; no sensor size, pixel pitch or focal length, and no stills RAW or Night mode. Not an astro camera."
+    },
+    {
+      "id": "ipad-pro-13-m5-main-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No focal length published; camera excluded."
+    },
+    {
+      "id": "ipad-air-11-m4-main",
+      "table": "cameras",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "Apple publishes only '12MP Wide, f/1.8'; no sensor size, pixel pitch or focal length, and no stills RAW or Night mode. Not an astro camera."
+    },
+    {
+      "id": "ipad-air-11-m4-main-lens",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "No focal length published; camera excluded."
+    },
+    {
+      "id": "moment-tele-58mm",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "Clip-on accessory: no f-number published and no real focal length; it rides on the phone's own aperture. Covered in GEAR-REFERENCE.md instead."
+    },
+    {
+      "id": "moment-superzoom-example-non-moment",
+      "table": "lenses",
+      "source_file": "docs/gear/research/iphone.json",
+      "reason": "ShiftCam 3.5x SuperZoom clip-on: no f-number published. Covered in GEAR-REFERENCE.md instead."
+    }
+  ]
+}

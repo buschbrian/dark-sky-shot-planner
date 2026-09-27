@@ -5,7 +5,7 @@
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 dest="$root/ios/Packages/SkyCore/Sources/SkyCore/Resources"
-for f in app-config.json conditions-thresholds.json sky-events.json horizon-profiles/candlestick-camp.csv; do
+for f in app-config.json conditions-thresholds.json sky-events.json gear-presets.json horizon-profiles/candlestick-camp.csv; do
   mkdir -p "$(dirname "$dest/$f")"
   cp "$root/config/$f" "$dest/$f"
   echo "synced config/$f -> ${dest#"$root"/}/$f"
