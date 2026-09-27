@@ -153,8 +153,9 @@ struct NightCalendar: View {
                 .foregroundStyle(isSelected ? palette.onAccent : palette.primary)
                 .frame(maxWidth: .infinity, minHeight: 40)
                 .background(
-                    Circle().fill(isSelected ? palette.accent : .clear)
-                        .overlay(Circle().stroke(isTonight ? palette.accent : .clear, lineWidth: 1.5)))
+                    Circle().fill(isSelected ? palette.accentFill : .clear)
+                        .overlay(Circle().stroke(isSelected ? palette.accentEdge : .clear, lineWidth: DS.Stroke.focus))
+                        .overlay(Circle().stroke(isTonight && !isSelected ? palette.accent : .clear, lineWidth: 1.5)))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Format.nightSpoken(day) + (isTonight ? ", tonight" : ""))

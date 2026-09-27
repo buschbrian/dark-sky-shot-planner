@@ -140,7 +140,14 @@ struct ProvenanceChip: View {
 
 /// Go / marginal / no-go, or unavailable when there is no verdict.
 enum StatusLevel: Hashable {
-    case go, marginal, noGo, unavailable
+    /// `moonUp`: no moon-free darkness at all. Still no-go, but nothing to fix
+    /// or wait out, so it gets a moon and a neutral color, never the red ✕.
+    case go, marginal, noGo, moonUp, unavailable
+
+    /// A night's level, with moon-limited nights told apart from weather no-gos.
+    init(_ level: VerdictLevel?, moonFreeMinutes: Int?) {
+        self = moonFreeMinutes == 0 && level != .go ? .moonUp : StatusLevel(level)
+    }
 
     init(_ level: VerdictLevel?) {
         switch level {
@@ -156,6 +163,7 @@ enum StatusLevel: Hashable {
         case .go: "Go"
         case .marginal: "Marginal"
         case .noGo: "No-go"
+        case .moonUp: "Moon up"
         case .unavailable: "Unavailable"
         }
     }
@@ -166,6 +174,7 @@ enum StatusLevel: Hashable {
         case .go: "checkmark.circle.fill"
         case .marginal: "minus.circle.fill"
         case .noGo: "xmark.circle.fill"
+        case .moonUp: "moon.fill"
         case .unavailable: "questionmark.circle"
         }
     }
@@ -175,6 +184,7 @@ enum StatusLevel: Hashable {
         case .go: p.good
         case .marginal: p.marginal
         case .noGo: p.poor
+        case .moonUp: p.secondary
         case .unavailable: p.tertiary
         }
     }

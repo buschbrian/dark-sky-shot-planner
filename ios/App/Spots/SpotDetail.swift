@@ -139,6 +139,21 @@ struct NightDetail: View {
     let timeZone: TimeZone
     let terrainAware: Bool
 
+    @ViewBuilder private var minutesLine: some View {
+        if terrainAware, let sky = night.skylineMoonFreeMinutes {
+            minutes(sky, "min above the skyline")
+            // The comparison only when the skyline changes something.
+            if let flat = night.moonFreeMinutes, flat != sky {
+                Text("flat horizon \(flat) min (\(sky - flat > 0 ? "+" : "")\(sky - flat))")
+                    .font(.dsData).foregroundStyle(palette.secondary)
+            }
+        } else if let flat = night.moonFreeMinutes {
+            minutes(flat, "min moon-free, flat horizon")
+        } else {
+            UnavailableValue(reason: "moon-free minutes")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
@@ -146,7 +161,8 @@ struct NightDetail: View {
                     .font(.dsHeadline)
                     .foregroundStyle(palette.primary)
                 Spacer()
-                StatusBadge(level: StatusLevel(night.verdict?.level), qualifier: qualifier)
+                let level = StatusLevel(night.verdict?.level, moonFreeMinutes: night.headlineMinutes)
+                StatusBadge(level: level, qualifier: level == .moonUp ? nil : qualifier)
                     .accessibilityIdentifier("night-verdict")
             }
             if let v = night.verdict {
@@ -157,18 +173,10 @@ struct NightDetail: View {
                     ProvenanceChip(info: SourceInfo(source: v.limitingSource, asOf: v.limitingAsOf, freshness: v.freshness))
                 }
             }
-            HStack(alignment: .firstTextBaseline) {
-                if terrainAware, let sky = night.skylineMoonFreeMinutes {
-                    minutes(sky, "min above the skyline")
-                    if let flat = night.moonFreeMinutes {
-                        Text("flat horizon \(flat) min (\(sky - flat >= 0 ? "+" : "")\(sky - flat))")
-                            .font(.dsData).foregroundStyle(palette.secondary)
-                    }
-                } else if let flat = night.moonFreeMinutes {
-                    minutes(flat, "min moon-free, flat horizon")
-                } else {
-                    UnavailableValue(reason: "moon-free minutes")
-                }
+            // One line while it fits; the flat-horizon comparison goes under it at large sizes.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) { minutesLine }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) { minutesLine }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("night-minutes")

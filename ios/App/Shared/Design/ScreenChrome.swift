@@ -111,6 +111,9 @@ struct SheetChrome: ViewModifier {
     let confirm: SheetAction?
     /// A page pushed inside the sheet: field mode draws its own back chevron.
     var pushed = false
+    /// Shows the field-mode toggle, last on the right as on screens, for a
+    /// sheet someone may be working in when the light changes.
+    var fieldToggle = false
     @Environment(\.palette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -151,6 +154,11 @@ struct SheetChrome: ViewModifier {
                     }
                     .sharedBackgroundVisibility(palette.toolbarGlass)
                 }
+                if fieldToggle {
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    ToolbarItem(placement: .topBarTrailing) { FieldModeToggle() }
+                        .sharedBackgroundVisibility(palette.toolbarGlass)
+                }
             }
             .tint(palette.accent)
             .toolbarBackground(palette.background, for: .navigationBar)
@@ -162,8 +170,9 @@ struct SheetChrome: ViewModifier {
 
 extension View {
     /// Apply inside the sheet's NavigationStack.
-    func sheetChrome(_ title: String, cancel: SheetAction? = nil, confirm: SheetAction? = nil, pushed: Bool = false) -> some View {
-        modifier(SheetChrome(title: title, cancel: cancel, confirm: confirm, pushed: pushed))
+    func sheetChrome(_ title: String, cancel: SheetAction? = nil, confirm: SheetAction? = nil,
+                     pushed: Bool = false, fieldToggle: Bool = false) -> some View {
+        modifier(SheetChrome(title: title, cancel: cancel, confirm: confirm, pushed: pushed, fieldToggle: fieldToggle))
     }
 
     /// Apply to the sheet's root (outside its NavigationStack).

@@ -25,22 +25,28 @@ struct AnswerCard: View {
             VerdictBlock(verdict: verdict, now: now, workerConfigured: workerConfigured)
             DataStatusLine(symbol: origin.symbol, text: origin.text(now: now), tone: origin.tone)
                 .accessibilityIdentifier("tonight.conditionsOrigin")
-            HStack(spacing: DS.Space.s) {
-                Button(action: showFactors) {
-                    Label("Every factor", systemImage: "list.bullet.rectangle")
-                }
-                .buttonStyle(ActionButtonStyle(.secondary, compact: true))
-                .disabled(verdict == nil)
-                .accessibilityHint("Shows every factor with its source and age")
-                .accessibilityIdentifier("tonight.factors")
-                Button(action: refresh) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(ActionButtonStyle(.secondary, compact: true))
-                .accessibilityLabel("Refresh conditions")
-                .accessibilityIdentifier("tonight.refresh")
+            // Side by side while they fit; stacked full-width at large type sizes.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DS.Space.s) { actions }
+                VStack(alignment: .leading, spacing: DS.Space.s) { actions }
             }
         }
+    }
+
+    @ViewBuilder private var actions: some View {
+        Button(action: showFactors) {
+            Label("Every factor", systemImage: "list.bullet.rectangle")
+        }
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+        .disabled(verdict == nil)
+        .accessibilityHint("Shows every factor with its source and age")
+        .accessibilityIdentifier("tonight.factors")
+        Button(action: refresh) {
+            Image(systemName: "arrow.clockwise")
+        }
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+        .accessibilityLabel("Refresh conditions")
+        .accessibilityIdentifier("tonight.refresh")
     }
 
     private var headline: some View {

@@ -32,7 +32,9 @@ struct ActionButtonStyle: ButtonStyle {
             .background {
                 switch kind {
                 case .primary:
-                    RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous).fill(palette.accent)
+                    RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous).fill(palette.accentFill)
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous)
+                            .strokeBorder(palette.accentEdge, lineWidth: DS.Stroke.focus))
                 case .secondary:
                     RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous).fill(palette.raised)
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous)
@@ -79,8 +81,8 @@ struct PaletteToggleStyle: ToggleStyle {
                     .foregroundStyle(palette.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Capsule()
-                    .fill(configuration.isOn ? palette.accent : palette.raised)
-                    .overlay(Capsule().strokeBorder(configuration.isOn ? .clear : palette.hairline, lineWidth: 1))
+                    .fill(configuration.isOn ? palette.accentFill : palette.raised)
+                    .overlay(Capsule().strokeBorder(configuration.isOn ? palette.accentEdge : palette.hairline, lineWidth: 1))
                     .overlay(alignment: configuration.isOn ? .trailing : .leading) {
                         Circle()
                             .fill(configuration.isOn ? palette.onAccent : palette.secondary)
@@ -147,8 +149,10 @@ struct ChoiceRow<Value: Hashable>: View {
                             .font(.dsCallout.weight(on ? .semibold : .regular))
                             .foregroundStyle(on ? palette.onAccent : palette.primary)
                             .frame(maxWidth: .infinity, minHeight: 36)
-                            .background(on ? palette.accent : palette.raised,
+                            .background(on ? palette.accentFill : palette.raised,
                                         in: RoundedRectangle(cornerRadius: DS.Radius.control - 2, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: DS.Radius.control - 2, style: .continuous)
+                                .strokeBorder(on ? palette.accentEdge : .clear, lineWidth: DS.Stroke.focus))
                     }
                     .buttonStyle(PressDimStyle())
                     .accessibilityLabel("\(label): \(title)")

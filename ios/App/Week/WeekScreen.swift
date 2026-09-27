@@ -294,7 +294,8 @@ struct WeekRowView: View {
 
     @ViewBuilder private var badge: some View {
         switch night.verdict {
-        case .success(let v): StatusBadge(level: StatusLevel(v.level))
+        case .success(let v):
+            StatusBadge(level: StatusLevel(v.level, moonFreeMinutes: night.outlook.report.noAstronomicalDarkness ? nil : night.outlook.moonFreeMinutes))
         case .failure: StatusBadge(level: .unavailable, qualifier: "no verdict")
         }
     }

@@ -1,11 +1,6 @@
 import SkyCore
 import SwiftUI
 
-enum VerdictSymbol {
-    /// Shape as well as colour, since field mode tells levels apart by brightness only.
-    static func name(_ level: VerdictLevel?) -> String { StatusLevel(level).symbol }
-}
-
 /// Seven nights, one cell each: weekday, verdict, moon-free minutes.
 struct WeekStrip: View {
     @Environment(\.palette) private var palette
@@ -16,7 +11,7 @@ struct WeekStrip: View {
     var body: some View {
         HStack(spacing: DS.Space.xs) {
             ForEach(week.nights) { night in
-                let level = night.verdict?.level
+                let level = StatusLevel(night.verdict?.level, moonFreeMinutes: night.headlineMinutes)
                 let isSelected = selected == night.night || (selected == nil && night.id == week.nights.first?.id)
                 Button {
                     selected = night.night
@@ -25,9 +20,9 @@ struct WeekStrip: View {
                         Text(weekday(night))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(palette.secondary)
-                        Image(systemName: VerdictSymbol.name(level))
+                        Image(systemName: level.symbol)
                             .font(.title3)
-                            .foregroundStyle(palette.color(level))
+                            .foregroundStyle(level.color(palette))
                         Text(night.headlineMinutes.map(String.init) ?? "–")
                             .font(.caption.monospacedDigit().weight(.semibold))
                             .foregroundStyle(palette.primary)
@@ -42,7 +37,7 @@ struct WeekStrip: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("night-\(night.night)")
-                .accessibilityLabel("\(weekday(night)): \(night.verdict?.headline ?? "verdict unavailable"), \(night.headlineMinutes.map { "\($0) minutes moon-free" } ?? "moon-free minutes unavailable")")
+                .accessibilityLabel("\(weekday(night)): \(level == .moonUp ? "moon up all through darkness" : night.verdict?.headline ?? "verdict unavailable"), \(night.headlineMinutes.map { "\($0) minutes moon-free" } ?? "moon-free minutes unavailable")")
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
@@ -62,13 +57,17 @@ struct MiniWeekStrip: View {
     var body: some View {
         HStack(spacing: DS.Space.xs) {
             ForEach(week.nights) { night in
-                Image(systemName: VerdictSymbol.name(night.verdict?.level))
+                let level = StatusLevel(night.verdict?.level, moonFreeMinutes: night.headlineMinutes)
+                Image(systemName: level.symbol)
                     .font(.caption)
-                    .foregroundStyle(palette.color(night.verdict?.level))
+                    .foregroundStyle(level.color(palette))
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(week.nights.map { $0.verdict?.shortLevel ?? "unavailable" }.joined(separator: ", "))
+        .accessibilityLabel(week.nights.map { night in
+            StatusLevel(night.verdict?.level, moonFreeMinutes: night.headlineMinutes) == .moonUp
+                ? "moon up" : night.verdict?.shortLevel ?? "unavailable"
+        }.joined(separator: ", "))
     }
 }
 

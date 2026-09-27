@@ -25,7 +25,13 @@ struct Palette: Equatable {
     let tertiary: Color
     /// Interactive elements, and the moon-free window in charts.
     let accent: Color
-    /// Text and glyphs on an `accent` fill.
+    /// Filled controls (primary button, selected choice, switch track). In
+    /// field mode a large fill is the brightest thing on a dark-adapted eye,
+    /// so it is dim, outlined by `accentEdge`, and its text stays bright.
+    let accentFill: Color
+    /// The outline on an `accentFill`: clear in standard, red 60 % in field.
+    let accentEdge: Color
+    /// Text and glyphs on an `accentFill`.
     let onAccent: Color
     /// Status colors: go, marginal and no-go only. Never a chart series.
     let good: Color
@@ -40,14 +46,15 @@ struct Palette: Equatable {
         background: Color(hex: 0x0A0C11), surface: Color(hex: 0x14171E), raised: Color(hex: 0x1D212A),
         hairline: Color(hex: 0x2A303B),
         primary: Color(hex: 0xECEFF4), secondary: Color(hex: 0xA7AFBD), tertiary: Color(hex: 0x7F8898),
-        accent: Color(hex: 0x9AAEFF), onAccent: Color(hex: 0x0A0C11),
+        accent: Color(hex: 0x9AAEFF), accentFill: Color(hex: 0x9AAEFF), accentEdge: .clear, onAccent: Color(hex: 0x0A0C11),
         good: Color(hex: 0x5BCB8F), marginal: Color(hex: 0xF2B14C), poor: Color(hex: 0xFF7A70),
         data: .standard, colorScheme: .dark, isField: false)
 
     static let field = Palette(
         background: .black, surface: .red(0.07), raised: .red(0.14), hairline: .red(0.28),
         primary: .red(1.0), secondary: .red(0.86), tertiary: .red(0.62),
-        accent: .red(1.0), onAccent: .black,
+        // Fill 20 % with red text at 100 %: 4.6:1, and no fill brighter than the 60 % edge.
+        accent: .red(1.0), accentFill: .red(0.2), accentEdge: .red(0.6), onAccent: .red(1.0),
         good: .red(1.0), marginal: .red(0.86), poor: .red(0.62),
         data: .field, colorScheme: .dark, isField: true)
 }

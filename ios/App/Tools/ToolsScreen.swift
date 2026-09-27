@@ -34,6 +34,17 @@ struct ToolsScreen: View {
                 VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                     gearSection
                     calculatorSection
+                    NavigationLink(value: AboutRoute()) {
+                        Disclosure {
+                            Label("About and sync", systemImage: "info.circle")
+                                .font(.dsCallout).foregroundStyle(palette.primary)
+                        }
+                        .frame(minHeight: DS.minTarget)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressDimStyle())
+                    .padding(.top, DS.Space.l)
+                    .accessibilityIdentifier("tools.about")
                 }
                 .padding(.horizontal, DS.Space.screen)
                 .padding(.top, DS.Space.s)
@@ -41,6 +52,7 @@ struct ToolsScreen: View {
             }
             .background(palette.background)
             .screenChrome("Tools")
+            .navigationDestination(for: AboutRoute.self) { _ in AboutScreen() }
             .navigationDestination(for: Calculator.self) { calc in
                 if let selected, let kit = try? GearKit(selected) {
                     CalculatorView(calculator: calc, kit: kit, inputs: inputs)
@@ -145,8 +157,10 @@ struct ToolsScreen: View {
                 .accessibilityIdentifier("tools.calc.\(calc.rawValue)")
             }
         } else {
-            Text("Add or pick a camera and lens to use the calculators.")
-                .font(.dsCallout).foregroundStyle(palette.secondary)
+            // Not an error: the calculators need a camera and lens to work from.
+            DataStatusLine(symbol: "camera.aperture",
+                           text: gear.isEmpty ? "The calculators appear here once a camera and lens are saved."
+                                              : "Pick a camera and lens above to use the calculators.")
         }
     }
 

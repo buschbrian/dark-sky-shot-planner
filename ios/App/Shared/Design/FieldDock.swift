@@ -95,7 +95,8 @@ struct ScopeSwitch: View {
                         .font(.dsCallout.weight(on ? .semibold : .regular))
                         .foregroundStyle(on ? palette.onAccent : palette.secondary)
                         .frame(maxWidth: .infinity, minHeight: 32)
-                        .background(on ? palette.accent : .clear, in: Capsule())
+                        .background(on ? palette.accentFill : .clear, in: Capsule())
+                        .overlay(Capsule().strokeBorder(on ? palette.accentEdge : .clear, lineWidth: DS.Stroke.focus))
                         .contentShape(Capsule())
                 }
                 .buttonStyle(PressDimStyle())

@@ -29,6 +29,10 @@ struct GearEditor: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.cardGap) {
+                    if palette.isField {
+                        DataStatusLine(symbol: "keyboard",
+                                       text: "Names are read-only in field mode: the system keyboard can't be drawn red. Numbers use the red keypad.")
+                    }
                     SectionCard("Profile") {
                         textRow("Name (optional)", $name, id: "gear.name")
                     }
@@ -63,7 +67,8 @@ struct GearEditor: View {
             .background(palette.background)
             .sheetChrome(gear == nil ? "New gear" : "Edit gear",
                          cancel: SheetAction(title: "Cancel") { dismiss() },
-                         confirm: SheetAction(title: "Save", id: "gear.save", enabled: (try? draft.get()) != nil, action: save))
+                         confirm: SheetAction(title: "Save", id: "gear.save", enabled: (try? draft.get()) != nil, action: save),
+                         fieldToggle: true)
             .confirmationDialog("Delete this gear?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive, action: delete)
             }
@@ -153,6 +158,7 @@ struct GearEditor: View {
             .textFieldStyle(.plain)
             .foregroundStyle(palette.primary)
             .autocorrectionDisabled()
+            .disabled(palette.isField)
             .padding(.horizontal, DS.Space.m)
             .frame(minHeight: DS.minTarget)
             .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
