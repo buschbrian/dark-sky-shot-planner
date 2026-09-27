@@ -71,6 +71,12 @@ struct ShotWindowCard: View {
                 .foregroundStyle(color(readout.level))
                 .accessibilityIdentifier("shot.verdict")
         }
+        if let scope = ShotText.verdictScope(shot) {
+            Text(scope)
+                .font(.footnote)
+                .foregroundStyle(palette.secondary)
+                .accessibilityIdentifier("shot.verdictScope")
+        }
         if let best = shot.best {
             Text(windowLine(shot, best: best, clock: clock))
                 .font(.subheadline)

@@ -163,6 +163,14 @@ public struct ShotWindow: Sendable, Hashable {
 
     /// The night as the verdict should see it: the shot's windows are the
     /// "moon-free window", so every factor is sampled over exactly these minutes.
+    ///
+    /// Decision rule (deliberate; review 2026-09-26): the verdict covers **every**
+    /// usable window, not only `best`. The headline, the window line and the chart
+    /// show the longest window, so when there is more than one the card must say
+    /// the verdict's scope beside it (`ShotText.verdictScope`). This is the
+    /// conservative whole-set assessment, the same rule the night verdict applies
+    /// to several moon-free windows; a per-window verdict would need its own
+    /// window picker. Change both together or neither.
     public var nightForVerdict: NightReport {
         let mf = windows.map { MoonFreeWindow(start: $0.start, end: $0.end, minutes: $0.minutes) }
         return NightReport(

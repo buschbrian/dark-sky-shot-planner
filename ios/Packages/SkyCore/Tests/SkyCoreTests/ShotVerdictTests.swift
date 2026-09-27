@@ -91,11 +91,17 @@ struct ShotVerdictTests {
         let readout = ShotReadout(try shot().verdict(
             conditions: Self.response(clouds: spiky), config: .bundled(), now: Self.now))
         #expect(readout.level == .noGo)
-        #expect(readout.limiting.key == "cloud_cover_max_hour")
-        #expect(ShotText.verdictLine(readout) == "No-go: cloud cover (worst hour) 85 %")
+        // The spike hour covers most of the 81-minute window, so the time-weighted
+        // mean is poor as well as the worst hour.
+        #expect(readout.limiting.key.hasPrefix("cloud_cover"))
+        #expect(ShotText.verdictLine(readout).hasPrefix("No-go: cloud cover"))
+        let maxHour = try #require(readout.limiting.readings.first)
+        #expect(maxHour.model == "hrrr")
         let lines = ShotText.modelLines(readout)
         #expect(lines.count == 4)
-        #expect(lines[0] == "HRRR 85 % (run 00Z, 2 h old)")
+        #expect(lines[0].hasPrefix("HRRR ") && lines[0].hasSuffix("% (run 00Z, 2 h old)"))
+        let verdict = try shot().verdict(conditions: Self.response(clouds: spiky), config: .bundled(), now: Self.now)
+        #expect(verdict.factor("cloud_cover_max_hour")?.value == 85)
     }
 
     @Test("the headline: when, how long, and the cloud spread with the reference run and age")

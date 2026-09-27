@@ -32,13 +32,13 @@ extension ConditionsSnapshot {
         return out
     }
 
-    /// For charts: the 15-minute points while they last, then the same model's
-    /// hourly points. Empty when the model has neither.
+    /// For charts: the same points the verdict reads (`ForecastCadence`),
+    /// 15-minute where the native series is complete, hourly elsewhere.
+    /// Empty when the model has no usable hourly series.
     public func finestPoints(_ field: String, model: String = "hrrr") -> [WorkerPoint] {
-        let hourly = response.fields[field]?.series.first { $0.model == model && $0.status == .ok }?.values ?? []
-        guard let fine = nearTerm(field, model: model), fine.status == .ok,
-              let last = fine.values.map(\.t).max() else { return hourly }
-        return fine.values.sorted { $0.t < $1.t } + hourly.filter { $0.t > last }
+        guard let hourly = response.fields[field]?.series.first(where: { $0.model == model }), hourly.status == .ok
+        else { return [] }
+        return ForecastCadence.select(hourly: hourly, fine: nearTerm(field, model: model)).points
     }
 }
 

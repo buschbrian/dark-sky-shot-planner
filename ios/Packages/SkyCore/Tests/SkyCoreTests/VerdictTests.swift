@@ -499,10 +499,12 @@ struct VerdictTests {
         #expect(v.level == .noGo)
         #expect(v.limiting.key == "cloud_cover_total")
         #expect(v.limiting.provenance?.model == "hrrr")
-        #expect(abs(try #require(v.limiting.value) - 596.0 / 7) < 1e-9)
+        // Time-weighted (M11 review): the 04Z and 10Z samples each stand for the
+        // half hour inside the window, the others a full hour: (596 − 9/2 − 88/2) / 6.
+        #expect(abs(try #require(v.limiting.value) - 547.5 / 6) < 1e-9)
         #expect(v.flags.isEmpty)
         let cloud = try #require(v.factor("cloud_cover_total"))
-        #expect(abs(try #require(cloud.band?.lowerBound) - 19) < 1e-9)
+        #expect(abs(try #require(cloud.band?.lowerBound) - 245.0 / 12) < 1e-9) // GFS, time-weighted
         #expect(v.factor("cloud_cover_max_hour")?.value == 100)
         #expect(v.factor("aqi_pm25_observed")?.value == 38)
         #expect(v.factor("transparency")?.value == 2)

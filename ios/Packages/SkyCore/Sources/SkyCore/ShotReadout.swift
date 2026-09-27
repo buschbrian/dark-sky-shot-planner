@@ -14,6 +14,8 @@ public struct ShotReadout: Sendable, Hashable {
         /// Why this model could not be used; nil when it was.
         public let unavailableReason: String?
         public let isLastGood: Bool
+        /// `FactorReading.cadence`: 15-minute data used (to when), or why not.
+        public var cadence: String? = nil
     }
 
     public struct Spread: Sendable, Hashable {
@@ -66,7 +68,8 @@ public struct ShotReadout: Sendable, Hashable {
         let reason: String? = if case .unavailable(let why) = r.status { why } else { nil }
         return ModelLine(
             model: r.model, value: r.value, runUTC: r.provenance.modelRunUTC, age: r.provenance.age,
-            freshness: r.provenance.freshness, unavailableReason: reason, isLastGood: r.isLastGood)
+            freshness: r.provenance.freshness, unavailableReason: reason, isLastGood: r.isLastGood,
+            cadence: r.cadence)
     }
 
     static func spread(_ f: FactorAssessment) -> Spread {
@@ -204,6 +207,13 @@ public enum ShotText {
         }
     }
 
+    /// Nil for one window; otherwise the verdict's scope, which is every
+    /// window (see `ShotWindow.nightForVerdict`), not only the one shown.
+    public static func verdictScope(_ shot: ShotWindow) -> String? {
+        guard shot.windows.count > 1 else { return nil }
+        return "Verdict covers all \(shot.windows.count) windows (\(duration(minutes: shot.totalMinutes))), not only the longest"
+    }
+
     /// "HRRR 12 % (run 20Z, 40 min old)" per model of the limiting factor.
     public static func modelLines(_ readout: ShotReadout) -> [String] {
         readout.limitingModels.map { m in
@@ -214,6 +224,7 @@ public enum ShotText {
             if let run = m.runUTC { parts.append("run \(runHour(run))") }
             if let seconds = m.age { parts.append(Self.age(seconds)) }
             if m.isLastGood { parts.append("last good copy") }
+            if let cadence = m.cadence { parts.append(cadence) }
             return "\(name) \(value)" + (parts.isEmpty ? "" : " (\(parts.joined(separator: ", ")))")
         }
     }
