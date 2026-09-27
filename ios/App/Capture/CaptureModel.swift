@@ -121,6 +121,7 @@ final class CaptureModel {
 
     /// The one run in the app (acquisition, drain, stack and cleanup).
     private static var activeRun: Task<Void, Never>?
+    static var runExists: Bool { activeRun != nil }
 
     // MARK: Derived plan
 
@@ -478,7 +479,14 @@ final class CaptureModel {
     private func record(_ item: (index: Int, rate: Double, exposedAt: Double, task: Task<CapturedFrame, any Error>),
                         into entries: inout [SequenceLog.Frame]) async -> CapturedFrame? {
         do {
-            let frame = try await item.task.value
+            // A frame whose capture was cut off (lock, interruption) may never
+            // report back: wait at most 15 s so the drain always ends.
+            guard let result = await Self.firstOf(item.task, seconds: 15) else {
+                note("Frame \(item.index) did not finish writing within 15 s.")
+                CaptureLog.event("frame \(item.index) timed out while draining")
+                return nil
+            }
+            let frame = try result.get()
             measuredFrameBytes = frame.bytes
             let moved = item.rate > stability.maxMeanRate * 3
             entries.append(SequenceLog.Frame(
@@ -500,6 +508,18 @@ final class CaptureModel {
         } catch {
             note("Frame \(item.index) failed: \(error.localizedDescription)")
             return nil
+        }
+    }
+
+    /// The task's result, or nil after `seconds`, whichever comes first.
+    private static func firstOf(_ task: Task<CapturedFrame, any Error>, seconds: Double) async -> Result<CapturedFrame, any Error>? {
+        await withCheckedContinuation { (c: CheckedContinuation<Result<CapturedFrame, any Error>?, Never>) in
+            let once = ResumeOnce(c)
+            Task.detached { once.resume(await task.result) }
+            Task.detached {
+                try? await Task.sleep(for: .seconds(seconds))
+                once.resume(nil)
+            }
         }
     }
 
@@ -586,6 +606,21 @@ final class CaptureModel {
 
     static func bytes(_ n: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: n, countStyle: .file)
+    }
+}
+
+nonisolated private final class ResumeOnce: @unchecked Sendable {
+    private var continuation: CheckedContinuation<Result<CapturedFrame, any Error>?, Never>?
+    private let lock = NSLock()
+
+    init(_ c: CheckedContinuation<Result<CapturedFrame, any Error>?, Never>) { continuation = c }
+
+    func resume(_ value: Result<CapturedFrame, any Error>?) {
+        lock.lock()
+        let c = continuation
+        continuation = nil
+        lock.unlock()
+        c?.resume(returning: value)
     }
 }
 

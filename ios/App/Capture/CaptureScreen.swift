@@ -41,6 +41,7 @@ struct CaptureScreen: View {
                     resultCard
                 }
                 #if DEBUG
+                CaptureDebugState(model: model)
                 CaptureProbeSection()
                 #endif
             }
@@ -461,6 +462,22 @@ enum FocusImage {
 }
 
 #if DEBUG
+/// Debug only: what the lifecycle UI test asserts (one run, camera, idle timer).
+struct CaptureDebugState: View {
+    let model: CaptureModel
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+            let text = "run:\(CaptureModel.runExists ? "active" : "none") camera:\(model.engine.isRunning ? "on" : "off") idle:\(UIApplication.shared.isIdleTimerDisabled ? "disabled" : "enabled")"
+            Text(text)
+                .font(.caption2.monospaced()).foregroundStyle(palette.secondary)
+                .accessibilityIdentifier("capture.debug")
+                .accessibilityLabel(text)
+        }
+    }
+}
+
 /// Debug only: the capability probe on screen, the same JSON as `-CameraProbe YES`.
 struct CaptureProbeSection: View {
     @Environment(\.palette) private var palette

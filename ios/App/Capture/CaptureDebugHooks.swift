@@ -28,6 +28,15 @@ nonisolated func captureBenchInstall() {
 @_cdecl("ds_capture_selftest_install")
 nonisolated func captureSelfTestInstall() {
     let defaults = UserDefaults.standard
+    if defaults.bool(forKey: "CaptureDeleteCaptures") {
+        // Test cleanup: every sequence in the app's Captures folder (not Photos).
+        let root = URL.documentsDirectory.appending(path: "Captures")
+        let count = (try? FileManager.default.contentsOfDirectory(atPath: root.path).count) ?? 0
+        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: URL.cachesDirectory.appending(path: "stack-work"))
+        CaptureDebug.say("deleted \(count) capture folder(s)")
+        exit(0)
+    }
     guard defaults.bool(forKey: "CaptureSelfTest") || defaults.bool(forKey: "CaptureLifecycleTest") else { return }
     DispatchQueue.main.async {
         Task { @MainActor in
@@ -57,10 +66,22 @@ nonisolated enum CaptureDebug {
             RigidTransform(rotationDegrees: 0.02 * Double(i), about: 2016, -9000, shiftX: 0.4 * Double(i), shiftY: -0.3 * Double(i))
         }
         var t = Date()
-        let rasters = (0..<n).map { i in
-            SyntheticStarField.render(stars, width: w, height: h, channels: 3, frameFromReference: truth(i), seed: UInt64(i + 1))
+        // As StackBuilder does: each decoded frame goes to a file and is
+        // memory-mapped, so 20 frames of 72 MB need not all sit in RAM.
+        let dir = URL.temporaryDirectory.appending(path: "capture-bench")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var rasters: [RasterU16] = []
+        for i in 0..<n {
+            let url = dir.appending(path: "f\(i).rgb16")
+            autoreleasepool {
+                let r = SyntheticStarField.render(stars, width: w, height: h, channels: 3, frameFromReference: truth(i), seed: UInt64(i + 1))
+                try? r.data.write(to: url)
+            }
+            guard let mapped = try? Data(contentsOf: url, options: .alwaysMapped) else { say("bench: could not map frame \(i)"); return }
+            rasters.append(RasterU16(width: w, height: h, channels: 3, data: mapped))
         }
-        say(String(format: "render (not timed as part of stacking): %.2f s", Date().timeIntervalSince(t)))
+        say(String(format: "render + write (not part of stacking): %.2f s; footprint %d MB", Date().timeIntervalSince(t), Int(CaptureLog.footprint() / 1_000_000)))
         let detector = StarDetector()
         t = Date()
         var lists: [[DetectedStar]] = []

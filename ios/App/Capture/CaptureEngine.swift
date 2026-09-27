@@ -367,7 +367,7 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     }
 }
 
-extension CaptureEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
+nonisolated extension CaptureEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
     /// A 256 × 256 luminance crop from the centre of the preview frame, at
     /// most four times a second: the focus assist's magnifier and HFR.
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
