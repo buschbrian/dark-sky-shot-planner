@@ -96,23 +96,14 @@ extension MapScreen {
     }
 
     private var compareLines: [MapLineFeature] {
-        guard compare, let plan else { return [] }
-        let tz = state.place?.timeZone ?? .current
-        _ = tz
-        let now = AzimuthLines.mapObjects.compactMap { object in
-            plan.series[object].flatMap {
-                AzimuthLines.line(object: object, series: $0, at: time, from: plan.pin.coordinate, lengthMeters: 1000)
-            }
-        }.map { MapPlanner.feature($0) }
-        return now + eventFeatures
+        compare ? compareAtTime + eventFeatures : []
     }
 
     // MARK: Place
 
     private var placeSection: some View {
         SectionCard("Place") {
-            if let place = state.place, let land = visible.contains(.land) ? MapAnswers.landManager(origin: data.origin(.land), keysAtPin: pinLand) : nil {
-                _ = place
+            if state.place != nil, visible.contains(.land), let land = MapAnswers.landManager(origin: data.origin(.land), keysAtPin: pinLand) {
                 Text(land).font(.dsFootnote).foregroundStyle(palette.primary)
                     .accessibilityIdentifier("map.landAtPin")
             }

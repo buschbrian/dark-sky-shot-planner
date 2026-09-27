@@ -94,6 +94,13 @@ final class MapController {
         }
     }
 
+    /// Moves the camera only (the planning place is unchanged); stops following the puck.
+    func center(on c: CLLocationCoordinate2D) {
+        setTracking(.none)
+        guard let map else { return }
+        map.setCenter(c, zoomLevel: max(map.zoomLevel, 8), animated: true)
+    }
+
     func setTracking(_ t: Tracking) {
         tracking = t
         guard let map else { return }

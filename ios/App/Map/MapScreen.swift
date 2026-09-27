@@ -214,7 +214,7 @@ struct MapScreen: View {
     }
 
     /// Compare view: Sun/Moon/GC at the scrubber's time, less the target's own body.
-    private var compareAtTime: [MapLineFeature] {
+    var compareAtTime: [MapLineFeature] {
         guard compare, let plan else { return [] }
         let skip: SkyObject? = switch shotPlan.target {
         case .galacticCore: .galacticCenter

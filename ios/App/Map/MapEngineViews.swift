@@ -5,27 +5,30 @@ import SwiftData
 import SwiftUI
 
 /// Buttons drawn on the map, bottom-trailing so a right thumb reaches them:
-/// basemap, location (follow → follow with heading → off) and "pin me here".
-/// Everything they do is also in the panel (invariant 5) except following
-/// the puck, which only means something on the map.
+/// basemap, "plan at my location", centre on the pin and centre on me (follow
+/// → follow with heading → off). Centring moves the camera only; "plan at my
+/// location" is the one that changes the planning place (product review §4).
+/// Everything but following the puck is also in the sheet (invariant 5).
 struct MapOverlayControls: View {
     var controller: MapController
+    var hasPin: Bool
+    var centerOnPin: () -> Void
+    var planHere: (CLLocationCoordinate2D) -> Void
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
     @State private var choosing = false
     /// On the map, field mode keeps the buttons at the map's brightness cap too.
     private var ink: Color { state.fieldMode ? palette.accent.opacity(Double(MapColors.fieldCap)) : palette.accent }
-    /// The button column's footprint; line labels stay out of it.
-    static let reservedSize = CGSize(width: 68, height: 190)
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 8) {
+        VStack(alignment: .trailing, spacing: DS.Space.s) {
             if let notice = controller.notice {
                 Text(notice)
-                    .font(.caption2).foregroundStyle(palette.primary)
-                    .padding(6)
-                    .background(palette.background.opacity(0.9), in: RoundedRectangle(cornerRadius: 6))
-                    .frame(maxWidth: 220, alignment: .trailing)
+                    .font(.dsFootnote).foregroundStyle(palette.primary)
+                    .padding(DS.Space.s)
+                    .floatingSurface(palette, shape: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
+                    .frame(maxWidth: 240, alignment: .trailing)
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .accessibilityIdentifier("map.notice")
             }
             HStack(spacing: 6) {
@@ -44,6 +47,7 @@ struct MapOverlayControls: View {
                                 .overlay(Capsule().stroke(ink.opacity(0.7), lineWidth: 1))
                         }
                         .buttonStyle(.plain)
+                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
                         .accessibilityIdentifier("map.basemap.\(b.rawValue)")
                         .accessibilityAddTraits(on ? .isSelected : [])
                     }
@@ -52,14 +56,18 @@ struct MapOverlayControls: View {
                     choosing.toggle()
                 }
             }
-            roundButton("mappin.and.ellipse", label: "Drop pin at my location", id: "map.pinMe") { pinMe() }
-                .disabled(controller.userFix == nil)
-                .opacity(controller.userFix == nil ? 0.45 : 1)
+            roundButton("mappin.and.ellipse", label: "Plan at my location", id: "map.pinMe") {
+                if let c = controller.userFix?.coordinate { planHere(c) }
+            }
+            .disabled(controller.userFix == nil)
+            .opacity(controller.userFix == nil ? 0.45 : 1)
+            roundButton("scope", label: "Center on pin", id: "map.centerPin", action: centerOnPin)
+                .disabled(!hasPin)
+                .opacity(hasPin ? 1 : 0.45)
             roundButton(trackingIcon, label: "Center on me", value: trackingValue, id: "map.locate") {
                 controller.cycleTracking(fieldMode: state.fieldMode)
             }
         }
-        .padding(8)
     }
 
     private var trackingIcon: String {
@@ -81,7 +89,7 @@ struct MapOverlayControls: View {
     private func roundButton(_ icon: String, label: String, value: String? = nil, id: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.title3.weight(.semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(ink)
                 .frame(width: 48, height: 48)
                 .background(palette.background.opacity(0.9), in: Circle())
@@ -91,21 +99,6 @@ struct MapOverlayControls: View {
         .accessibilityLabel(label)
         .accessibilityValue(value ?? "")
         .accessibilityIdentifier(id)
-    }
-
-    /// Sets the planning place to the GPS fix. Only the 0.05° cell goes to
-    /// Apple's reverse geocoder for the time zone (as for any pin).
-    private func pinMe() {
-        guard let fix = controller.userFix else { return }
-        let c = fix.coordinate
-        let fallback = state.place?.timeZone ?? .current
-        state.place = Place(name: "My location", latitude: c.latitude, longitude: c.longitude, timeZoneID: fallback.identifier)
-        Task {
-            let tz = await PlaceTimeZone.resolve(latitude: c.latitude, longitude: c.longitude, fallback: fallback)
-            if let p = state.place, p.latitude == c.latitude, p.longitude == c.longitude, p.timeZoneID != tz.identifier {
-                state.place = Place(name: p.name, latitude: c.latitude, longitude: c.longitude, timeZoneID: tz.identifier)
-            }
-        }
     }
 }
 
@@ -125,7 +118,6 @@ struct MapAttributionOverlay: View {
             .minimumScaleFactor(0.8)
             .padding(.horizontal, 5).padding(.vertical, 2)
             .background(palette.background.opacity(0.75), in: RoundedRectangle(cornerRadius: 4))
-            .padding(.trailing, 64).padding(.bottom, 4)
             .allowsHitTesting(false)
             .accessibilityIdentifier("map.attribution")
             .background {
@@ -171,7 +163,7 @@ struct BasemapSection: View {
 
     var body: some View {
         let chosen = controller.basemap(field: state.fieldMode)
-        MapSection(title: "Basemap") {
+        SectionCard("Basemap") {
             HStack(spacing: 6) {
                 ForEach(Basemap.allCases) { b in
                     let on = b == chosen
@@ -208,13 +200,13 @@ struct OfflineAreasSection: View {
     @State private var message: String?
 
     var body: some View {
-        MapSection(title: "Offline basemap") {
+        SectionCard("Offline basemap") {
             Text("Keeps Topo and Dark relief tiles (they share them) plus terrain for an area; Imagery is optional and about doubles the size.")
                 .font(.caption2).foregroundStyle(palette.secondary)
             Toggle(isOn: $includeImagery) {
                 Text("Include imagery").font(.callout).foregroundStyle(palette.primary)
             }
-            .toggleStyle(MapToggleStyle())
+            .toggleStyle(PaletteToggleStyle())
             .accessibilityIdentifier("offline.includeImagery")
 
             if let cam = controller.camera {

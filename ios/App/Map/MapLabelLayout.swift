@@ -6,7 +6,7 @@ import CoreGraphics
 /// reserved rect (pin, puck, badge, buttons, scale bar), and lies wholly in
 /// the visible map. A label with no such spot is hidden; the sheet still
 /// lists every line. Pure geometry in map-view points, so it is unit-tested.
-enum MapLabelLayout {
+nonisolated enum MapLabelLayout {
     struct Request: Equatable {
         let key: String
         /// Lower is placed first.
