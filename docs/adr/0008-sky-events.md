@@ -115,6 +115,31 @@ the Moon is down or under 15% lit; consecutive nights collapse into ranges.
 South of the equator the function returns nothing rather than invert the
 months on a guess — the AOI is the U.S. Mountain West.
 
+### 6. Eclipses, supermoons and the Milky Way core season (amended 2026-09-26)
+
+*Added when the iOS app gained sky events; the web app computes the same list
+and `shared/golden/sky-events.json` holds both to it.*
+
+All three are derivable, so they are computed, never curated:
+
+- **Lunar eclipses** (`SearchLunarEclipse`): kind, peak, phase times, and the
+  Moon's altitude at this spot at the peak and at both ends of the main
+  (umbral, or penumbral) phase, so the line can say "rises during it" or
+  "below the horizon here".
+- **Solar eclipses as seen from here** (`SearchLocalSolarEclipse`): the kind
+  this observer sees, obscuration and Sun altitude. Dropped when the Sun is
+  down for all of it or less than 1% of the disc is covered. Every line
+  carries the solar-filter warning.
+- **Supermoons:** a full moon closer than **360,000 km** (geocentric). A
+  fixed distance, not Nolle's "within 90% of perigee" (~361,500 km), because
+  it is reproducible and says what it means. The line is framed for this app:
+  the brightest night of the month, for moonlit landscapes, not the core.
+- **Milky Way core season:** nights on which the Galactic Center clears
+  `gc_min_useful_altitude_deg` (`config/app-config.json`) during astronomical
+  darkness, Moon ignored, collapsed into ranges and titled "opens" or "ends"
+  when the edge falls inside the window. The moon-free part stays the night
+  report's job. Without the config value the item is left out, not guessed.
+
 ## Alternatives considered
 
 - **Fetch an events API.** Rejected: violates the zero-server, no-astronomy-API

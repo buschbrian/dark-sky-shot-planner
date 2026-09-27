@@ -4,13 +4,18 @@ import { describe, expect, it } from "vitest";
 import {
   OCCULTATION_CHECK_DEG,
   OCCULTATION_FLAG_DEG,
+  SUPERMOON_MAX_DISTANCE_KM,
+  coreSeasonRanges,
   geocentricSeparationDeg,
   greatestElongations,
+  lunarEclipses,
   moonPhases,
   moonPlanetPairings,
   planetOppositions,
   seasonMarkers,
   siteCivilDate,
+  solarEclipses,
+  supermoons,
   topocentricSeparationDeg,
   windowAround,
   zodiacalLightRanges,
@@ -337,5 +342,77 @@ describe("seasons", () => {
   it("excludes markers outside the window", () => {
     const markers = seasonMarkers(AUTUMN_WINDOW);
     expect(markers.map((m) => m.name)).toEqual(["September equinox"]);
+  });
+});
+
+describe("eclipses", () => {
+  it("finds the 2026-03-03 total lunar eclipse, with the Moon up from Millcreek", () => {
+    const w = windowAround(new Date("2026-03-03T21:00:00-07:00"));
+    const [total] = lunarEclipses(MILLCREEK, w).filter((e) => e.kind === "total");
+    expect(total).toBeDefined();
+    // Published greatest eclipse 11:33:39 UTC; totality ~11:04–12:03 UTC.
+    expectNear(total!.peak, new Date("2026-03-03T11:33:39Z"));
+    expectNear(total!.totalBegin!, new Date("2026-03-03T11:04:00Z"), 3 * MINUTE);
+    expectNear(total!.totalEnd!, new Date("2026-03-03T12:03:00Z"), 3 * MINUTE);
+    expect(total!.obscuration).toBe(1);
+    expect(total!.moonAltitudeAtPeakDeg).toBeGreaterThan(0);
+  });
+
+  it("finds the 2026-08-28 partial lunar eclipse in the autumn window", () => {
+    const partial = lunarEclipses(MILLCREEK, AUTUMN_WINDOW);
+    expect(partial.map((e) => e.kind)).toEqual(["partial"]);
+    expectNear(partial[0]!.peak, new Date("2026-08-28T04:12:55Z"));
+    expect(partial[0]!.totalBegin).toBeNull();
+  });
+
+  it("sees the 2026-08-12 total solar eclipse from Burgos near sunset, and nothing from Millcreek", () => {
+    const burgos: Site = { latitude: 42.34, longitude: -3.7, elevationM: 860 };
+    const w = windowAround(new Date("2026-08-12T19:00:00Z"));
+    const [e] = solarEclipses(burgos, w);
+    expect(e?.kind).toBe("total");
+    expectNear(e!.peak, new Date("2026-08-12T18:29:00Z"), 5 * MINUTE);
+    expect(e!.sunAltitudeAtPeakDeg).toBeGreaterThan(0);
+    expect(e!.sunAltitudeAtEndDeg).toBeLessThan(0);
+    expect(solarEclipses(MILLCREEK, w)).toEqual([]);
+  });
+
+  it("drops a grazing partial eclipse below 1% obscuration", () => {
+    // From 48.9°N the 2026-08-12 eclipse barely nicks the Sun.
+    const north: Site = { latitude: 48.9, longitude: -114.0 };
+    expect(solarEclipses(north, windowAround(new Date("2026-07-21T03:00:00Z")))).toEqual([]);
+  });
+});
+
+describe("supermoons", () => {
+  it("names the 2026-12-24 full moon a supermoon and not the September one", () => {
+    const dec = supermoons(windowAround(new Date("2026-12-11T04:00:00Z")));
+    expect(dec).toHaveLength(1);
+    expectNear(dec[0]!.at, new Date("2026-12-24T01:28:00Z"), 10 * MINUTE);
+    expect(dec[0]!.distanceKm).toBeLessThanOrEqual(SUPERMOON_MAX_DISTANCE_KM);
+    expect(dec[0]!.sizeRatio).toBeGreaterThan(1.05);
+    expect(supermoons(AUTUMN_WINDOW)).toEqual([]);
+  });
+});
+
+describe("Milky Way core season", () => {
+  it("opens at Millcreek in late February, pre-dawn", () => {
+    const [r] = coreSeasonRanges(MILLCREEK, windowAround(new Date("2026-03-04T04:00:00Z")), 12);
+    expect(r?.opens).toBe(true);
+    expect(r!.closes).toBe(false);
+    expect(siteCivilDate(r!.first.eveningUtc, MILLCREEK.longitude).month).toBe(2);
+    expect(r!.first.maxAltitudeDeg).toBeGreaterThanOrEqual(12);
+  });
+
+  it("closes in October", () => {
+    const [r] = coreSeasonRanges(MILLCREEK, AUTUMN_WINDOW, 12);
+    expect(r?.closes).toBe(true);
+    expect(siteCivilDate(r!.last.eveningUtc, MILLCREEK.longitude).month).toBe(10);
+  });
+
+  it("follows the threshold it is given", () => {
+    const w = windowAround(new Date("2026-03-04T04:00:00Z"));
+    const low = coreSeasonRanges(MILLCREEK, w, 5)[0]!;
+    const high = coreSeasonRanges(MILLCREEK, w, 12)[0]!;
+    expect(low.first.eveningUtc.getTime()).toBeLessThan(high.first.eveningUtc.getTime());
   });
 });

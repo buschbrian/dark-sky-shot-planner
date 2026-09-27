@@ -20,6 +20,8 @@
 
 import * as Astronomy from "astronomy-engine";
 
+import { darknessWindow, gcVisibility } from "./planner";
+
 /** Half-width of the default window around the selected date, in days. */
 export const DEFAULT_WINDOW_DAYS = 30;
 
@@ -707,6 +709,209 @@ export function seasonMarkers(window: TimeWindow): SeasonMarker[] {
     }
   }
   return out.sort(byTime);
+}
+
+// ------------------------------------------------------------------ eclipses
+
+export type LunarEclipseKind = "penumbral" | "partial" | "total";
+
+export interface LunarEclipse {
+  kind: LunarEclipseKind;
+  peak: Date;
+  /** Fraction of the lunar disc inside the umbra at peak (0 for penumbral). */
+  obscuration: number;
+  /** Phase boundaries; the umbral and total ones are null when the eclipse never reaches them. */
+  penumbralBegin: Date;
+  penumbralEnd: Date;
+  partialBegin: Date | null;
+  partialEnd: Date | null;
+  totalBegin: Date | null;
+  totalEnd: Date | null;
+  /** Moon altitude at this spot (refracted, topocentric) at peak and at each boundary of the main phase. */
+  moonAltitudeAtPeakDeg: number;
+  moonAltitudeAtBeginDeg: number;
+  moonAltitudeAtEndDeg: number;
+}
+
+/**
+ * Lunar eclipses peaking inside the window, judged at the observer: the
+ * eclipse happens everywhere the Moon is up, so the only local question is
+ * the Moon's altitude through the main phase (umbral, or penumbral for a
+ * penumbral-only eclipse).
+ */
+export function lunarEclipses(site: Site, window: TimeWindow): LunarEclipse[] {
+  const out: LunarEclipse[] = [];
+  let e = Astronomy.SearchLunarEclipse(window.start);
+  for (let guard = 0; guard < 6 && e.peak.date <= window.end; guard++) {
+    const peak = e.peak.date;
+    const at = (minutes: number): Date => new Date(peak.getTime() + minutes * 60_000);
+    const main = e.sd_partial > 0 ? e.sd_partial : e.sd_penum;
+    out.push({
+      kind: e.kind as LunarEclipseKind,
+      peak,
+      obscuration: round3(e.obscuration),
+      penumbralBegin: at(-e.sd_penum),
+      penumbralEnd: at(e.sd_penum),
+      partialBegin: e.sd_partial > 0 ? at(-e.sd_partial) : null,
+      partialEnd: e.sd_partial > 0 ? at(e.sd_partial) : null,
+      totalBegin: e.sd_total > 0 ? at(-e.sd_total) : null,
+      totalEnd: e.sd_total > 0 ? at(e.sd_total) : null,
+      moonAltitudeAtPeakDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, peak)),
+      moonAltitudeAtBeginDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, at(-main))),
+      moonAltitudeAtEndDeg: round1(altitudeDeg(site, Astronomy.Body.Moon, at(main))),
+    });
+    e = Astronomy.NextLunarEclipse(e.peak);
+  }
+  return out;
+}
+
+export type SolarEclipseKind = "partial" | "annular" | "total";
+
+/** A grazing partial eclipse covering less of the Sun than this is not listed: nothing to see or shoot. */
+export const SOLAR_ECLIPSE_MIN_OBSCURATION = 0.01;
+
+export interface SolarEclipse {
+  kind: SolarEclipseKind;
+  /** Fraction of the Sun's disc area covered at peak, as seen from here. */
+  obscuration: number;
+  begin: Date;
+  peak: Date;
+  end: Date;
+  /** Sun altitude (refracted) at each instant. */
+  sunAltitudeAtBeginDeg: number;
+  sunAltitudeAtPeakDeg: number;
+  sunAltitudeAtEndDeg: number;
+}
+
+/**
+ * Solar eclipses seen from this spot, peaking inside the window. `kind` is
+ * what this observer sees (a total eclipse elsewhere is partial here). An
+ * eclipse that happens entirely with the Sun below the horizon, or covers
+ * less than `SOLAR_ECLIPSE_MIN_OBSCURATION` of the disc, is dropped.
+ */
+export function solarEclipses(site: Site, window: TimeWindow): SolarEclipse[] {
+  const out: SolarEclipse[] = [];
+  let e = Astronomy.SearchLocalSolarEclipse(window.start, observerOf(site));
+  for (let guard = 0; guard < 6 && e.peak.time.date <= window.end; guard++) {
+    const visible =
+      e.partial_begin.altitude > 0 || e.peak.altitude > 0 || e.partial_end.altitude > 0;
+    if (visible && e.obscuration >= SOLAR_ECLIPSE_MIN_OBSCURATION) {
+      out.push({
+        kind: e.kind as SolarEclipseKind,
+        obscuration: round3(e.obscuration),
+        begin: e.partial_begin.time.date,
+        peak: e.peak.time.date,
+        end: e.partial_end.time.date,
+        sunAltitudeAtBeginDeg: round1(e.partial_begin.altitude),
+        sunAltitudeAtPeakDeg: round1(e.peak.altitude),
+        sunAltitudeAtEndDeg: round1(e.partial_end.altitude),
+      });
+    }
+    e = Astronomy.NextLocalSolarEclipse(e.peak.time, observerOf(site));
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- supermoons
+
+/**
+ * A full moon closer than this (geocentric, km) is called a supermoon here.
+ * Definitions vary (Nolle's "within 90% of perigee" lands near 361,500 km);
+ * a fixed distance is reproducible and says what it means.
+ */
+export const SUPERMOON_MAX_DISTANCE_KM = 360_000;
+
+/** Mean Earth–Moon distance (km) that "larger than average" is measured against. */
+export const MOON_MEAN_DISTANCE_KM = 384_400;
+
+export interface Supermoon {
+  at: Date;
+  distanceKm: number;
+  /** Apparent diameter and brightness relative to a full moon at the mean distance. */
+  sizeRatio: number;
+  brightnessRatio: number;
+}
+
+/** Full moons inside the window closer than `SUPERMOON_MAX_DISTANCE_KM`. */
+export function supermoons(window: TimeWindow): Supermoon[] {
+  return moonPhases(window)
+    .filter((p) => p.angle === 180)
+    .map((p) => {
+      const distanceKm = Math.round(Astronomy.GeoMoon(p.at).Length() * KM_PER_AU);
+      const size = MOON_MEAN_DISTANCE_KM / distanceKm;
+      return {
+        at: p.at,
+        distanceKm,
+        sizeRatio: round3(size),
+        brightnessRatio: round3(size * size),
+      };
+    })
+    .filter((m) => m.distanceKm <= SUPERMOON_MAX_DISTANCE_KM);
+}
+
+// ------------------------------------------------------ galactic core season
+
+export interface CoreNight {
+  /** The 21:00-UTC-offset evening instant the night was planned from. */
+  eveningUtc: Date;
+  /** Highest GC altitude during astronomical darkness, moon ignored (0.1°). */
+  maxAltitudeDeg: number;
+  maxAltitudeAt: Date;
+}
+
+export interface CoreSeasonRange {
+  first: CoreNight;
+  last: CoreNight;
+  nights: number;
+  /** The night before `first` was scanned and did not qualify: the season opens here. */
+  opens: boolean;
+  /** The night after `last` was scanned and did not qualify: the season closes here. */
+  closes: boolean;
+}
+
+/**
+ * Nights on which the Galactic Center clears `minAltitudeDeg` (the app's
+ * `gc_min_useful_altitude_deg`) during astronomical darkness, whatever the
+ * Moon is doing, collapsed into ranges. This is the Milky Way core season at
+ * this latitude; the moon-free part of each night is the night report's job.
+ * Nights are stepped a day at a time from the window's first evening.
+ */
+export function coreSeasonRanges(
+  site: Site,
+  window: TimeWindow,
+  minAltitudeDeg: number,
+): CoreSeasonRange[] {
+  const out: CoreSeasonRange[] = [];
+  let open: CoreSeasonRange | null = null;
+  let scannedBefore = false;
+  for (let t = window.start.getTime(); t <= window.end.getTime(); t += DAY_MS) {
+    const evening = new Date(t);
+    const { window: dark } = darknessWindow(site.latitude, site.longitude, evening);
+    const gc = dark
+      ? gcVisibility(site.latitude, site.longitude, [{ start: dark.start, end: dark.end, minutes: 0 }])
+      : null;
+    const qualifies =
+      gc !== null && gc.maxAltitudeDeg !== null && gc.maxAltitudeAt !== null && gc.maxAltitudeDeg >= minAltitudeDeg;
+    if (qualifies) {
+      const night: CoreNight = {
+        eveningUtc: evening,
+        maxAltitudeDeg: gc.maxAltitudeDeg!,
+        maxAltitudeAt: gc.maxAltitudeAt!,
+      };
+      if (open) {
+        open.last = night;
+        open.nights += 1;
+      } else {
+        open = { first: night, last: night, nights: 1, opens: scannedBefore, closes: false };
+        out.push(open);
+      }
+    } else if (open) {
+      open.closes = true;
+      open = null;
+    }
+    scannedBefore = true;
+  }
+  return out;
 }
 
 // --------------------------------------------------------------------- utils

@@ -38,6 +38,7 @@ let package = Package(
             resources: [
                 .copy("Resources/app-config.json"),
                 .copy("Resources/conditions-thresholds.json"),
+                .copy("Resources/sky-events.json"),
                 .copy("Resources/horizon-profiles"),
             ],
             swiftSettings: swiftSettings
