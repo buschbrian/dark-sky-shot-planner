@@ -12,7 +12,10 @@ import UIKit
 /// the registration error, and exits. Nothing touches the camera or disk.
 @_cdecl("ds_capture_bench_install")
 nonisolated func captureBenchInstall() {
-    guard UserDefaults.standard.bool(forKey: "CaptureBench") else { return }
+    let defaults = UserDefaults.standard
+    // With the self-test or lifecycle test, the bench runs after them in the same launch.
+    guard defaults.bool(forKey: "CaptureBench"), !defaults.bool(forKey: "CaptureSelfTest"),
+          !defaults.bool(forKey: "CaptureLifecycleTest") else { return }
     DispatchQueue.global(qos: .userInitiated).async {
         CaptureDebug.bench(frames: UserDefaults.standard.integer(forKey: "CaptureBenchFrames").nonZero ?? 8)
         fflush(stdout)
@@ -40,8 +43,17 @@ nonisolated func captureSelfTestInstall() {
     guard defaults.bool(forKey: "CaptureSelfTest") || defaults.bool(forKey: "CaptureLifecycleTest") else { return }
     DispatchQueue.main.async {
         Task { @MainActor in
+            // Keep the phone awake for the whole test launch: a lock mid-test
+            // suspends the app (the lock path itself is logged by the model).
+            UIApplication.shared.isIdleTimerDisabled = true
+            CaptureDebug.say("test launch: idle timer held off for the test")
             if defaults.bool(forKey: "CaptureSelfTest") { await CaptureDebug.selfTest() }
             if defaults.bool(forKey: "CaptureLifecycleTest") { await CaptureDebug.lifecycleTest() }
+            if defaults.bool(forKey: "CaptureBench") {
+                let frames = defaults.integer(forKey: "CaptureBenchFrames").nonZero ?? 8
+                await Task.detached(priority: .userInitiated) { CaptureDebug.bench(frames: frames) }.value
+            }
+            UIApplication.shared.isIdleTimerDisabled = false
             fflush(stdout)
             exit(0)
         }
@@ -177,6 +189,7 @@ nonisolated enum CaptureDebug {
         model.leave(.leftScreen)
         try? await Task.sleep(for: .seconds(1.5))
         say("selftest: after leave, camera running \(model.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled)")
+        UIApplication.shared.isIdleTimerDisabled = true // the test launch keeps the phone awake
     }
 
     /// `-CaptureLifecycleTest YES`: leave during the countdown, during
@@ -186,7 +199,9 @@ nonisolated enum CaptureDebug {
     @MainActor
     static func lifecycleTest() async {
         func state(_ label: String, _ m: CaptureModel) {
-            say("lifecycle \(label): phase \(m.phase), camera running \(m.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled), footprint \(CaptureLog.footprint() / 1_000_000) MB")
+            say("lifecycle \(label): phase \(m.phase), run exists \(CaptureModel.runExists), camera running \(m.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled), footprint \(CaptureLog.footprint() / 1_000_000) MB")
+            // The model released the idle timer (checked above); the test launch holds it again.
+            UIApplication.shared.isIdleTimerDisabled = true
         }
         func fresh() async -> CaptureModel {
             let m = CaptureModel()
