@@ -201,4 +201,21 @@ struct ConditionsClientTests {
         #expect(ConditionsStatus.of(direct, cached: false, workerConfigured: true) == .workerSilentDirect(fetchedAt: direct.fetchedUTC))
         #expect(ConditionsStatus.of(direct, cached: false, workerConfigured: false) == .notSetUp(fetchedAt: direct.fetchedUTC))
     }
+
+    @Test("HRRR's 15-minute series comes through the client to the snapshot, for charts")
+    func nearTermSurfaced() async throws {
+        let body = StubNetwork.workerBody(request, nextUpdate: nil, withNearTerm: true)
+        StubNetwork.install { _ in (200, ["ETag": "\"n\""], body) }
+        let c = client()
+        let s = try #require(await c.fetch(for: place, window: window).snapshot)
+        let gust = try #require(s.nearTermSeries["wind_gust"])
+        #expect(gust.resolutionMinutes == 15)
+        #expect(gust.values.count == 13)
+        let points = s.finestPoints("wind_gust")
+        #expect(points.prefix(13).allSatisfy { $0.v == 11 })
+        #expect(points.dropFirst(13).allSatisfy { $0.v == 9 })
+        // And it survives the disk copy the offline screen reads.
+        let saved = try #require(await c.cachedConditions(for: place, window: window))
+        #expect(saved.nearTermSeries["wind_gust"]?.values.count == 13)
+    }
 }

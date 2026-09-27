@@ -64,7 +64,7 @@ enum StubNetwork {
     }
 
     /// A small Worker `/v1/conditions` body for `request`: HRRR cloud, clear.
-    static func workerBody(_ request: ConditionsRequest, nextUpdate: Date?, cloud: Double = 5) -> Data {
+    static func workerBody(_ request: ConditionsRequest, nextUpdate: Date?, cloud: Double = 5, withNearTerm: Bool = false) -> Data {
         let iso = ISO8601DateFormatter()
         let hours = stride(from: request.start.timeIntervalSince1970, through: request.end.timeIntervalSince1970, by: 3600)
             .map { iso.string(from: Date(timeIntervalSince1970: $0)) }
@@ -84,6 +84,20 @@ enum StubNetwork {
                 ],
             ],
         ]
+        if withNearTerm {
+            let quarters = stride(from: request.start.timeIntervalSince1970, through: request.start.timeIntervalSince1970 + 3 * 3600, by: 900)
+                .map { iso.string(from: Date(timeIntervalSince1970: $0)) }
+            var fields = json["fields"] as! [String: Any]
+            fields["wind_gust"] = [
+                "unit": "km/h", "source": "Open-Meteo", "status": "ok", "fetched_utc": now,
+                "series": [["model": "hrrr", "fetched_utc": now, "status": "ok", "values": hours.map { ["t": $0, "v": 9] }]],
+                "series_15min": [[
+                    "model": "hrrr", "resolution_minutes": 15, "fetched_utc": now, "status": "ok",
+                    "values": quarters.map { ["t": $0, "v": 11] },
+                ]],
+            ]
+            json["fields"] = fields
+        }
         json["next_update_expected_utc"] = nextUpdate.map { iso.string(from: $0) } ?? NSNull()
         return try! JSONSerialization.data(withJSONObject: json)
     }
