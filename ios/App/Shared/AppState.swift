@@ -26,8 +26,11 @@ final class AppState {
     var chosenNight: NightDate?
     /// Which half of the Tonight tab shows; Week rows switch it to Tonight.
     var nightScope = NightTab.Scope.tonight
-    /// `-FieldMode YES` at launch starts in field mode (UI tests, screenshots).
-    var fieldMode = UserDefaults.standard.bool(forKey: "FieldMode")
+    /// Remembered across launches (`FieldModePreference`); `-FieldMode YES|NO`
+    /// at launch overrides it without being saved (UI tests, screenshots).
+    var fieldMode = FieldModePreference.initial() {
+        didSet { if fieldMode != oldValue { FieldModePreference.save(fieldMode) } }
+    }
 
     func night(at now: Date = .now) -> NightDate {
         if let chosenNight { return chosenNight }

@@ -35,17 +35,20 @@ enum AppTab: Hashable {
 
 struct RootView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = AppTab.tonight
+    @State private var brightness = FieldBrightness()
 
     var body: some View {
         let palette = state.fieldMode ? Palette.field : Palette.standard
         TabView(selection: $tab) {
-            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab() }
-            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen() }
-            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen() }
-            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen() }
-            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen() }
+            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldDock(state.fieldMode, tab: $tab) }
         }
+        .environment(brightness)
         .tint(palette.accent)
         .environment(\.palette, palette)
         .preferredColorScheme(palette.colorScheme)
@@ -57,6 +60,11 @@ struct RootView: View {
         .statusBarHidden(state.fieldMode)
         .persistentSystemOverlays(state.fieldMode ? .hidden : .automatic)
         .background(palette.background.ignoresSafeArea())
+        // Brightness the app changed goes back when field mode ends, the app
+        // leaves the foreground or quits (a quit passes through background).
+        .onAppear { brightness.sync(fieldMode: state.fieldMode, active: scenePhase == .active) }
+        .onChange(of: state.fieldMode) { _, on in brightness.sync(fieldMode: on, active: scenePhase == .active) }
+        .onChange(of: scenePhase) { _, phase in brightness.sync(fieldMode: state.fieldMode, active: phase == .active) }
         #if DEBUG
         .onAppear { DebugLaunch.apply(to: state, tab: &tab) }
         .overlay {
@@ -124,11 +132,15 @@ struct NightTab: View {
                 .foregroundStyle(palette.primary)
                 .accessibilityIdentifier("tonight.location")
             } principal: {
-                Picker("Scope", selection: $state.nightScope) {
-                    ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
+                if palette.isField {
+                    ScopeSwitch(scope: $state.nightScope)
+                } else {
+                    Picker("Scope", selection: $state.nightScope) {
+                        ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
             }
         }
         .sheet(isPresented: $showLocation) {
