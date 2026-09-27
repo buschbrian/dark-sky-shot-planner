@@ -17,7 +17,7 @@ struct SkyEventsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("In the sky tonight & this week")
+            Text(title)
                 .font(.headline)
                 .foregroundStyle(palette.primary)
                 .accessibilityAddTraits(.isHeader)
@@ -31,6 +31,12 @@ struct SkyEventsSection: View {
         }
         .onAppear { store.viewAppeared("section") }
         .accessibilityIdentifier("skyEvents.section")
+    }
+
+    private var title: String {
+        night == NightDate.containing(.now, in: place.timeZone)
+            ? "In the sky tonight & this week"
+            : "In the sky from \(SkyEventsFormat.nightLabel(night, tonight: .containing(.now, in: place.timeZone)))"
     }
 
     @ViewBuilder private var content: some View {
