@@ -17,7 +17,7 @@ struct SharedFilesTests {
 
     @Test(
         "every other bundled config file is byte-identical to its original",
-        arguments: ["conditions-thresholds.json", "sky-events.json", "horizon-profiles/candlestick-camp.csv"]
+        arguments: ["conditions-thresholds.json", "sky-events.json", "gear-presets.json", "horizon-profiles/candlestick-camp.csv"]
     )
     func bundledCopyIsInSync(_ path: String) throws {
         #expect(try SharedResources.data(path) == Repo.data("config/\(path)"), "Run ios/scripts/sync-shared.sh")

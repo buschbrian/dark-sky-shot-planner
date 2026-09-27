@@ -39,6 +39,7 @@ let package = Package(
                 .copy("Resources/app-config.json"),
                 .copy("Resources/conditions-thresholds.json"),
                 .copy("Resources/sky-events.json"),
+                .copy("Resources/gear-presets.json"),
                 .copy("Resources/horizon-profiles"),
                 .copy("Resources/sky"),
             ],
