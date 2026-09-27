@@ -188,7 +188,23 @@ struct StatusBadge: View {
     var large = false
     @Environment(\.palette) private var palette
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
+        // At accessibility sizes the qualifier moves under the capsule instead of wrapping inside it.
+        if typeSize.isAccessibilitySize, let qualifier {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+                capsule(nil)
+                Text(qualifier).font(.dsCallout).foregroundStyle(palette.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(level.word), \(qualifier)")
+        } else {
+            capsule(qualifier)
+        }
+    }
+
+    private func capsule(_ qualifier: String?) -> some View {
         HStack(spacing: DS.Space.xs) {
             Image(systemName: level.symbol)
                 .foregroundStyle(level.color(palette))
@@ -200,6 +216,7 @@ struct StatusBadge: View {
                     .foregroundStyle(palette.secondary)
             }
         }
+        .lineLimit(1)
         .font(large ? .title2.weight(.semibold) : .dsCallout.weight(.semibold))
         .padding(.horizontal, large ? DS.Space.m : DS.Space.s + 2)
         .padding(.vertical, large ? DS.Space.s : DS.Space.xs)
