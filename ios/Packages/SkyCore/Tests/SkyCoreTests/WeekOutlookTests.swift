@@ -217,7 +217,7 @@ struct WeekOutlookTests {
         // Stepped back to the night that just ended (review B-2 made it no longer the default).
         let rows = try WeekOutlook.build(
             observer: observer(moab.lat, moab.lon), timeZone: denver, now: now,
-            first: try #require(NightDate(iso: "2026-10-29")), count: 2,
+            first: NightDate(iso: "2026-10-29"), count: 2,
             clouds: [], kp: kp, auroraRule: rule, verdict: { _ in () })
         #expect(rows[0].night.date.iso == "2026-10-29")
         #expect(rows[0].aurora == .unavailable(.kpDoesNotCoverNight))

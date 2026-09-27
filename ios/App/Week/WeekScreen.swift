@@ -94,7 +94,7 @@ final class WeekLoader {
             let config = try Self.config.get()
             let observer = try place.observer()
             let zone = place.timeZone
-            let key = WeekCache.Key(place: place, first: NightDate.containing(now, in: zone))
+            let key = WeekCache.Key(place: place, first: place.tonight(at: now))
             if nights.isEmpty, let last = WeekCache.rows[key] {
                 nights = last.rows
                 conditions = WeekCache.conditions[key] ?? .none

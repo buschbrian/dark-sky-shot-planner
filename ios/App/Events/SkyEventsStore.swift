@@ -44,7 +44,7 @@ final class SkyEventsStore {
     static let shareDays = 21
 
     static func key(place: Place, night: NightDate, now: Date = .now) -> Key {
-        let tonight = NightDate.containing(now, in: place.timeZone)
+        let tonight = place.tonight(at: now)
         let centre = abs(days(from: tonight, to: night)) <= shareDays ? tonight : night
         return Key(latitude: place.latitude, longitude: place.longitude, timeZoneID: place.timeZoneID, centre: centre)
     }

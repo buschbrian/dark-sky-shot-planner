@@ -63,9 +63,11 @@ struct TonightScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let place = state.place {
                     PlaceHeader(place: place, zoneIsGuess: zoneIsGuess(place)) { showLocation = true }
+                    let tonight = state.tonight(at: now)
                     NightPicker(
                         night: night,
-                        tonight: NightDate.containing(now, in: place.timeZone),
+                        tonight: tonight,
+                        relative: model.relativeLabel(night: night, tonight: tonight, place: place),
                         choose: choose,
                         openCalendar: { showCalendar = true })
                     answer(place: place, night: night, now: now)
@@ -85,7 +87,7 @@ struct TonightScreen: View {
         }
         .task(id: state.place) { await retryZoneLookup() }
         .sheet(isPresented: $showCalendar) {
-            NightCalendar(selected: night, tonight: NightDate.containing(now, in: state.place?.timeZone ?? .current), choose: choose)
+            NightCalendar(selected: night, tonight: state.tonight(at: now), choose: choose)
         }
         .sheet(isPresented: $showFactors) {
             if let verdict = model.verdict {
@@ -133,8 +135,7 @@ struct TonightScreen: View {
     }
 
     private func choose(_ night: NightDate) {
-        let tonight = NightDate.containing(.now, in: state.place?.timeZone ?? .current)
-        state.chosenNight = night == tonight ? nil : night
+        state.chosenNight = night == state.tonight() ? nil : night
     }
 
     private func apply(_ choice: LocationChoice) {

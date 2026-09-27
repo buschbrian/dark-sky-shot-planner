@@ -117,7 +117,7 @@ struct SkyScreen: View {
     private func sky(place: Place, horizon: HorizonProfile?, simulated: String?) -> some View {
         let pinned = simulated == nil ? nil : SimulatedSky.pinnedTime
         let night = pinned.map { NightDate.containing($0, in: place.timeZone) }
-            ?? state.chosenNight ?? NightDate.containing(.now, in: place.timeZone)
+            ?? state.chosenNight ?? place.tonight()
         // Live: the span also covers the next hours from now, refreshed hourly.
         let liveHour = simulated == nil ? Int(Date.now.timeIntervalSince1970 / 3600) : nil
         let key = SkyModel.Key(place: place, night: night, liveHour: liveHour)

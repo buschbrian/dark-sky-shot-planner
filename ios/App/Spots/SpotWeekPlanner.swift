@@ -59,9 +59,11 @@ nonisolated enum SpotWeekPlanner {
     static func compute(
         _ input: Input, conditions: any ConditionsProviding, limiter: RequestLimiter? = nil, now: Date = .now
     ) async -> SpotWeek {
-        let first = NightDate.containing(now, in: input.timeZone)
-        let dates = (0..<nightCount).map { first.adding(days: $0) }
         let observer = try? Observer(latitude: input.latitude, longitude: input.longitude)
+        // After dawn the strip starts at the coming night (review B-2).
+        let first = observer.map { NightDate.current(at: now, observer: $0, timeZone: input.timeZone) }
+            ?? NightDate.containing(now, in: input.timeZone)
+        let dates = (0..<nightCount).map { first.adding(days: $0) }
 
         struct Astro: Sendable { let flat: NightReport?; let skyline: NightReport? }
         let astro: [Astro] = dates.map { date in

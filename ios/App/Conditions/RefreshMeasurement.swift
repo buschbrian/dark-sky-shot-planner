@@ -31,7 +31,7 @@ nonisolated enum RefreshMeasurement {
         let lon = -112.5 + Double(Int.random(in: 0..<60)) * 0.05
         let zone = TimeZone(identifier: "America/Denver")!
         let place = Place(name: "measure", latitude: lat, longitude: lon, timeZoneID: zone.identifier)
-        let window = ConditionsRequest.nightWindow(NightDate.containing(.now, in: zone), in: zone)
+        let window = ConditionsRequest.nightWindow(place.tonight(), in: zone)
 
         let first = ConditionsClient(workerBase: base, networkEnabled: true, store: .temporary())
         let second = ConditionsClient(workerBase: base, networkEnabled: true, store: .temporary())
