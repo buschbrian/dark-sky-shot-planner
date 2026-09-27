@@ -90,6 +90,9 @@ nonisolated struct SpotWeek: Codable, Hashable, Sendable {
     /// (`ConditionsStatus.combined`, review B-4); nil when none were needed,
     /// and for weeks saved before this field existed.
     var conditionsStatus: ConditionsStatus? = nil
+    /// The soonest `nextRefresh` among this check's conditions fetches: when
+    /// the background refresh should ask again. nil when none were needed.
+    var nextRefresh: Date? = nil
 
     var outcome: CheckOutcome {
         if interrupted { return .interrupted }

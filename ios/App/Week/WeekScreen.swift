@@ -72,8 +72,11 @@ final class WeekLoader {
     var failure: String?
     var computedAt = Date.now
 
-    /// How often an open Week asks the provider again, to pick up a newer model run.
-    static let refreshInterval = Duration.seconds(15 * 60)
+    /// How long an open Week waits before asking again: until the soonest
+    /// block's `nextRefresh` (the Worker's expected update), not a fixed timer.
+    var nextWait: Duration {
+        .seconds(RefreshTiming.weekWait(nextRefreshes: conditions.nextRefreshes, now: .now))
+    }
     private static let config = Result { try WeekConfig.bundled() }
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DarkSky", category: "Week")
 
@@ -182,7 +185,7 @@ private struct WeekList: View {
         .task(id: LoadKey(place: place, refresh: refresh)) {
             await loader.load(place: place, provider: provider)
             while !Task.isCancelled {
-                try? await Task.sleep(for: WeekLoader.refreshInterval)
+                try? await Task.sleep(for: loader.nextWait)
                 guard !Task.isCancelled else { break }
                 await loader.load(place: place, provider: provider)
             }
