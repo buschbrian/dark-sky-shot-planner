@@ -36,9 +36,18 @@ public struct AppConfig: Sendable, Hashable, Decodable {
 public struct AROverlayConfig: Sendable, Hashable, Decodable {
     /// Largest `CLHeading.headingAccuracy` (degrees) at which the overlay may look confident.
     public let headingAccuracyConfidentMaxDeg: Double
+    /// Largest RMS residual (degrees) of a multi-point attitude calibration that is accepted.
+    public let calibrationResidualMaxDeg: Double
+    /// Unexplained heading change within a second, phone nearly still, that marks a magnetic disturbance.
+    public let headingJumpDisturbanceDeg: Double
+    /// Unexplained heading change since calibration that marks the overlay approximate.
+    public let headingDriftMaxDeg: Double
 
     enum CodingKeys: String, CodingKey {
         case headingAccuracyConfidentMaxDeg = "heading_accuracy_confident_max_deg"
+        case calibrationResidualMaxDeg = "calibration_residual_max_deg"
+        case headingJumpDisturbanceDeg = "heading_jump_disturbance_deg"
+        case headingDriftMaxDeg = "heading_drift_max_deg"
     }
 }
 
