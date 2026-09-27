@@ -469,7 +469,15 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
   hyperfocal/DoF, stacking count for a target SNR, timelapse interval/frames.
 - Pure functions in SkyCore with published worked examples as tests.
 
-### M11 — Shot window (next focus, owner 2026-09-26)
+### M11 — Shot window
+
+**Status (2026-09-27):** SkyCore and the views are built and merged, but no
+screen instantiates `ShotWindowCard`/`ShotWindowSection`/`ShotTargetPicker`
+(`docs/ios/REVIEW-2026-09-27-FABLE.md` B-3) — the shot window is not
+reachable in the app yet. Being wired onto Tonight now; see
+`docs/deepsky/PLAN-ANY-ASTRO.md` "Before M13" for the fixes that gate both
+this wiring and M13.
+
 - One trustworthy answer for one shot: pick a target (GC, Milky Way arch, the
   moon, a planet) at a spot, and Tonight shows when it clears that spot's
   terrain horizon, the moon-free minutes left while it is up, and whether
@@ -481,6 +489,15 @@ Machine setup: `docs/ios/MAC-SETUP.md`, Phases 1–3. The repo stays in
   PhotoPills + weather-app routine at a dark site.
 
 ### M12 — Capture (ADR-0011)
+
+**Status (2026-09-27):** built and checked on the owner's iPhone 18 Pro Max
+(§Log, 2026-09-27) — capability probe, a 5-frame ProRAW sequence, on-device
+stacking, and lifecycle tests all passed indoors. **Not yet done:** an
+actual night-sky capture. Indoors, fewer than half the frames aligned on
+"stars", so registration on a real star field is unverified; the tripod
+stability thresholds, infinity focus and the real UI leave/interrupt path
+(Back button, Home, lock) are also unverified (`docs/ios/CAPABILITIES.md`).
+
 - Capability probe on the owner's phone first; its numbers go into
   `docs/ios/`.
 - Tripod capture: longest usable frames, locked infinity focus, RAW where
