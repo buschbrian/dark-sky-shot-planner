@@ -184,7 +184,12 @@ final class DesignTourTests: XCTestCase {
         XCTAssertTrue(headline.label.contains("minutes of moon-free darkness"), headline.label)
         XCTAssertTrue(headline.frame.minX >= 0 && headline.frame.maxX <= app.frame.maxX + 1, "headline fits the width")
         try shot(app, "ax-tonight-1", field: false)
-        app.swipeUp()
+        // StatusBadge stacks its qualifier at accessibility sizes: one element, "No-go, incomplete data".
+        let badge = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label MATCHES %@", "^(Go|Marginal|No-go|Unavailable), .+")).firstMatch
+        for _ in 0..<4 where !(badge.exists && badge.isHittable) { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(badge.exists, "stacked status badge at AX-XL")
+        XCTAssertLessThanOrEqual(badge.frame.maxX, app.frame.maxX + 1, "badge fits the width")
         try shot(app, "ax-tonight-2", field: false)
         app.segmentedControls.buttons["Week"].tap()
         sleep(3)
