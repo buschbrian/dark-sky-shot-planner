@@ -303,6 +303,11 @@ final class CaptureModel {
 
     func start() {
         guard !phase.isBusy, runTask == nil, Self.activeRun == nil, let plan, let dims = frameDimensions else { return }
+        guard !engine.isInterrupted else {
+            errorMessage = "The camera is interrupted (phone locked, app in the background or another app using it). Try again once the preview is live."
+            CaptureLog.event("start refused: camera interrupted")
+            return
+        }
         sampleEnvironment()
         guard plan.fits(freeBytes: freeBytes) else {
             errorMessage = "Not enough free space: the sequence needs \(Self.bytes(plan.peakBytes)) plus a 1 GB reserve."
@@ -409,16 +414,41 @@ final class CaptureModel {
                 endRequest = endRequest ?? .tooHot
                 break frameLoop
             }
+            if engine.isInterrupted {
+                endRequest = endRequest ?? .interrupted("camera interrupted")
+                break
+            }
             phase = .capturing(frame: i + 1, of: plan.frames)
             let base = folder.appending(path: String(format: "frame-%04d", i + 1))
             // Request the next frame as soon as this one's exposure ends; keep
             // at most two frames being written behind it.
             let exposed = AsyncStream<Void>.makeStream()
             let engine = engine
-            let task = Task.detached { try await engine.capture(request, to: base) { exposed.continuation.finish() } }
+            let didExpose = ExposureFlag()
+            let task = Task.detached {
+                try await engine.capture(request, to: base) {
+                    didExpose.set()
+                    exposed.continuation.finish()
+                }
+            }
             let watcher = Task.detached { _ = try? await task.value; exposed.continuation.finish() }
+            // A frame that never exposes (camera cut off) must not hang the run.
+            let limit = subExposure + 10
+            let timedOut = ExposureFlag()
+            let timer = Task.detached {
+                guard (try? await Task.sleep(for: .seconds(limit))) != nil else { return }
+                timedOut.set()
+                exposed.continuation.finish()
+            }
             for await _ in exposed.stream {}
             watcher.cancel()
+            timer.cancel()
+            if !didExpose.value, timedOut.value {
+                note(String(format: "Frame %d did not expose within %.0f s; the camera stopped delivering frames.", i + 1, limit))
+                CaptureLog.event("frame \(i + 1) exposure timed out")
+                endRequest = endRequest ?? .interrupted("the camera stopped delivering frames")
+                break
+            }
             pending.append((i + 1, stability.meanRate ?? 0, Date().timeIntervalSince(startTime), task))
             peakFootprint = max(peakFootprint, CaptureLog.footprint())
             if pending.count >= 2 {
@@ -622,6 +652,13 @@ nonisolated private final class ResumeOnce: @unchecked Sendable {
         lock.unlock()
         c?.resume(returning: value)
     }
+}
+
+nonisolated private final class ExposureFlag: @unchecked Sendable {
+    private var flag = false
+    private let lock = NSLock()
+    func set() { lock.withLock { flag = true } }
+    var value: Bool { lock.withLock { flag } }
 }
 
 nonisolated private final class IdentifierBox: @unchecked Sendable {

@@ -117,7 +117,12 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { [weak self] note in
             let raw = (note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int).flatMap(AVCaptureSession.InterruptionReason.init)
+            self?.setInterrupted(true)
             self?.onInterruption?("camera interrupted (\(Self.describe(raw)))")
+        })
+        observers.append(center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) { [weak self] _ in
+            self?.setInterrupted(false)
+            CaptureLog.event("camera interruption ended")
         })
         observers.append(center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { [weak self] note in
             let error = note.userInfo?[AVCaptureSessionErrorKey] as? NSError
@@ -141,6 +146,13 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     }
 
     var isRunning: Bool { session.isRunning }
+
+    private var interruptedFlag = false
+
+    /// True between an interruption and its end (a running session can be interrupted).
+    var isInterrupted: Bool { lock.withLock { interruptedFlag } }
+
+    private func setInterrupted(_ value: Bool) { lock.withLock { interruptedFlag = value } }
 
     // MARK: Configuration
 
@@ -234,7 +246,10 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     }
 
     func start() {
-        queue.async { [self] in if !session.isRunning { session.startRunning() } }
+        queue.async { [self] in
+            if !session.isRunning { session.startRunning() }
+            if session.isRunning, !session.isInterrupted { setInterrupted(false) }
+        }
     }
 
     func stop() {
