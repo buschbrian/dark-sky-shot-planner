@@ -41,7 +41,9 @@ struct RootView: View {
         TabView(selection: $tab) {
             Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab() }
             Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen() }
-            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen() }
+            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) {
+                SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider)
+            }
             Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen() }
             Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen() }
         }

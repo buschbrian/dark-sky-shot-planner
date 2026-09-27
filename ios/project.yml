@@ -46,7 +46,10 @@ targets:
       properties:
         DSAppGroupIdentifier: group.$(BUNDLE_ID_PREFIX)
         NSLocationWhenInUseUsageDescription: Dark Sky uses your location to plan tonight's darkness where you are. Precise coordinates never leave the phone.
-        NSCameraUsageDescription: The Sky view draws the Milky Way and moon over the camera picture.
+        NSCameraUsageDescription: The Sky view draws the Milky Way and moon over the camera picture, and Capture takes night-sky photos from a tripod.
+        NSPhotoLibraryAddUsageDescription: Capture saves the frames and stacks you choose to your photo library.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         NSMotionUsageDescription: The Sky view uses the compass and motion sensors to know where the phone is pointing.
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [$(PRODUCT_BUNDLE_IDENTIFIER).refresh]
