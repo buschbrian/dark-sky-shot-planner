@@ -92,18 +92,30 @@ BASE_PATH=/dark-sky-shot-planner/ npm run build         # dist/
 npx vite preview                                        # http://localhost:4173/dark-sky-shot-planner/
 ```
 
-## Coming next: the iOS field companion
+## The iOS field companion
 
-A native SwiftUI app (`ios/`, planned) that puts the whole shoot-night
-routine in one place: this planner's numbers plus cloud layers from several
-models, smoke and haze, seeing, dew and wind, aurora, Night AR, map
-planner lines, and exposure tools. It gives one go / marginal / no-go
-verdict that always names its limiting factor. A small stateless Cloudflare
-Worker (`worker/`, planned) serves the live conditions. Plan and build
-order: [`docs/ios/PLAN.md`](docs/ios/PLAN.md). Why: ADR-0009 and ADR-0010.
+A native SwiftUI app (`ios/`) that puts the whole shoot-night routine in one
+place: this planner's numbers plus cloud layers from several models, smoke
+and haze, seeing, dew and wind, aurora, a live Sky camera/compass overlay,
+map planner lines, and exposure tools. It gives one go / marginal / no-go
+verdict that always names its limiting factor.
+
+**Current state:** in development, built and run on the owner's own iPhone
+(not distributed — no TestFlight or App Store release yet). A stateless
+Cloudflare Worker (`worker/`) is deployed and serving live conditions at
+`https://dark-sky-conditions.brisk-delta-c382.workers.dev`. Several
+screens — a per-target shot window, sky events — are built but not yet
+reachable from any tab, and some capabilities (compass/AR alignment, a
+Milky Way capture, background alerts) have not been tested at a dark site
+yet. See [`docs/ios/CAPABILITIES.md`](docs/ios/CAPABILITIES.md) for the
+full capability-by-capability state, and
+[`docs/ios/PLAN.md`](docs/ios/PLAN.md) for the build order. Why: ADR-0009
+and ADR-0010.
 
 ## Documentation
 
+- [`docs/ios/CAPABILITIES.md`](docs/ios/CAPABILITIES.md) — the iOS app,
+  capability by capability: implemented, reachable, tested where.
 - [`docs/data-licensing.md`](docs/data-licensing.md) — every source, its
   license, and the sources we refuse to use (Falchi 2016, Lorenz).
 - [`docs/methods.md`](docs/methods.md) — exactly how each displayed number is
