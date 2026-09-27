@@ -41,6 +41,21 @@ extension LiveConditionsProviding {
     }
 }
 
+extension ConditionsProviding {
+    /// A refresh with where it came from (review B-4): `fetch(for:window:)`
+    /// for the real client; any other provider's snapshot reads as a fresh
+    /// answer, and none as `.nothing`.
+    func fetchWithStatus(for place: Place, window: DateInterval) async -> ConditionsFetch {
+        if let live = self as? any LiveConditionsProviding {
+            return await live.fetch(for: place, window: window)
+        }
+        let snapshot = await conditions(for: place, window: window)
+        return ConditionsFetch(
+            snapshot: snapshot, status: ConditionsStatus.of(snapshot, cached: false, workerConfigured: true),
+            nextRefresh: .distantFuture)
+    }
+}
+
 /// The real `ConditionsProviding` (M4). The Worker first, hedged: if it has not
 /// answered in `hedgeDelay`, or fails, cloud cover is fetched straight from
 /// Open-Meteo in parallel (everything else then unavailable). With no Worker

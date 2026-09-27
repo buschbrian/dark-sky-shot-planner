@@ -110,6 +110,8 @@ enum ConditionsSourceStatus: Equatable {
     case none(reason: String)
     case lastGood(fetched: Date, refreshing: Bool)
     case service(fetched: Date)
+    /// A 304 from the service: the same run, re-checked; never "offline" (review B-4).
+    case confirmed(fetched: Date, checked: Date)
     case direct(serviceConfigured: Bool)
 
     func text(now: Date, timeZone: TimeZone = .current) -> String {
@@ -124,6 +126,8 @@ enum ConditionsSourceStatus: Equatable {
                 : "Offline: last good copy, fetched \(Voice.ago(fetched, now: now))."
         case .service(let fetched):
             "Live conditions service, fetched \(fetched.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: timeZone)))."
+        case .confirmed(let fetched, let checked):
+            "Live conditions service, checked \(Voice.ago(checked, now: now)) and unchanged since \(fetched.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: timeZone)))."
         case .direct(let configured):
             configured
                 ? "The live conditions service didn't answer, so clouds come from Open-Meteo directly. Smoke, haze and wind show their last good copy or read unavailable."
@@ -133,7 +137,7 @@ enum ConditionsSourceStatus: Equatable {
 
     var tone: StatusTone {
         switch self {
-        case .checking, .service: .neutral
+        case .checking, .service, .confirmed: .neutral
         case .direct(let configured): configured ? .caution : .neutral
         case .lastGood: .caution
         case .none: .caution
@@ -143,7 +147,7 @@ enum ConditionsSourceStatus: Equatable {
     var symbol: String {
         switch self {
         case .checking: "arrow.triangle.2.circlepath"
-        case .service: "antenna.radiowaves.left.and.right"
+        case .service, .confirmed: "antenna.radiowaves.left.and.right"
         case .direct: "cloud"
         case .lastGood: "clock.arrow.circlepath"
         case .none: "wifi.slash"

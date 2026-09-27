@@ -59,8 +59,11 @@ public enum OpenMeteoDirect {
 
     public static let host = URL(string: "https://api.open-meteo.com")!
     /// Shown as the cloud fields' source, so the screen says where they came from.
-    public static let source = "Open-Meteo (direct; Worker unreachable)"
-    public static let otherFieldsReason = "Worker unreachable; only cloud cover is fetched directly"
+    /// Worded like `ConditionsStatus.workerSilentDirect` (review B-4).
+    public static let source = "Open-Meteo (direct; the conditions service didn't answer)"
+    /// What snapshots saved before 2026-09-27 carry; still read as a fallback.
+    static let legacySource = "Open-Meteo (direct; Worker unreachable)"
+    public static let otherFieldsReason = "the conditions service didn't answer; only cloud cover is fetched directly"
     /// With no Worker configured the direct fetch is the normal mode, not a fallback, so it says so calmly.
     public static let directSource = "Open-Meteo (direct)"
     public static let notSetUpReason = "no conditions Worker set up; only cloud cover is fetched directly"
@@ -221,7 +224,7 @@ public enum OpenMeteoDirect {
 }
 
 extension OpenMeteoDirect {
-    public static let lastGoodReason = "Worker unreachable; last good copy"
+    public static let lastGoodReason = "the conditions service didn't answer; last good copy"
 
     /// ADR-0006: a failed feed shows its last good value with its age. Fields
     /// the fallback cannot fetch take the cached response's series for the same
@@ -256,6 +259,7 @@ extension ConditionsResponse {
     /// Built by `OpenMeteoDirect` rather than received from the Worker.
     public var isDirectFallback: Bool {
         let source = fields["cloud_cover_total"]?.source
-        return source == OpenMeteoDirect.source || source == OpenMeteoDirect.directSource
+        return source == OpenMeteoDirect.source || source == OpenMeteoDirect.legacySource
+            || source == OpenMeteoDirect.directSource
     }
 }

@@ -41,7 +41,7 @@ struct SkyEventBadge: View {
     }
 
     private var runStart: NightDate {
-        let start = weekStart ?? NightDate.containing(.now, in: place.timeZone)
+        let start = weekStart ?? place.tonight()
         return night < start ? night : start
     }
 }

@@ -38,9 +38,11 @@ struct TonightScreen: View {
             VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                 if let place = state.place {
                     PlaceHeader(place: place, zoneIsGuess: zoneIsGuess(place), now: now, change: chooseLocation)
+                    let tonight = state.tonight(at: now)
                     NightPicker(
                         night: night,
-                        tonight: NightDate.containing(now, in: place.timeZone),
+                        tonight: tonight,
+                        relative: model.relativeLabel(night: night, tonight: tonight, place: place),
                         choose: choose,
                         openCalendar: { showCalendar = true })
                     answer(place: place, night: night, now: now)
@@ -73,7 +75,7 @@ struct TonightScreen: View {
             await retryZoneLookup()
         }
         .sheet(isPresented: $showCalendar) {
-            NightCalendar(selected: night, tonight: NightDate.containing(now, in: state.place?.timeZone ?? .current), choose: choose)
+            NightCalendar(selected: night, tonight: state.tonight(at: now), choose: choose)
         }
         .sheet(isPresented: $showFactors) {
             if let verdict = model.verdict {
@@ -123,10 +125,15 @@ struct TonightScreen: View {
             return .checking
         case .none(let reason):
             return .none(reason: reason)
-        case .loaded(let s, let cached):
-            if cached { return .lastGood(fetched: s.fetchedUTC, refreshing: model.refreshing) }
-            if s.response.isDirectFallback { return .direct(serviceConfigured: workerConfigured) }
-            return .service(fetched: s.fetchedUTC)
+        case .loaded(let s, let status):
+            switch status {
+            case .offlineCache: return .lastGood(fetched: s.fetchedUTC, refreshing: model.refreshing)
+            case .workerSilentDirect: return .direct(serviceConfigured: true)
+            case .notSetUp: return .direct(serviceConfigured: false)
+            case .liveWorker(let checked, let revalidated):
+                return revalidated ? .confirmed(fetched: s.fetchedUTC, checked: checked) : .service(fetched: s.fetchedUTC)
+            case .nothing: return .none(reason: "No conditions yet.")
+            }
         }
     }
 
@@ -139,8 +146,7 @@ struct TonightScreen: View {
     }
 
     private func choose(_ night: NightDate) {
-        let tonight = NightDate.containing(.now, in: state.place?.timeZone ?? .current)
-        state.chosenNight = night == tonight ? nil : night
+        state.chosenNight = night == state.tonight() ? nil : night
     }
 
     /// A zone guessed offline is looked up again once the phone can reach Apple.

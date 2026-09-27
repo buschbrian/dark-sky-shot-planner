@@ -6,7 +6,7 @@ import SkyCore
 /// One night's verdict as stored on a spot and handed to the widget: the
 /// level, the factor that set it, and where that factor's number came from.
 nonisolated struct VerdictSummary: Codable, Hashable, Sendable {
-    enum Cause: String, Codable, Sendable { case rating, incompleteData, staleData }
+    enum Cause: String, Codable, Sendable { case rating, incompleteData, staleData, noMoonFreeDarkness }
 
     let level: VerdictLevel
     let cause: Cause
@@ -24,7 +24,7 @@ nonisolated struct VerdictSummary: Codable, Hashable, Sendable {
         case (.noGo, _): "No-go"
         case (.marginal, .incompleteData): "Marginal — incomplete data"
         case (.marginal, .staleData): "Marginal — stale data"
-        case (.marginal, .rating): "Marginal"
+        case (.marginal, .rating), (.marginal, .noMoonFreeDarkness): "Marginal"
         }
     }
 
@@ -86,6 +86,10 @@ nonisolated struct SpotWeek: Codable, Hashable, Sendable {
     let requestedWindows: Int
     let fetchedWindows: Int
     let interrupted: Bool
+    /// Where the check's conditions came from, the weakest window's answer
+    /// (`ConditionsStatus.combined`, review B-4); nil when none were needed,
+    /// and for weeks saved before this field existed.
+    var conditionsStatus: ConditionsStatus? = nil
 
     var outcome: CheckOutcome {
         if interrupted { return .interrupted }

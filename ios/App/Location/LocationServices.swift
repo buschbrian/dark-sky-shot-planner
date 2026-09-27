@@ -79,7 +79,10 @@ struct RememberedPlace: Codable, Equatable {
         defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(RememberedPlace.self, from: $0) }
     }
 
-    func save(_ defaults: UserDefaults = .standard) {
+    /// UI tests never persist a place: a later launch (another test, or the
+    /// owner's) must not open on a test's coordinates (review P2 #3).
+    func save(_ defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) {
+        guard !arguments.contains("-DarkSkyUITest"), !arguments.contains("-DarkSkyUITestLive") else { return }
         if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.key) }
     }
 }

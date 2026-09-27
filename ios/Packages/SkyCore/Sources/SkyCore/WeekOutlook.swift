@@ -53,7 +53,7 @@ public enum WeekOutlook {
             cloud: clouds.map { .init(model: $0.model, mean: WindowMean.of($0, over: windows)) })
     }
 
-    /// Consecutive nights from `first` (default: the night containing `now` at the spot).
+    /// Consecutive nights from `first` (default: "tonight" at the spot, `NightDate.current`).
     /// - Parameters:
     ///   - kp: Kp observed and forecast; nil when space weather is unavailable.
     ///   - verdict: rates one night; it never sees the aurora flag.
@@ -68,7 +68,7 @@ public enum WeekOutlook {
         auroraRule: AuroraRule,
         verdict: (NightOutlook) -> V
     ) throws(AstronomyError) -> [WeekRow<V>] {
-        let start = first ?? NightDate.containing(now, in: timeZone)
+        let start = first ?? NightDate.current(at: now, observer: observer, timeZone: timeZone)
         var nights: [NightOutlook] = []
         for offset in 0..<max(0, count) {
             nights.append(try night(start.adding(days: offset), observer: observer, timeZone: timeZone, clouds: clouds))

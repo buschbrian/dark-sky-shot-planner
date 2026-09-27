@@ -6,6 +6,8 @@ import SwiftUI
 struct NightPicker: View {
     let night: NightDate
     let tonight: NightDate
+    /// `TonightModel.relativeLabel`: "tonight", "last night (ended 5:43 AM)", …
+    let relative: String
     let choose: (NightDate) -> Void
     let openCalendar: () -> Void
     @Environment(\.palette) private var palette
@@ -37,17 +39,6 @@ struct NightPicker: View {
                     .accessibilityIdentifier("tonight.backToTonight")
             }
             step("chevron.right", "Next night", "tonight.nextNight", 1)
-        }
-    }
-
-    private var relative: String {
-        let days = daysBetween(tonight, night)
-        switch days {
-        case 0: return "tonight"
-        case 1: return "tomorrow night"
-        case -1: return "last night"
-        case let d where d > 0: return "in \(d) nights"
-        default: return "\(-days) nights ago"
         }
     }
 

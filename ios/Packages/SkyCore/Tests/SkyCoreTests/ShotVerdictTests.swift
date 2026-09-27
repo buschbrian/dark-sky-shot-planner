@@ -155,6 +155,11 @@ struct ShotVerdictTests {
         let verdict = try shot.verdict(conditions: Self.response(clouds: Self.clearingLate), config: .bundled(), now: Self.now)
         #expect(verdict.level == .noGo)
         #expect(verdict.factor("moon_free_minutes")?.value == 0)
+        // Review B-5: no-go on astronomy alone, nothing missing, and the reason is the target, not the moon.
+        #expect(verdict.cause == .noMoonFreeDarkness)
+        #expect(!verdict.flags.contains(.incompleteData))
+        #expect(verdict.headline == "No-go: the target is never up in moon-free darkness")
+        #expect(ShotText.verdictLine(ShotReadout(verdict)) == "No-go: the target is never up in moon-free darkness")
     }
 
     static let ageCases: [(TimeInterval, String)] = [

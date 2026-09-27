@@ -78,7 +78,8 @@ targets:
   DarkSkyWidgets:
     type: app-extension
     platform: iOS
-    sources: [Widgets]
+    # ConditionsStatus: SpotWeek (Widgets/Shared) stores where a check's conditions came from.
+    sources: [Widgets, App/Conditions/ConditionsStatus.swift]
     dependencies:
       - package: SkyCore
       - sdk: WidgetKit.framework

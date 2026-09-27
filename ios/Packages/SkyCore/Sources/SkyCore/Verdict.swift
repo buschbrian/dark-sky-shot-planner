@@ -31,6 +31,9 @@ public enum FactorStatus: Sendable, Hashable {
     /// Thresholds are `null`: value and source are shown, never rated.
     case shownOnly
     case unavailable(reason: String)
+    /// Nothing to weigh it over: the night has no moon-free darkness, so the
+    /// factor cannot change the verdict and is not missing either (review B-5).
+    case notApplicable(reason: String)
 }
 
 public struct Provenance: Sendable, Hashable {
@@ -79,6 +82,10 @@ public struct FactorAssessment: Sendable, Hashable {
         if case .unavailable = status { true } else { false }
     }
 
+    public var isNotApplicable: Bool {
+        if case .notApplicable = status { true } else { false }
+    }
+
     public var severity: Double? { value.flatMap(factor.severity) }
 
     /// Spread across the models that could be used, shown as a band rather than averaged.
@@ -97,7 +104,7 @@ extension FactorReading {
     var isUsable: Bool {
         switch status {
         case .rated, .shownOnly: true
-        case .unavailable: false
+        case .unavailable, .notApplicable: false
         }
     }
 }
@@ -127,7 +134,14 @@ public struct Verdict: Sendable, Hashable {
         case rating
         case incompleteData
         case staleData
+        /// No moon-free darkness: no-go on astronomy alone, and no condition
+        /// could change that (`whyConditionsDontMatter` says why).
+        case noMoonFreeDarkness
     }
+
+    /// The words for `Cause.noMoonFreeDarkness`.
+    public static let moonUpAllDarkness = "the moon is up through all of darkness"
+    public static let noDarkness = "there is no astronomical darkness"
 
     public enum EvaluationError: Error, Sendable, Hashable {
         case noGatingFactors
@@ -144,6 +158,26 @@ public struct Verdict: Sendable, Hashable {
     public let windows: [MoonFreeWindow]
     public let aurora: AuroraSignal?
     public let evaluatedAt: Date
+    /// Set only for `Cause.noMoonFreeDarkness`: "the moon is up through all of darkness".
+    public var whyConditionsDontMatter: String? = nil
+
+    /// "No-go: the moon is up through all of darkness" when no condition
+    /// could matter; nil otherwise (the views then name the limiting factor).
+    public var headline: String? {
+        whyConditionsDontMatter.map { "No-go: \($0)" }
+    }
+
+    /// The same reason as a sentence to set under the level word:
+    /// "The moon is up through all of darkness".
+    public var reasonLine: String? {
+        whyConditionsDontMatter.map { $0.prefix(1).uppercased() + $0.dropFirst() }
+    }
+
+    /// The factors worth listing: all of them, or on a night with no
+    /// moon-free darkness only the one that decided it.
+    public var shownFactors: [FactorAssessment] {
+        factors.filter { !$0.isNotApplicable }
+    }
 
     /// Non-gating factors rated below good (dew, PM2.5, observed AQI, …).
     public var advisories: [FactorAssessment] {
@@ -160,11 +194,32 @@ public struct Verdict: Sendable, Hashable {
         aurora: AuroraSignal? = nil,
         config: VerdictConfig,
         now: Date,
-        galacticCoreIsTarget: Bool = false
+        galacticCoreIsTarget: Bool = false,
+        noWindowReason: String? = nil
     ) throws(EvaluationError) -> Verdict {
         let assessor = FactorAssessor(
             night: night, conditions: conditions, freshness: config.freshness,
             now: now, galacticCoreIsTarget: galacticCoreIsTarget)
+
+        // Review B-5: with no moon-free darkness the night is no-go on
+        // astronomy alone. Nothing else is weighed, so nothing is "missing".
+        if night.moonFreeWindows.isEmpty {
+            let reason = noWindowReason ?? (night.darkness == nil ? noDarkness : moonUpAllDarkness)
+            let factors = config.thresholds.factors.keys.sorted().map { key in
+                let factor = config.thresholds.factors[key]!
+                return key == FactorAssessor.moonFreeKey
+                    ? assessor.assess(key, factor)
+                    : FactorAssessor.notApplicable(key, factor, galacticCoreIsTarget: galacticCoreIsTarget, reason: reason)
+            }
+            guard let limiting = factors.first(where: { $0.key == FactorAssessor.moonFreeKey && $0.gatesVerdict })
+                ?? factors.first(where: \.gatesVerdict) else { throw .noGatingFactors }
+            var flags = Set<VerdictFlag>()
+            if aurora?.isPossible == true { flags.insert(.auroraPossible) }
+            return Verdict(
+                level: .noGo, limiting: limiting, cause: .noMoonFreeDarkness, flags: flags, factors: factors,
+                windows: [], aurora: aurora, evaluatedAt: now, whyConditionsDontMatter: reason)
+        }
+
         let factors = config.thresholds.factors.keys.sorted().map { key in
             assessor.assess(key, config.thresholds.factors[key]!)
         }
@@ -207,7 +262,8 @@ public struct Verdict: Sendable, Hashable {
         if signal?.isPossible == true { flags.insert(.auroraPossible) } else { flags.remove(.auroraPossible) }
         return Verdict(
             level: level, limiting: limiting, cause: cause, flags: flags, factors: factors,
-            windows: windows, aurora: signal, evaluatedAt: evaluatedAt)
+            windows: windows, aurora: signal, evaluatedAt: evaluatedAt,
+            whyConditionsDontMatter: whyConditionsDontMatter)
     }
 
     /// Lower rating first, then further past the edges, then key order.
@@ -251,6 +307,16 @@ struct FactorAssessor {
 
     static let onDeviceSource = "astronomy-engine (on device)"
     static let galacticCoreKey = "gc_max_altitude"
+    static let moonFreeKey = "moon_free_minutes"
+
+    /// A factor with nothing to weigh it over (review B-5).
+    static func notApplicable(
+        _ key: String, _ factor: ConditionsThresholds.Factor, galacticCoreIsTarget: Bool, reason: String
+    ) -> FactorAssessment {
+        FactorAssessment(
+            key: key, factor: factor, gatesVerdict: factor.gatesVerdict || (galacticCoreIsTarget && key == galacticCoreKey),
+            status: .notApplicable(reason: reason), value: nil, provenance: nil, freshness: .unavailable, readings: [])
+    }
 
     let night: NightReport
     let conditions: ConditionsResponse?

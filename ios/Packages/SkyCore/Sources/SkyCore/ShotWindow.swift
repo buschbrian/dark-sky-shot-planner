@@ -179,6 +179,8 @@ public struct ShotWindow: Sendable, Hashable {
             moonFreeWindows: mf, moonFreeMinutes: usableMinutes, gc: gcInWindows, terrain: night.terrain)
     }
 
+    static let targetNeverUp = "the target is never up in moon-free darkness"
+
     /// PLAN.md §Verdict over the shot window rather than the whole night.
     /// A GC shot makes the GC's altitude a gate, as the thresholds file says.
     public func verdict(
@@ -186,7 +188,9 @@ public struct ShotWindow: Sendable, Hashable {
     ) throws(Verdict.EvaluationError) -> Verdict {
         try Verdict.evaluate(
             night: nightForVerdict, conditions: conditions, aurora: aurora, config: config, now: now,
-            galacticCoreIsTarget: target == .galacticCore)
+            galacticCoreIsTarget: target == .galacticCore,
+            // Moon-free darkness exists, but never with the target up.
+            noWindowReason: night.moonFreeWindows.isEmpty ? nil : Self.targetNeverUp)
     }
 }
 

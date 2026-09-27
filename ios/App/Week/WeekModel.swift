@@ -27,8 +27,20 @@ nonisolated struct WeekBlock: Sendable, Hashable {
 nonisolated struct WeekConditions: Sendable {
     var blocks: [(block: WeekBlock, snapshot: ConditionsSnapshot?)]
     var spaceWeather: SpaceWeatherResponse?
+    /// Where each block's answer came from (review B-4), in block order.
+    var statuses: [ConditionsStatus] = []
 
     static let none = WeekConditions(blocks: [], spaceWeather: nil)
+
+    /// "Live conditions, checked 3 min ago, unchanged." for the weakest
+    /// block that answered, with how many did; nil when none did.
+    func statusLine(now: Date) -> String? {
+        // The blocks that answered; the ones that did not are counted below.
+        let answered = zip(blocks, statuses).filter { $0.0.snapshot != nil }.map(\.1)
+        guard let status = ConditionsStatus.combined(answered) else { return nil }
+        let partial = answeredBlocks == blocks.count ? "" : " (\(answeredBlocks) of \(blocks.count) forecast windows)"
+        return "\(status.summary(now: now))\(partial)."
+    }
 
     func snapshot(for date: NightDate) -> ConditionsSnapshot? {
         blocks.first { $0.block.nights.contains(date) }?.snapshot
@@ -42,11 +54,17 @@ nonisolated struct WeekConditions: Sendable {
     /// answering from an older cache never replaces a newer forecast on screen.
     func keepingNewestRuns(from new: WeekConditions) -> WeekConditions {
         let old = Dictionary(blocks.map { ($0.block, $0.snapshot) }, uniquingKeysWith: { a, _ in a })
+        let kept = new.blocks.map { entry in
+            (block: entry.block, snapshot: WeekPlanner.newer(old[entry.block] ?? nil, entry.snapshot))
+        }
+        // A block that answered nothing this time but still shows an earlier copy is offline, not empty.
+        let statuses = kept.enumerated().map { i, entry in
+            let status = i < new.statuses.count ? new.statuses[i] : .nothing
+            guard status == .nothing, let shown = entry.snapshot else { return status }
+            return ConditionsStatus.offlineCache(fetchedAt: shown.fetchedUTC)
+        }
         return WeekConditions(
-            blocks: new.blocks.map { entry in
-                (entry.block, WeekPlanner.newer(old[entry.block] ?? nil, entry.snapshot))
-            },
-            spaceWeather: WeekPlanner.newer(spaceWeather, new.spaceWeather))
+            blocks: kept, spaceWeather: WeekPlanner.newer(spaceWeather, new.spaceWeather), statuses: statuses)
     }
 }
 
@@ -227,15 +245,17 @@ nonisolated enum WeekPlanner {
         _ blocks: [WeekBlock], place: Place, provider: any ConditionsProviding
     ) async -> WeekConditions {
         async let sw = provider.spaceWeather(near: place)
-        let snapshots = await withTaskGroup(of: (Int, ConditionsSnapshot?).self) { group in
+        let fetches = await withTaskGroup(of: (Int, ConditionsFetch).self) { group in
             for (i, block) in blocks.enumerated() {
-                group.addTask { (i, await provider.conditions(for: place, window: block.window)) }
+                group.addTask { (i, await provider.fetchWithStatus(for: place, window: block.window)) }
             }
-            var out = [ConditionsSnapshot?](repeating: nil, count: blocks.count)
-            for await (i, s) in group { out[i] = s }
+            var out = [ConditionsFetch?](repeating: nil, count: blocks.count)
+            for await (i, f) in group { out[i] = f }
             return out
         }
-        return WeekConditions(blocks: Array(zip(blocks, snapshots)).map { ($0, $1) }, spaceWeather: await sw)
+        return WeekConditions(
+            blocks: Array(zip(blocks, fetches)).map { ($0, $1?.snapshot) }, spaceWeather: await sw,
+            statuses: fetches.map { $0?.status ?? .nothing })
     }
 
     #if DEBUG

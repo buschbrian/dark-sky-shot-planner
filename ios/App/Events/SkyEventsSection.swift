@@ -34,9 +34,9 @@ struct SkyEventsSection: View {
     }
 
     private var title: String {
-        night == NightDate.containing(.now, in: place.timeZone)
+        night == place.tonight()
             ? "In the sky tonight & this week"
-            : "In the sky from \(SkyEventsFormat.nightLabel(night, tonight: .containing(.now, in: place.timeZone)))"
+            : "In the sky from \(SkyEventsFormat.nightLabel(night, tonight: place.tonight()))"
     }
 
     @ViewBuilder private var content: some View {
@@ -55,7 +55,7 @@ struct SkyEventsSection: View {
     @ViewBuilder private func rows(_ all: [SkyEventHighlight]) -> some View {
         let week = all.filter { $0.night <= night.adding(days: 6) && $0.significance >= SkyEventHighlights.sectionThreshold }
         let later = all.filter { $0.night > night.adding(days: 6) && $0.significance >= SkyEventHighlights.sectionThreshold }
-        let tonight = NightDate.containing(.now, in: place.timeZone)
+        let tonight = place.tonight()
 
         if week.isEmpty {
             Text("Nothing notable in the sky this week beyond the Moon and the Milky Way.")

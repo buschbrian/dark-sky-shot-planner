@@ -11,7 +11,7 @@ import { initMap, setLayerVisible, getMap } from "./map/mapview";
 import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
-import { tonightIso } from "./state/tonight";
+import { type Site, tonightIso } from "./state/tonight";
 import { renderAnswer, renderAnswerError } from "./ui/answer";
 import { buildSkyEvents, type SkyEventsResult } from "./events/agenda";
 import { renderSkyEvents, renderSkyEventsMessage } from "./ui/skyevents";
@@ -115,12 +115,24 @@ function currentState(): UrlState {
   };
 }
 
+/**
+ * True while the date field holds the default "tonight" rather than a date
+ * the user or the link chose: it then follows the place, since which night is
+ * "tonight" before dawn depends on where it is still dark (review B-2).
+ */
+let dateIsDefault = true;
+
+function siteOf(state: UrlState): Site | null {
+  return state.lat !== null && state.lon !== null ? { latitude: state.lat, longitude: state.lon } : null;
+}
+
 function applyState(state: UrlState): void {
   if (state.lat !== null && state.lon !== null) {
     input("coord-input").value = `${state.lat}, ${state.lon}`;
   }
+  dateIsDefault = !state.date;
   if (state.date) input("date-input").value = state.date;
-  else input("date-input").value = tonightIso();
+  else input("date-input").value = tonightIso(new Date(), siteOf(state));
   for (const [i, id] of LAYER_CHECKBOX_IDS.entries()) {
     check(id).checked = state.layers.includes(LAYER_VALUES[i]!);
   }
@@ -135,6 +147,11 @@ function eveningUtcFor(isoDate: string): Date {
 
 async function computeAndRender(): Promise<void> {
   const state = currentState();
+  const site = siteOf(state);
+  if (dateIsDefault && site) {
+    state.date = tonightIso(new Date(), site);
+    input("date-input").value = state.date;
+  }
   updateUrlState(state);
   syncLayers(state.layers);
 
@@ -150,7 +167,7 @@ async function computeAndRender(): Promise<void> {
     );
     return;
   }
-  const dateIso = state.date ?? tonightIso();
+  const dateIso = state.date ?? tonightIso(new Date(), site);
 
   let report: NightReport;
   try {
@@ -451,7 +468,10 @@ async function boot(): Promise<void> {
 
   $("coord-apply").addEventListener("click", computeAndRender);
   $("coord-input").addEventListener("change", computeAndRender);
-  $("date-input").addEventListener("change", computeAndRender);
+  $("date-input").addEventListener("change", () => {
+    dateIsDefault = false;
+    void computeAndRender();
+  });
   for (const id of LAYER_CHECKBOX_IDS) check(id).addEventListener("change", computeAndRender);
 
   const mapContainer = $("map");

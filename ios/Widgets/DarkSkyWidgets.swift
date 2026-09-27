@@ -10,7 +10,8 @@ struct DarkSkyWidgets: WidgetBundle {
 }
 
 /// One night at the pinned spot. The astronomy is computed here, into the
-/// timeline (one entry per night from local noon); only the verdict comes
+/// timeline (one entry per night, from the previous night's dawn: review
+/// B-2's "tonight"); only the verdict comes
 /// from the app through the App Group, with the age of the data behind it.
 struct NightCard: Sendable {
     let spotName: String
@@ -56,16 +57,18 @@ struct TonightProvider: TimelineProvider {
               let observer = try? Observer(latitude: payload.latitude, longitude: payload.longitude)
         else { return [TonightEntry(date: now, card: nil, relevance: nil)] }
         let horizon = payload.horizonCSV.flatMap { try? HorizonProfile.parse(csv: $0) }
-        let first = NightDate.containing(now, in: tz)
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = tz
+        let current = NightDate.currentSpan(at: now, observer: observer, timeZone: tz)
         var out: [TonightEntry] = []
+        var start = now
+        var end = current.until
         for k in 0..<nights {
-            let night = first.adding(days: k)
+            let night = current.night.adding(days: k)
             let evening = night.evening(in: tz)
-            // A night starts at local noon on its date (NightDate.containing).
-            let start = k == 0 ? now : cal.date(bySettingHour: 12, minute: 0, second: 0, of: evening) ?? now
-            let end = cal.date(byAdding: .day, value: 1, to: cal.date(bySettingHour: 12, minute: 0, second: 0, of: evening) ?? evening) ?? evening
+            // A night is "tonight" from the previous night's dawn to its own (NightDate.current).
+            if k > 0 {
+                start = end
+                end = night.adding(days: 1).becomesCurrent(observer: observer, timeZone: tz)
+            }
             let report = try? Planner.planNight(observer, evening: evening, horizon: horizon)
             let verdict = payload.week?.night(night)?.verdict
             // Entry times: the night's start, and the moment its data turns stale if that falls inside it.
@@ -75,7 +78,8 @@ struct TonightProvider: TimelineProvider {
                 let isStale = verdict?.limitingAsOf.map { asOf in staleAt(asOf).map { t >= $0 } ?? false } ?? false
                 out.append(TonightEntry(
                     date: t,
-                    card: NightCard(spotName: payload.name, night: night, isTonight: k == 0,
+                    // Each entry shows while its night is the current one.
+                    card: NightCard(spotName: payload.name, night: night, isTonight: true,
                                     moonFreeMinutes: report?.moonFreeMinutes, aboveSkyline: horizon != nil,
                                     verdict: verdict, verdictStale: isStale),
                     relevance: relevance(verdict: isStale ? nil : verdict, from: t, darknessEnd: report?.darkness?.end)))

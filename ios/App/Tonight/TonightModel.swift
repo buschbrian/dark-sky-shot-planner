@@ -11,6 +11,8 @@ final class TonightModel {
         let report: NightReport
         let strip: NightStrip
         let evening: Date
+        /// Astronomical dawn, or civil dawn without astronomical darkness (`NightDate.darknessEnd`).
+        var darknessEnd: Date? = nil
     }
 
     struct AstronomyFailure: Error {
@@ -20,9 +22,26 @@ final class TonightModel {
     enum ConditionsState {
         case idle
         case loading
-        /// `cached`: an older copy from disk, shown while (or because) a refresh failed.
-        case loaded(ConditionsSnapshot, cached: Bool)
+        /// `status`: where the copy came from (review B-4). A Worker 304 keeps
+        /// the old `fetchedUTC` but is `.liveWorker(revalidated: true)`, never
+        /// offline; `.offlineCache` is an older copy from disk.
+        case loaded(ConditionsSnapshot, status: ConditionsStatus)
         case none(reason: String)
+
+        /// The origin line under the verdict.
+        func originLine(refreshing: Bool, now: Date) -> String {
+            switch self {
+            case .idle, .loading:
+                return "Conditions: fetching…"
+            case .none(let reason):
+                return "Conditions: \(reason)"
+            case .loaded(_, let status):
+                if refreshing, case .offlineCache(let at) = status {
+                    return "Conditions: saved copy from \(ConditionsStatus.ago(at, now)), refreshing…"
+                }
+                return status.summary(now: now)
+            }
+        }
     }
 
     private(set) var key: String?
@@ -97,19 +116,18 @@ final class TonightModel {
             conditions = .loading
             if let live = provider as? any LiveConditionsProviding,
                let cached = await live.cachedConditions(for: place, window: window), key == self.key {
-                conditions = .loaded(cached, cached: true)
+                conditions = .loaded(cached, status: .offlineCache(fetchedAt: cached.fetchedUTC))
                 updateVerdict()
             }
         }
         refreshing = true
-        let asked = Date.now
         let interval = Perf.signposter.beginInterval("Conditions fetch")
-        let snapshot = await provider.conditions(for: place, window: window)
+        let result = await provider.fetchWithStatus(for: place, window: window)
         Perf.signposter.endInterval("Conditions fetch", interval)
         guard key == self.key else { return }
         refreshing = false
-        if let snapshot {
-            conditions = .loaded(snapshot, cached: snapshot.fetchedUTC < asked.addingTimeInterval(-5))
+        if let snapshot = result.snapshot {
+            conditions = .loaded(snapshot, status: result.status)
         } else if self.snapshot == nil {
             conditions = .none(reason: "Offline, and nothing cached for this place and night.")
         }
@@ -156,9 +174,9 @@ final class TonightModel {
         guard let observer = try? place.observer() else {
             return .failure(AstronomyFailure(message: "Those coordinates are out of range."))
         }
-        let evening = night.evening(in: place.timeZone)
+        let zone = place.timeZone
         return await Task.detached(priority: priority) {
-            run(observer: observer, evening: evening)
+            run(observer: observer, night: night, timeZone: zone)
         }.value
     }
 
@@ -166,10 +184,11 @@ final class TonightModel {
         guard let observer = try? place.observer() else {
             return .failure(AstronomyFailure(message: "Those coordinates are out of range."))
         }
-        return run(observer: observer, evening: night.evening(in: place.timeZone))
+        return run(observer: observer, night: night, timeZone: place.timeZone)
     }
 
-    nonisolated private static func run(observer: Observer, evening: Date) -> Result<Astronomy, AstronomyFailure> {
+    nonisolated private static func run(observer: Observer, night: NightDate, timeZone: TimeZone) -> Result<Astronomy, AstronomyFailure> {
+        let evening = night.evening(in: timeZone)
         let interval = Perf.signposter.beginInterval("Astronomy")
         let t0 = Date.now
         defer {
@@ -179,9 +198,31 @@ final class TonightModel {
         do {
             let report = try Planner.planNight(observer, evening: evening)
             let strip = try NightStrip.build(report: report, observer: observer, evening: evening)
-            return .success(Astronomy(report: report, strip: strip, evening: evening))
+            let end = report.darkness?.end ?? night.darknessEnd(observer: observer, timeZone: timeZone)
+            return .success(Astronomy(report: report, strip: strip, evening: evening, darknessEnd: end))
         } catch {
             return .failure(AstronomyFailure(message: "The astronomy calculation failed (\(error.operation))."))
+        }
+    }
+
+    /// The date row's second line: "tonight", "tomorrow night", and for the
+    /// night before tonight "last night (ended 5:43 AM)" once its astronomy
+    /// is in (review B-2: the app no longer opens on it after dawn).
+    func relativeLabel(night: NightDate, tonight: NightDate, place: Place) -> String {
+        let label = Self.relativeLabel(night: night, tonight: tonight)
+        guard night.adding(days: 1) == tonight, key == Self.key(place, night),
+              case .success(let a)? = astronomy, let end = a.darknessEnd else { return label }
+        return "\(label) (ended \(Format.clock(end, place.timeZone)))"
+    }
+
+    static func relativeLabel(night: NightDate, tonight: NightDate) -> String {
+        let days = Calendar(identifier: .gregorian).dateComponents([.day], from: Format.noon(tonight), to: Format.noon(night)).day ?? 0
+        switch days {
+        case 0: return "tonight"
+        case 1: return "tomorrow night"
+        case -1: return "last night"
+        case let d where d > 0: return "in \(d) nights"
+        default: return "\(-days) nights ago"
         }
     }
 

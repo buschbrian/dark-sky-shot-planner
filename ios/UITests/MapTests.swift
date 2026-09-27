@@ -10,7 +10,8 @@ final class MapTests: XCTestCase {
     @MainActor
     private func openMap() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-resetMapState", "-FieldMode", "NO"]
+        // -DarkSkyUITest: no remembered place from an earlier launch (review P2 #2).
+        app.launchArguments = ["-DarkSkyUITest", "-resetMapState", "-FieldMode", "NO"]
         app.launch()
         app.tabBars.buttons["Map"].tap()
         return app

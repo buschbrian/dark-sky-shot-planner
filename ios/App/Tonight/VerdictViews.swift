@@ -53,15 +53,16 @@ struct FactorsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.palette) private var palette
 
-    private var gating: [FactorAssessment] { verdict.factors.filter(\.gatesVerdict) }
-    private var advisories: [FactorAssessment] { verdict.factors.filter { !$0.gatesVerdict } }
+    private var gating: [FactorAssessment] { verdict.shownFactors.filter(\.gatesVerdict) }
+    private var advisories: [FactorAssessment] { verdict.shownFactors.filter { !$0.gatesVerdict } }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                     StatusBadge(level: StatusLevel(verdict.level), large: true)
-                    Text("The worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
+                    Text(verdict.headline.map { "\($0). Conditions don't matter tonight." }
+                        ?? "The worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
                         .font(.dsFootnote)
                         .foregroundStyle(palette.secondary)
                     group("Gates the verdict", gating)
@@ -136,6 +137,7 @@ private struct FactorRow: View {
         case .rated(let r): r.word
         case .shownOnly: "not rated"
         case .unavailable: Voice.unavailable
+        case .notApplicable: "not applicable"
         }
     }
 
@@ -146,6 +148,7 @@ private struct FactorRow: View {
         case .rated(.poor): StatusLevel.noGo.symbol
         case .shownOnly: "info.circle"
         case .unavailable: "circle.dashed"
+        case .notApplicable: "moon"
         }
     }
 }
@@ -175,6 +178,8 @@ enum FactorText {
             return "\(f.factor.label) is unavailable\(reason(f, workerConfigured: workerConfigured).map { " (\($0))" } ?? "")"
         case .staleData:
             return "\(f.factor.label) is stale: \(value(f))"
+        case .noMoonFreeDarkness:
+            return v.reasonLine ?? "No moon-free darkness"
         }
     }
 

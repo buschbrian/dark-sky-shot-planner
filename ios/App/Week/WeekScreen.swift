@@ -85,7 +85,7 @@ final class WeekLoader {
             let config = try Self.config.get()
             let observer = try place.observer()
             let zone = place.timeZone
-            let key = WeekCache.Key(place: place, first: NightDate.containing(now, in: zone))
+            let key = WeekCache.Key(place: place, first: place.tonight(at: now))
             if nights.isEmpty, let last = WeekCache.rows[key] {
                 nights = last.rows
                 conditions = WeekCache.conditions[key] ?? .none
@@ -223,16 +223,11 @@ private struct WeekList: View {
         switch loader.phase {
         case .computing: return "Working out the nights on this phone…"
         case .fetching:
-            guard let receipt = loader.conditions.oldestReceipt else { return "Next 7 nights. Checking conditions…" }
-            return "Conditions received \(Voice.ago(loader.computedAt.timeIntervalSince(receipt))). Checking for a newer run…"
+            guard let line = loader.conditions.statusLine(now: loader.computedAt) else { return "Next 7 nights. Checking conditions…" }
+            return "\(line) Checking for a newer run…"
         case .done:
-            let c = loader.conditions
-            guard let receipt = c.oldestReceipt else {
-                return "Conditions unavailable (offline, and nothing cached yet). Moon-free minutes are computed on this phone."
-            }
-            let answered = c.answeredBlocks == c.blocks.count
-                ? "" : " for \(c.answeredBlocks) of \(c.blocks.count) forecast windows; later nights read unavailable"
-            return "Conditions received \(Voice.ago(loader.computedAt.timeIntervalSince(receipt)))\(answered)."
+            return loader.conditions.statusLine(now: loader.computedAt)
+                ?? "Conditions unavailable (offline, and nothing cached yet). Moon-free minutes are computed on this phone."
         }
     }
 

@@ -15,6 +15,33 @@ nonisolated struct Place: Hashable, Codable, Sendable {
     func observer() throws -> Observer {
         try Observer(latitude: latitude, longitude: longitude)
     }
+
+    /// "Tonight" here (review B-2): last night only while it is still dark,
+    /// then the coming night. Cached until the answer changes at dawn.
+    func tonight(at now: Date = .now) -> NightDate {
+        TonightClock.shared.night(for: self, at: now)
+    }
+}
+
+/// Remembers each place's current night and when it stops being current, so
+/// screens can ask on every render without redoing the twilight search.
+nonisolated final class TonightClock: @unchecked Sendable {
+    static let shared = TonightClock()
+    private let lock = NSLock()
+    private var spans: [Place: CurrentNight] = [:]
+
+    func night(for place: Place, at now: Date) -> NightDate {
+        if let hit = lock.withLock({ spans[place] }), hit.contains(now) { return hit.night }
+        guard let observer = try? place.observer() else {
+            return NightDate.containing(now, in: place.timeZone)
+        }
+        let span = NightDate.currentSpan(at: now, observer: observer, timeZone: place.timeZone)
+        lock.withLock {
+            if spans.count > 32 { spans.removeAll() }
+            spans[place] = span
+        }
+        return span.night
+    }
 }
 
 /// State every screen shares: where, which night, and field mode. Screens read
@@ -33,7 +60,11 @@ final class AppState {
     }
 
     func night(at now: Date = .now) -> NightDate {
-        if let chosenNight { return chosenNight }
-        return NightDate.containing(now, in: place?.timeZone ?? .current)
+        chosenNight ?? tonight(at: now)
+    }
+
+    /// The current night whatever night is chosen (`Place.tonight`).
+    func tonight(at now: Date = .now) -> NightDate {
+        place?.tonight(at: now) ?? NightDate.containing(now, in: .current)
     }
 }

@@ -171,9 +171,13 @@ struct CheckStatus: View {
 
     func note(_ outcome: CheckOutcome) -> String? {
         switch outcome {
-        case .checked, .astronomyOnly: nil
+        case .astronomyOnly: nil
+        case .checked: spot.week?.conditionsStatus.map { "\($0.summary(now: .now))." }
         case .partial:
-            spot.week.map { "Conditions for \($0.fetchedWindows) of \($0.requestedWindows) forecast windows; other nights read unavailable." }
+            spot.week.map { week in
+                let windows = "Conditions for \(week.fetchedWindows) of \(week.requestedWindows) forecast windows; other nights read unavailable."
+                return week.conditionsStatus.map { "\($0.summary(now: .now)). \(windows)" } ?? windows
+            }
         case .noConditions: "Conditions unavailable, so no night can be Go; verdicts have incomplete data."
         case .interrupted: "iOS ended the background time; showing the previous check."
         }

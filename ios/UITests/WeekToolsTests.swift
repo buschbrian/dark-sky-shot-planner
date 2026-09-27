@@ -77,7 +77,7 @@ final class WeekToolsTests: XCTestCase {
         openWeek(app)
         let status = app.staticTexts["week.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 45))
-        expectation(for: NSPredicate(format: "label BEGINSWITH 'Conditions received'"), evaluatedWith: status)
+        expectation(for: NSPredicate(format: "label BEGINSWITH 'Live conditions, fetched'"), evaluatedWith: status)
         waitForExpectations(timeout: 15)
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'week.row.'"))
         XCTAssertEqual(rows.count, 7)
