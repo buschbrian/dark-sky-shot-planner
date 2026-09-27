@@ -82,6 +82,8 @@ final class MapEngineTests: XCTestCase {
         XCTAssertTrue(panelChoice.isSelected)
         app.buttons["basemap.topo"].tap()
         XCTAssertTrue(app.buttons["basemap.topo"].isSelected)
+        sheet(app, "collapsed")
+        XCTAssertTrue(credit.waitForExistence(timeout: 5))
         XCTAssertEqual(credit.label, "USGS The National Map")
     }
 
@@ -154,10 +156,14 @@ final class MapEngineTests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: near, object: center)], timeout: 10), .completed,
                        "re-centre failed: \(center.label)")
 
+        // "Plan at my location" goes through the one place-choice path (time-zone lookup), then offers Undo.
         app.buttons["map.pinMe"].tap()
         let place = app.staticTexts["map.placeLabel"]
-        XCTAssertTrue(place.waitForExistence(timeout: 10))
-        XCTAssertTrue(place.label.contains("38.3740, -109.9654"), place.label)
+        XCTAssertTrue(place.waitForExistence(timeout: 15))
+        let here = NSPredicate(format: "label CONTAINS '38.3740, -109.9654'")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: here, object: place)], timeout: 15), .completed,
+                       place.label)
+        XCTAssertTrue(app.buttons["map.undo"].waitForExistence(timeout: 5), "no Undo after Plan at my location")
         sleep(2)
         attach(app, "location-pin-me")
     }
@@ -244,9 +250,12 @@ final class MapEngineTests: XCTestCase {
         let shot = XCUIScreen.main.screenshot()
         let cg = try XCTUnwrap(shot.image.cgImage)
         let scale = CGFloat(cg.width) / shot.image.size.width
-        let f = app.otherElements["map.view"].frame
-        // The middle of the map: clear of the age badge, hint, credit and buttons.
-        let r = wholeMap ? f : CGRect(x: f.minX + 20, y: f.minY + 70, width: f.width - 100, height: f.height - 150)
+        // The map fills the tab under the bar and the sheet: measure what shows between them.
+        let full = app.otherElements["map.view"].frame
+        let sheetTop = app.otherElements["map.sheet"].frame.minY
+        let f = CGRect(x: full.minX, y: full.minY + 120, width: full.width, height: max(100, sheetTop - full.minY - 120))
+        // Clear of the badge, credit, scale bar and buttons.
+        let r = wholeMap ? f : CGRect(x: f.minX + 20, y: f.minY + 30, width: f.width - 100, height: f.height - 90)
         let px = CGRect(x: r.minX * scale, y: r.minY * scale, width: r.width * scale, height: r.height * scale).integral
         let w = Int(px.width), h = Int(px.height)
         var buf = [UInt8](repeating: 0, count: w * h * 4)
@@ -276,9 +285,17 @@ final class MapEngineTests: XCTestCase {
     }
 
     @MainActor
+    /// Opens the sheet to full height, then scrolls its content.
     private func scrollPanel(_ app: XCUIApplication) {
+        sheet(app, "full height")
         let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
-        from.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62)))
+        from.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55)))
+    }
+
+    @MainActor
+    private func sheet(_ app: XCUIApplication, _ detent: String) {
+        let grabber = app.buttons["map.sheet.grabber"]
+        for _ in 0..<3 where (grabber.value as? String) != detent { grabber.tap(); usleep(400_000) }
     }
 
     @MainActor
