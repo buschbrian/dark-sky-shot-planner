@@ -73,6 +73,8 @@ struct VerdictCard: View {
             return "\(f.factor.label) is unavailable\(FactorText.reason(f).map { " (\($0))" } ?? "")"
         case .staleData:
             return "\(f.factor.label) data is stale: \(FactorText.value(f))"
+        case .noMoonFreeDarkness:
+            return v.reasonLine ?? "No moon-free darkness"
         }
     }
 
@@ -106,14 +108,15 @@ struct FactorsSheet: View {
     @Environment(AppState.self) private var state
 
     private var ordered: [FactorAssessment] {
-        verdict.factors.filter(\.gatesVerdict) + verdict.factors.filter { !$0.gatesVerdict }
+        verdict.shownFactors.filter(\.gatesVerdict) + verdict.shownFactors.filter { !$0.gatesVerdict }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("\(verdict.level.word): the worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
+                    Text(verdict.headline.map { "\($0). Conditions don't matter tonight." }
+                        ?? "\(verdict.level.word): the worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
                         .font(.footnote)
                         .foregroundStyle(palette.secondary)
                     ForEach(ordered, id: \.key) { factor in
@@ -192,6 +195,7 @@ private struct FactorRow: View {
         case .rated(let r): r.word
         case .shownOnly: "not rated"
         case .unavailable: "unavailable"
+        case .notApplicable: "not applicable"
         }
     }
 }

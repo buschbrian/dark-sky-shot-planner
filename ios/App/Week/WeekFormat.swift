@@ -71,6 +71,7 @@ enum WeekFormat {
             verdict.level == .go ? "Closest to its limit: \(factor(verdict.limiting))" : "Limited by \(factor(verdict.limiting))"
         case .incompleteData: "Incomplete data: \(factor(verdict.limiting))"
         case .staleData: "Stale data: \(factor(verdict.limiting))"
+        case .noMoonFreeDarkness: verdict.reasonLine ?? "No moon-free darkness"
         }
     }
 

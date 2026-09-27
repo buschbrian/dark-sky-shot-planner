@@ -41,6 +41,8 @@ public struct ShotReadout: Sendable, Hashable {
     /// factors that could, as "Label: model — reason".
     public let missing: [String]
     public let flags: Set<VerdictFlag>
+    /// `Verdict.headline`: set when no condition could matter.
+    public let headline: String?
 
     public init(_ verdict: Verdict) {
         level = verdict.level
@@ -49,6 +51,7 @@ public struct ShotReadout: Sendable, Hashable {
         limitingModels = verdict.limiting.readings.map(Self.line)
         clouds = verdict.factor("cloud_cover_total").map(Self.spread)
         flags = verdict.flags
+        headline = verdict.headline
         var missing: [String] = []
         for f in verdict.factors where f.gatesVerdict {
             if case .unavailable(let reason) = f.status {
@@ -204,6 +207,8 @@ public enum ShotText {
             return "\(word): \(f.factor.label.lowercasedFirst) is unavailable"
         case .staleData:
             return "\(word): \(f.factor.label.lowercasedFirst) is stale"
+        case .noMoonFreeDarkness:
+            return readout.headline ?? "\(word): no moon-free darkness"
         }
     }
 

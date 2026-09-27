@@ -146,9 +146,10 @@ struct VerdictTests {
         Case(name: "short moon-free darkness is a no-go",
              night: Sky.night([(3, 3.5)]),
              edit: { _ in }, level: .noGo, limiting: "moon_free_minutes", cause: .rating),
+        // Review B-5 changed this case: it was cause .rating with [.incompleteData].
         Case(name: "no moon-free darkness at all is a no-go",
              night: Sky.night([]),
-             edit: { _ in }, level: .noGo, limiting: "moon_free_minutes", cause: .rating, flags: [.incompleteData]),
+             edit: { _ in }, level: .noGo, limiting: "moon_free_minutes", cause: .noMoonFreeDarkness),
     ]
 
     @Test("rules", arguments: cases)
@@ -516,3 +517,90 @@ struct VerdictTests {
         #expect(v.factors.allSatisfy { !$0.isUnavailable })
     }
 }
+
+/// Review B-5: a night with no moon-free darkness is no-go on astronomy
+/// alone. Nothing is weighed, so nothing is missing: no incomplete-data flag,
+/// every other factor `.notApplicable`, and one reason.
+@Suite("Verdict: no moon-free darkness")
+struct NoMoonFreeDarknessTests {
+    static let fullMoon = Sky.night([])
+    static let noDarkness = NightReport(
+        darkness: nil, noAstronomicalDarkness: true, moonIllumFraction: 0.1, moonset: nil, moonrise: nil,
+        moonFreeWindows: [], moonFreeMinutes: 0,
+        gc: GCVisibility(maxAltitudeDeg: nil, maxAltitudeAt: nil, risesDuringDarkness: false), terrain: nil)
+
+    struct Case: Sendable, CustomTestStringConvertible {
+        let name: String
+        let night: NightReport
+        let conditions: ConditionsResponse?
+        let level: VerdictLevel
+        let cause: Verdict.Cause
+        let limiting: String
+        let flags: Set<VerdictFlag>
+        let headline: String?
+        var testDescription: String { name }
+    }
+
+    static let staleResponse = Sky.response { f in
+        f["cloud_cover_total"] = Sky.field("%", "Open-Meteo", Sky.cloudModels.map {
+            Sky.series($0, Sky.flat(5), run: Sky.at(-400), fetched: Sky.at(-400))
+        })
+    }
+
+    static let cases: [Case] = [
+        Case(name: "full moon, good conditions: no-go, the moon, nothing missing",
+             night: fullMoon, conditions: Sky.response { _ in }, level: .noGo, cause: .noMoonFreeDarkness,
+             limiting: "moon_free_minutes", flags: [], headline: "No-go: the moon is up through all of darkness"),
+        Case(name: "full moon, no conditions at all: the same, never incomplete data",
+             night: fullMoon, conditions: nil, level: .noGo, cause: .noMoonFreeDarkness,
+             limiting: "moon_free_minutes", flags: [], headline: "No-go: the moon is up through all of darkness"),
+        Case(name: "full moon, stale conditions: the same, never stale data",
+             night: fullMoon, conditions: staleResponse, level: .noGo, cause: .noMoonFreeDarkness,
+             limiting: "moon_free_minutes", flags: [], headline: "No-go: the moon is up through all of darkness"),
+        Case(name: "no astronomical darkness: says so instead of blaming the moon",
+             night: noDarkness, conditions: Sky.response { _ in }, level: .noGo, cause: .noMoonFreeDarkness,
+             limiting: "moon_free_minutes", flags: [], headline: "No-go: there is no astronomical darkness"),
+        Case(name: "partial moon (30 min moon-free): conditions are weighed as usual",
+             night: Sky.night([(3, 3.5)]), conditions: Sky.response { _ in }, level: .noGo, cause: .rating,
+             limiting: "moon_free_minutes", flags: [], headline: nil),
+        Case(name: "partial moon with no conditions: incomplete data as before",
+             night: Sky.night([(3, 3.5)]), conditions: nil, level: .noGo, cause: .rating,
+             limiting: "moon_free_minutes", flags: [.incompleteData], headline: nil),
+        Case(name: "normal night: go, unchanged",
+             night: Sky.night(), conditions: Sky.response { _ in }, level: .go, cause: .rating,
+             limiting: "smoke_column", flags: [], headline: nil),
+    ]
+
+    @Test("table", arguments: cases)
+    func table(_ c: Case) throws {
+        let v = try Sky.evaluate(night: c.night, conditions: c.conditions)
+        #expect(v.level == c.level)
+        #expect(v.cause == c.cause)
+        #expect(v.limiting.key == c.limiting)
+        #expect(v.flags == c.flags)
+        #expect(v.headline == c.headline)
+        if c.cause == .noMoonFreeDarkness {
+            #expect(v.limiting.rating == .poor)
+            #expect(v.limiting.value == 0)
+            let others = v.factors.filter { $0.key != "moon_free_minutes" }
+            #expect(!others.isEmpty)
+            #expect(others.allSatisfy { $0.isNotApplicable })
+            #expect(!v.factors.contains { $0.isUnavailable })
+            #expect(v.shownFactors.map { $0.key } == ["moon_free_minutes"])
+        } else {
+            #expect(!v.factors.contains { $0.isNotApplicable })
+            #expect(v.shownFactors.count == v.factors.count)
+        }
+    }
+
+    @Test("the aurora flag still shows on a moon-bright night")
+    func auroraFlagKept() throws {
+        let aurora = AuroraSignal(
+            outlook: .possible(kp: 8, visibleKp: 7.67, basis: .observedNow), source: "NOAA", asOfUTC: Sky.now)
+        let v = try Verdict.evaluate(
+            night: Self.fullMoon, conditions: nil, aurora: aurora, config: Sky.config, now: Sky.now)
+        #expect(v.flags == [.auroraPossible])
+        #expect(v.withAurora(nil).headline == "No-go: the moon is up through all of darkness")
+    }
+}
+

@@ -132,6 +132,7 @@ nonisolated enum SpotWeekPlanner {
         case .rating: .rating
         case .incompleteData: .incompleteData
         case .staleData: .staleData
+        case .noMoonFreeDarkness: .noMoonFreeDarkness
         }
         return VerdictSummary(
             level: v.level,
