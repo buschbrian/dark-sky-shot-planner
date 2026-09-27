@@ -35,6 +35,8 @@ enum MapInspection: Equatable {
 
 struct PlannerMapView: UIViewRepresentable {
     var snapshot: MapSnapshot
+    /// Basemap choice, camera and location, shared with the controls outside the map.
+    var controller: MapController
     var onDropPin: (CLLocationCoordinate2D) -> Void
     var onCamera: (_ zoom: Double, _ shortSidePoints: Double) -> Void
     var onInspect: ([MapInspection]) -> Void
@@ -55,7 +57,13 @@ struct PlannerMapView: UIViewRepresentable {
         map.tileCacheEnabled = true
         map.compassViewPosition = .topRight
         map.backgroundColor = snapshot.colors.background
-        if let pin = snapshot.pin {
+        map.tintColor = snapshot.colors.accent
+        // The puck shows without asking only when location is already allowed;
+        // the "center on me" button asks (never in field mode).
+        map.showsUserLocation = controller.locationAllowed
+        if let (center, zoom) = MapController.launchCamera {
+            map.setCenter(center, zoomLevel: zoom, animated: false)
+        } else if let pin = snapshot.pin {
             map.setCenter(CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude), zoomLevel: 9, animated: false)
         } else {
             map.setCenter(CLLocationCoordinate2D(latitude: 39.5, longitude: -111.5), zoomLevel: 5, animated: false)
@@ -67,6 +75,8 @@ struct PlannerMapView: UIViewRepresentable {
         map.addGestureRecognizer(tap)
         context.coordinator.map = map
         context.coordinator.lastPin = snapshot.pin
+        controller.map = map
+        controller.onBasemapChange = { [weak coordinator = context.coordinator] in coordinator?.applyBasemap() }
         return map
     }
 
@@ -101,6 +111,12 @@ struct PlannerMapView: UIViewRepresentable {
                 map.styleURL = url
             }
             map.backgroundColor = s.colors.background
+            // The scale bar draws white; under field mode's red multiply that is full red.
+            map.scaleBar.alpha = s.colors.field ? MapColors.fieldCap * 0.9 : 1
+            if map.tintColor != s.colors.accent {
+                map.tintColor = s.colors.accent
+                if let u = map.userLocation { (map.view(for: u) as? UserPuckView)?.colors = s.colors }
+            }
             if s.pin != lastPin {
                 if let pin = s.pin, pin != droppedPin {
                     let c = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
@@ -109,6 +125,7 @@ struct PlannerMapView: UIViewRepresentable {
                 lastPin = s.pin
             }
             updateAnnotations(s, on: map)
+            DispatchQueue.main.async { [weak self] in self?.declutter() }
             guard styleReady, let style = map.style else { return }
             let old = applied
             applied = s
@@ -125,6 +142,7 @@ struct PlannerMapView: UIViewRepresentable {
                 }
             }
             if irTimes != s.irFrames { syncInfrared(style, s) }
+            if force || old?.colors.field != s.colors.field { applyBasemap() }
             if force || old?.visible != s.visible {
                 for layer in MapLayer.allCases {
                     for id in MapStyle.layerIds[layer] ?? [] { style.layer(withIdentifier: id)?.isVisible = s.visible.contains(layer) }
@@ -138,6 +156,18 @@ struct PlannerMapView: UIViewRepresentable {
                     l.rasterOpacity = NSExpression(forConstantValue: t == current ? 0.7 : 0)
                 }
             }
+        }
+
+        /// Shows the chosen basemap's layers and hides the others; tiles of a
+        /// hidden basemap are never requested.
+        func applyBasemap() {
+            guard styleReady, let style = map?.style else { return }
+            let chosen = parent.controller.basemap(field: parent.snapshot.colors.field)
+            for (b, ids) in MapStyle.basemapLayerIds {
+                for id in ids { style.layer(withIdentifier: id)?.isVisible = b == chosen }
+            }
+            // Topo and Dark relief share a source: show the chosen one's layers last.
+            for id in MapStyle.basemapLayerIds[chosen] ?? [] { style.layer(withIdentifier: id)?.isVisible = true }
         }
 
         // MARK: Runtime layers
@@ -269,6 +299,29 @@ struct PlannerMapView: UIViewRepresentable {
             }
         }
 
+        /// Line labels are views, so MapLibre can't place them around each
+        /// other: hide any that would cover a higher-priority label (the
+        /// at-time ones first), the pin, or the map's buttons. Hidden labels
+        /// are still listed in the panel.
+        fileprivate func declutter() {
+            guard let map else { return }
+            let reserved = MapOverlayControls.reservedSize
+            var taken = [CGRect(x: map.bounds.maxX - reserved.width, y: map.bounds.maxY - reserved.height,
+                                width: reserved.width, height: reserved.height)]
+            for a in [pinAnnotation as MLNAnnotation?, map.userLocation].compactMap({ $0 }) {
+                if let v = map.view(for: a) { taken.append(v.convert(v.bounds, to: map).insetBy(dx: -4, dy: -4)) }
+            }
+            let ordered = labelAnnotations.filter(\.emphasized) + labelAnnotations.filter { !$0.emphasized }
+            for a in ordered {
+                guard let v = map.view(for: a) else { continue }
+                let f = v.convert(v.bounds, to: map).insetBy(dx: -2, dy: -2)
+                let hide = !map.bounds.intersects(f) || taken.contains { $0.intersects(f) }
+                v.alpha = hide ? 0 : 1
+                v.accessibilityElementsHidden = hide
+                if !hide { taken.append(f) }
+            }
+        }
+
         // MARK: Gestures
 
         @objc func longPress(_ g: UILongPressGestureRecognizer) {
@@ -312,6 +365,27 @@ struct PlannerMapView: UIViewRepresentable {
         fileprivate func reportCamera() {
             guard let map else { return }
             parent.onCamera(map.zoomLevel, Double(min(map.bounds.width, map.bounds.height)))
+            let b = map.visibleCoordinateBounds
+            parent.controller.report(camera: MapController.Camera(
+                center: map.centerCoordinate, zoom: map.zoomLevel,
+                bounds: GeoBounds(west: b.sw.longitude, south: b.sw.latitude, east: b.ne.longitude, north: b.ne.latitude)))
+            reportUser()
+        }
+
+        fileprivate func reportUser() {
+            guard let map else { return }
+            guard map.showsUserLocation, let u = map.userLocation, let loc = u.location,
+                  CLLocationCoordinate2DIsValid(loc.coordinate), loc.horizontalAccuracy >= 0 else {
+                parent.controller.report(fix: nil)
+                return
+            }
+            let pt = map.convert(loc.coordinate, toPointTo: map)
+            let view = map.view(for: u)
+            view?.accessibilityIdentifier = "map.userPuck"
+            let heading = u.heading.flatMap { $0.headingAccuracy >= 0 ? $0.trueHeading : nil }
+            parent.controller.report(fix: MapController.UserFix(
+                coordinate: loc.coordinate, horizontalAccuracy: loc.horizontalAccuracy, heading: heading,
+                onScreen: map.bounds.contains(pt) && view?.superview != nil && view?.isHidden == false))
         }
 
         fileprivate func reportPinLand() {
@@ -330,7 +404,23 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
         reportCamera()
     }
 
+    @objc(mapView:didUpdateUserLocation:)
+    func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
+        reportUser()
+    }
+
+    @objc(mapView:didChangeUserTrackingMode:animated:)
+    func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
+        parent.controller.report(trackingMode: mode)
+    }
+
+    @objc(mapViewRegionIsChanging:)
+    func mapViewRegionIsChanging(_ mapView: MLNMapView) {
+        declutter()
+    }
+
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        declutter()
         reportCamera()
         reportPinLand()
     }
@@ -345,6 +435,11 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
 
     func mapView(_ mapView: MLNMapView, viewFor annotation: any MLNAnnotation) -> MLNAnnotationView? {
         let colors = parent.snapshot.colors
+        if annotation is MLNUserLocation {
+            let v = mapView.dequeueReusableAnnotationView(withIdentifier: "user") as? UserPuckView ?? UserPuckView(reuseIdentifier: "user")
+            v.colors = colors
+            return v
+        }
         if annotation is PinAnnotation {
             let v = mapView.dequeueReusableAnnotationView(withIdentifier: "pin") as? PinView ?? PinView(reuseIdentifier: "pin")
             v.configure(colors)
