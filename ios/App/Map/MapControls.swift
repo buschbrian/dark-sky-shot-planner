@@ -7,6 +7,7 @@ import SwiftUI
 struct NightScrubber: View {
     let window: TimeWindow
     let darkness: TimeWindow?
+    var moonFree: [TimeWindow] = []
     let timeZone: TimeZone
     @Binding var time: Date
 
@@ -14,39 +15,47 @@ struct NightScrubber: View {
     static let step: TimeInterval = 5 * 60
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                PaletteButton(systemImage: "minus", label: "10 minutes earlier") { nudge(-600) }
+        VStack(spacing: DS.Space.s) {
+            HStack(alignment: .center) {
+                Button { nudge(-600) } label: { Image(systemName: "minus") }
+                    .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                    .accessibilityLabel("10 minutes earlier")
                 Spacer()
-                Text(MapPlanner.clock(time, timeZone: timeZone))
-                    .font(.system(.title, design: .rounded, weight: .bold).monospacedDigit())
-                    .foregroundStyle(palette.primary)
-                Text(timeZone.abbreviation(for: time) ?? "")
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+                    Text(MapPlanner.clock(time, timeZone: timeZone))
+                        .font(.system(.title, weight: .medium).monospacedDigit())
+                        .foregroundStyle(palette.primary)
+                    Text(timeZone.abbreviation(for: time) ?? "")
+                        .font(.dsData)
+                        .foregroundStyle(palette.secondary)
+                }
+                .accessibilityHidden(true)
                 Spacer()
-                PaletteButton(systemImage: "plus", label: "10 minutes later") { nudge(600) }
+                Button { nudge(600) } label: { Image(systemName: "plus") }
+                    .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                    .accessibilityLabel("10 minutes later")
             }
             GeometryReader { geo in
                 let w = geo.size.width
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 5).fill(palette.surface).frame(height: 24)
-                    if let d = darkness {
-                        Rectangle().fill(palette.accent.opacity(0.35))
-                            .frame(width: max(0, x(d.end, w) - x(d.start, w)), height: 24)
-                            .offset(x: x(d.start, w))
-                    }
+                    NightBar(span: window, darkness: darkness, moonFree: moonFree, timeZone: timeZone,
+                             showsTimes: false, height: 14)
+                        .frame(width: w)
                     ForEach(hourTicks, id: \.self) { t in
-                        Rectangle().fill(palette.secondary).frame(width: 1, height: 10).offset(x: x(t, w), y: 14)
+                        Rectangle().fill(palette.tertiary).frame(width: 1, height: 5).offset(x: x(t, w), y: 17)
                         if hour(t) % 2 == 0 {
-                            Text(String(format: "%02d", hour(t)))
-                                .font(.caption2.monospacedDigit())
+                            Text(t.formatted(Date.FormatStyle(timeZone: timeZone).hour(.defaultDigits(amPM: .narrow))))
+                                .font(.dsData)
                                 .foregroundStyle(palette.secondary)
                                 .fixedSize()
-                                .offset(x: x(t, w) - 7, y: 27)
+                                .frame(width: 40)
+                                .offset(x: x(t, w) - 20, y: 23)
                         }
                     }
-                    Capsule().fill(palette.accent).frame(width: 6, height: 34).offset(x: x(time, w) - 3, y: -5)
+                    Capsule().fill(palette.primary)
+                        .frame(width: 4, height: 26)
+                        .overlay(Capsule().strokeBorder(palette.background, lineWidth: 1))
+                        .offset(x: x(time, w) - 2, y: -6)
                 }
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { v in
@@ -54,7 +63,7 @@ struct NightScrubber: View {
                     set(window.start.addingTimeInterval(f * window.duration))
                 })
             }
-            .frame(height: 42)
+            .frame(height: 40)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Planner time")
             .accessibilityValue(MapPlanner.clock(time, timeZone: timeZone))

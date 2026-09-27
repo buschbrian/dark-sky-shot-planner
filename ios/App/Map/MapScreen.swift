@@ -13,6 +13,7 @@ struct MapScreen: View {
     @State private var data = MapData()
     @State private var plan: MapPlan?
     @State private var darkness: TimeWindow?
+    @State private var moonFree: [TimeWindow] = []
     @State private var time = Date.now
     @State private var zoom = 5.0
     @State private var shortSide = 390.0
@@ -43,29 +44,20 @@ struct MapScreen: View {
                     .frame(height: 340)
                 scrubber
                 ScrollView {
-                    VStack(spacing: 12) {
+                    VStack(spacing: DS.Space.cardGap) {
                         placeSection
                         linesSection
                         if !inspection.isEmpty { tappedSection }
                         layersSection
                         offlineSection
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 24)
+                    .padding(.horizontal, DS.Space.screen)
+                    .padding(.top, DS.Space.xs)
+                    .padding(.bottom, DS.Space.xl)
                 }
-                .scrollIndicators(.hidden)
             }
             .background(palette.background)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Map").font(.headline).foregroundStyle(palette.primary)
-                }
-                ToolbarItem(placement: .topBarTrailing) { fieldToggle }
-                    .sharedBackgroundVisibility(.hidden)
-            }
+            .screenChrome("Map")
         }
         .onAppear { if MapTiming.tabAppeared == nil { MapTiming.tabAppeared = CACurrentMediaTime() } }
         .task { await refreshLoop() }
@@ -113,11 +105,12 @@ struct MapScreen: View {
             }
             .overlay(alignment: .bottomLeading) {
                 Text(state.place == nil ? "Long-press to drop a pin" : "Long-press to move the pin")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(palette.secondary)
-                    .padding(6)
-                    .background(palette.background.opacity(0.8), in: RoundedRectangle(cornerRadius: 6))
-                    .padding(8)
+                    .padding(.horizontal, DS.Space.s)
+                    .padding(.vertical, DS.Space.xs)
+                    .floatingSurface(palette, shape: Capsule())
+                    .padding(DS.Space.s)
                     .allowsHitTesting(false)
             }
         } else {
@@ -166,29 +159,35 @@ struct MapScreen: View {
         var rows: [String] = []
         if visible.contains(.infrared), !data.irFrames.isEmpty {
             let t = data.irFrames[irIndex % data.irFrames.count]
-            rows.append("IR \(MapData.utc(t, withDate: false))Z · \(MapData.age(t, now: now)) old")
+            rows.append("IR \(MapData.utc(t, withDate: false))Z · \(Voice.age(of: t, now: now))")
         }
         if visible.contains(.smoke) {
-            rows.append(data.smokeAnalysis.end.map { "Smoke analysis \(MapData.utc($0, withDate: false))Z · \(MapData.age($0, now: now)) old" }
-                ?? "Smoke unavailable")
+            rows.append(data.smokeAnalysis.end.map { "Smoke \(MapData.utc($0, withDate: false))Z · \(Voice.age(of: $0, now: now))" }
+                ?? "Smoke \(Voice.unavailable)")
         }
         for layer in [MapLayer.lightPollution, .land, .places] where visible.contains(layer) {
             let name = layer == .land ? "PAD-US" : layer == .places ? "dark-sky places" : "light pollution"
             switch data.origin(layer) {
             case .real: break
-            case .fixture: rows.append("Sample fixture: \(name)")
-            case .unknown: rows.append("Unconfirmed origin: \(name)")
+            case .fixture: rows.append("\(name.capitalizedFirst): sample fixture")
+            case .unknown: rows.append("\(name.capitalizedFirst): origin not confirmed")
             }
         }
-        return VStack(alignment: .leading, spacing: 2) {
-            ForEach(rows, id: \.self) { Text($0) }
+        return Group {
+            if !rows.isEmpty {
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    ForEach(rows, id: \.self) { Text($0) }
+                }
+                .font(.dsData)
+                .foregroundStyle(palette.primary)
+                .padding(.horizontal, DS.Space.s)
+                .padding(.vertical, DS.Space.xs + 2)
+                .floatingSurface(palette, shape: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
+                .padding(DS.Space.s)
+            }
         }
-        .font(.caption2.monospacedDigit())
-        .foregroundStyle(palette.primary)
-        .padding(rows.isEmpty ? 0 : 6)
-        .background(palette.background.opacity(rows.isEmpty ? 0 : 0.8), in: RoundedRectangle(cornerRadius: 6))
-        .padding(8)
         .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("map.ages")
     }
 
@@ -196,9 +195,10 @@ struct MapScreen: View {
 
     @ViewBuilder private var scrubber: some View {
         if let plan {
-            NightScrubber(window: plan.window, darkness: darkness, timeZone: state.place?.timeZone ?? .current, time: $time)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+            NightScrubber(window: plan.window, darkness: darkness, moonFree: moonFree,
+                          timeZone: state.place?.timeZone ?? .current, time: $time)
+                .padding(.horizontal, DS.Space.screen)
+                .padding(.vertical, DS.Space.s)
                 .background(palette.background)
         }
     }
@@ -206,42 +206,49 @@ struct MapScreen: View {
     // MARK: Panel
 
     private var placeSection: some View {
-        MapSection(title: "Place") {
+        SectionCard("Place") {
             if let place = state.place {
-                Text(place.name).font(.headline).foregroundStyle(palette.primary)
-                Text("\(CoordinateText.format(latitude: place.latitude, longitude: place.longitude)) · \(place.timeZoneID) · night of \(state.night().iso)")
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(palette.secondary)
-                    .accessibilityIdentifier("map.placeLabel")
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    Text(place.name).font(.dsTitle).foregroundStyle(palette.primary)
+                    Text("\(CoordinateText.format(latitude: place.latitude, longitude: place.longitude)) · \(Format.zone(place.timeZone)) · night of \(Format.nightTitle(state.night()))")
+                        .font(.dsData)
+                        .foregroundStyle(palette.secondary)
+                        .accessibilityIdentifier("map.placeLabel")
+                }
                 landAtPin
             } else {
                 Text("No place yet. Type coordinates, pick a saved spot, or long-press the map.")
-                    .font(.footnote).foregroundStyle(palette.secondary)
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
             }
             HStack(spacing: 8) {
                 TextField("", text: $coordText, prompt: Text("lat, lon  e.g. 38.3740, -109.9654").foregroundStyle(palette.secondary))
                     .keyboardType(.numbersAndPunctuation)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .font(.dsNumber)
                     .foregroundStyle(palette.primary)
                     .tint(palette.accent)
-                    .padding(8)
-                    .background(palette.background, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(palette.secondary, lineWidth: 1))
+                    .padding(.horizontal, DS.Space.m)
+                    .frame(minHeight: DS.minTarget)
+                    .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
                     .accessibilityIdentifier("map.coordinateField")
                     .focused($coordFocused)
                     .onSubmit(setTypedPlace)
-                PaletteButton("Set", label: "Set place") { setTypedPlace() }
+                Button("Set", action: setTypedPlace)
+                    .buttonStyle(ActionButtonStyle(.primary, compact: true))
+                    .accessibilityLabel("Set place")
                     .accessibilityIdentifier("map.setPlace")
             }
             if let coordError {
-                Text(coordError).font(.footnote).foregroundStyle(palette.poor)
+                Text(coordError).font(.dsFootnote).foregroundStyle(palette.poor)
             }
             if !spots.isEmpty {
                 ScrollView(.horizontal) {
-                    HStack {
+                    HStack(spacing: DS.Space.s) {
                         ForEach(spots) { spot in
-                            PaletteButton(spot.name, label: "Use saved spot \(spot.name)") { state.place = spot.place }
+                            Button(spot.name) { state.place = spot.place }
+                                .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                                .accessibilityLabel("Use saved spot \(spot.name)")
                         }
                     }
                 }
@@ -263,29 +270,28 @@ struct MapScreen: View {
                 let labels = Array(Set(keys.map { ManagerTaxonomy.bundled.label(for: $0) })).sorted()
                 return "Managed by \(labels.joined(separator: ", ")) (PAD-US). Check the manager's rules for camping and night access."
             }()
-            Text(text).font(.footnote).foregroundStyle(palette.primary)
+            Text(text).font(.dsFootnote).foregroundStyle(palette.primary)
         }
     }
 
     private var linesSection: some View {
-        MapSection(title: "Azimuth lines") {
+        SectionCard("Azimuth lines") {
             if plan == nil {
                 Text("Set a place to draw sun, moon and Galactic Center lines.")
-                    .font(.footnote).foregroundStyle(palette.secondary)
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
             } else {
                 let tz = state.place?.timeZone ?? .current
                 let features = drawnFeatures
                 let summary = features.map { MapPlanner.label(for: $0.line, timeZone: tz) }
                 ForEach(Array(features.enumerated()), id: \.offset) { i, f in
-                    HStack(spacing: 8) {
-                        Capsule().fill(palette.swatchFor(f.line.object)).frame(width: 14, height: f.line.event == .atTime ? 5 : 3)
+                    HStack(spacing: DS.Space.s) {
+                        Capsule().fill(palette.color(for: f.line.object)).frame(width: 14, height: f.line.event == .atTime ? 5 : 3)
                         Text(summary[i])
-                            .font(f.line.event == .atTime ? .callout.weight(.semibold).monospacedDigit() : .footnote.monospacedDigit())
-                            .foregroundStyle(f.belowHorizon ? palette.secondary : palette.primary)
+                            .font(f.line.event == .atTime ? .dsCallout.weight(.semibold).monospacedDigit() : .dsFootnote.monospacedDigit())
+                            .foregroundStyle(f.belowHorizon ? palette.tertiary : palette.primary)
                     }
                 }
-                Text("Computed on this phone (astronomy-engine); apparent positions with standard refraction, mathematical horizon.")
-                    .font(.caption2).foregroundStyle(palette.secondary)
+                ProvenanceChip(info: SourceInfo(source: "astronomy-engine", note: "\(Voice.onDevice), refracted, flat horizon"))
                 Color.clear.frame(height: 0)
                     .accessibilityElement()
                     .accessibilityIdentifier("map.lineSummary")
@@ -295,13 +301,12 @@ struct MapScreen: View {
     }
 
     private var tappedSection: some View {
-        MapSection(title: "Tapped on the map") {
+        SectionCard("Tapped on the map") {
             ForEach(Array(inspection.enumerated()), id: \.offset) { _, item in
                 Group {
                     switch item {
                     case let .place(name, designation, verified, _):
-                        Text("\(name), \(designation)") + Text(verified.map { " (verified \($0))" } ?? "")
-                            + Text(data.origin(.places).caveat.map { " \($0)" } ?? "")
+                        Text("\(name), \(designation)\(verified.map { " (verified \($0))" } ?? "")\(data.origin(.places).caveat.map { " \($0)" } ?? "")")
                     case let .land(key):
                         if data.origin(.land) != .real {
                             Text("PAD-US: \(data.origin(.land) == .fixture ? "sample fixture" : "origin not confirmed"), land manager withheld.")
@@ -312,39 +317,46 @@ struct MapScreen: View {
                         Text("Smoke, \(density ?? "density not given") (HMS, \(satellite ?? "?"), \(start.flatMap(HMSSmoke.time).map { MapData.utc($0, withDate: false) } ?? "?")–\(end.flatMap(HMSSmoke.time).map { MapData.utc($0, withDate: true) } ?? "?"))")
                     }
                 }
-                .font(.footnote)
+                .font(.dsFootnote)
                 .foregroundStyle(palette.primary)
             }
         }
     }
 
     private var layersSection: some View {
-        MapSection(title: "Layers") {
+        SectionCard("Layers") {
             ForEach(MapLayer.allCases) { layer in
                 let p = data.provenance(layer)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Toggle(isOn: binding(layer)) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(layer.title).font(.callout.weight(.semibold)).foregroundStyle(palette.primary)
-                            Text("\(p.source) · \(p.license) · \(p.freshness.label)")
-                                .font(.caption).foregroundStyle(p.freshness == .fresh ? palette.secondary : palette.marginal)
-                        }
+                        Text(layer.title).font(.dsCallout.weight(.semibold)).foregroundStyle(palette.primary)
                     }
-                    .toggleStyle(MapToggleStyle())
+                    .toggleStyle(PaletteToggleStyle())
                     .accessibilityIdentifier("layer.\(layer.rawValue)")
-                    Text(p.detail).font(.caption2).foregroundStyle(palette.secondary)
-                    legend(layer)
+                    ProvenanceChip(info: SourceInfo(source: p.source, asOf: layerAsOf(layer), freshness: p.freshness,
+                                                    note: layerStatus(layer, p) ?? p.license))
+                    if visible.contains(layer) { legend(layer) }
                     if layer == .infrared, visible.contains(.infrared), !data.irFrames.isEmpty {
-                        HStack {
-                            PaletteButton(systemImage: irPlaying ? "pause.fill" : "play.fill", label: irPlaying ? "Pause loop" : "Play loop") {
-                                irPlaying.toggle()
+                        HStack(spacing: DS.Space.s) {
+                            Button { irPlaying.toggle() } label: {
+                                Image(systemName: irPlaying ? "pause.fill" : "play.fill")
                             }
+                            .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                            .accessibilityLabel(irPlaying ? "Pause loop" : "Play loop")
                             Text("Frame \(MapData.utc(data.irFrames[irIndex % data.irFrames.count], withDate: true))")
-                                .font(.caption.monospacedDigit()).foregroundStyle(palette.primary)
+                                .font(.dsData).foregroundStyle(palette.primary)
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                if layer != MapLayer.allCases.last {
+                    Rectangle().fill(palette.hairline).frame(height: 1)
+                }
+            }
+            MoreInfo(title: "About these layers", id: "map.layerDetails") {
+                ForEach(MapLayer.allCases) { layer in
+                    let p = data.provenance(layer)
+                    Text("\(layer.title): \(p.detail) License: \(p.license).")
+                }
             }
         }
     }
@@ -364,28 +376,56 @@ struct MapScreen: View {
     /// covers every saved spot. MapLibre offline packs can't take them: its
     /// offline downloader rejects `pmtiles://` sources ("unsupported URL").
     private var offlineSection: some View {
-        MapSection(title: "Offline") {
-            Text("Published layers are kept on the phone as whole files and work at every saved spot without signal. Smoke and the IR loop are live; offline they show the last copy with its age.")
-                .font(.caption2).foregroundStyle(palette.secondary)
+        SectionCard("Offline") {
+            Text("Published layers are kept on the phone and work at every saved spot without signal. Smoke and the IR loop are live; offline they show their \(Voice.lastGood) with its age.")
+                .font(.dsFootnote).foregroundStyle(palette.secondary)
             ForEach([MapLayer.lightPollution, .land, .places]) { layer in
                 let a = data.archive(layer)
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(layer.title).font(.callout).foregroundStyle(palette.primary)
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                        Text(layer.title).font(.dsCallout).foregroundStyle(palette.primary)
                         Text(a.onPhone ? "On this phone\(a.bytes.map { ", " + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "")"
                             : "Not saved\(a.bytes.map { " (" + ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) + ")" } ?? "")")
-                            .font(.caption.monospacedDigit())
+                            .font(.dsData)
                             .foregroundStyle(a.onPhone ? palette.secondary : palette.marginal)
                             .accessibilityIdentifier("offline.\(layer.rawValue)")
                     }
                     Spacer()
                     if !a.onPhone {
-                        PaletteButton(systemImage: "arrow.down.circle", label: "Keep \(layer.title) offline") {
-                            Task { await data.keepOffline(layer) }
+                        Button { Task { await data.keepOffline(layer) } } label: {
+                            Image(systemName: "arrow.down.circle")
                         }
+                        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                        .accessibilityLabel("Keep \(layer.title) offline")
                     }
                 }
             }
+        }
+    }
+
+    /// What the chip counts the layer's age from (live layers only).
+    private func layerAsOf(_ layer: MapLayer) -> Date? {
+        switch layer {
+        case .smoke: data.smokeAnalysis.end
+        case .infrared: data.irFrames.last
+        default: nil
+        }
+    }
+
+    /// A short state in the one voice, or nil when there is nothing to say.
+    private func layerStatus(_ layer: MapLayer, _ p: LayerProvenance) -> String? {
+        switch layer {
+        case .lightPollution, .land, .places:
+            switch data.origin(layer) {
+            case .fixture: return "sample fixture"
+            case .unknown: return "origin not confirmed"
+            case .real: return p.freshness == .unavailable ? Voice.unavailable : nil
+            }
+        case .smoke:
+            if data.smoke == nil { return Voice.unavailable }
+            return data.failed.contains("hms/smoke.geojson") ? Voice.lastGood : nil
+        case .infrared:
+            return data.irFrames.isEmpty ? Voice.unavailable : nil
         }
     }
 
@@ -414,6 +454,7 @@ struct MapScreen: View {
         guard let place = state.place, let pin = try? place.observer() else {
             plan = nil
             darkness = nil
+            moonFree = []
             eventFeatures = []
             return
         }
@@ -421,28 +462,12 @@ struct MapScreen: View {
         guard let p = try? MapPlanner.plan(pin: pin, night: night, timeZone: place.timeZone) else { plan = nil; return }
         plan = p
         rebuildEvents()
-        darkness = try? Planner.darknessWindow(pin, evening: night.evening(in: place.timeZone)).window
+        let report = try? Planner.planNight(pin, evening: night.evening(in: place.timeZone))
+        darkness = report?.darkness
+        moonFree = report?.moonFreeWindows.map { TimeWindow(start: $0.start, end: $0.end) } ?? []
         let now = Date.now
         let start = p.window.start <= now && now <= p.window.end ? now : (darkness?.start ?? p.window.start)
         time = TimeScrubber.snap(start, across: p.window, step: NightScrubber.step)
-    }
-
-    /// Same state as the shell's `FieldModeToggle`, drawn from the palette so
-    /// no glass or white glyph shows in field mode.
-    private var fieldToggle: some View {
-        @Bindable var state = state
-        return Button { state.fieldMode.toggle() } label: {
-            Image(systemName: "moon.stars")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(palette.accent)
-                .frame(width: 40, height: 40)
-                .background(state.fieldMode ? palette.surface : palette.background, in: Circle())
-                .overlay(Circle().stroke(palette.accent.opacity(0.6), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Field mode")
-        .accessibilityValue(state.fieldMode ? "On" : "Off")
-        .accessibilityHint("Switches the whole app to dim red")
     }
 
     private func setTypedPlace() {
@@ -507,20 +532,14 @@ private struct FlowSwatches: View {
             ForEach(items, id: \.0) { label, hex in
                 HStack(spacing: 6) {
                     RoundedRectangle(cornerRadius: 2).fill(palette.swatch(hex, field: field)).frame(width: 12, height: 12)
-                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(palette.secondary, lineWidth: 0.5))
-                    Text(label).font(.caption2).foregroundStyle(palette.secondary)
+                        .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(palette.hairline, lineWidth: 0.5))
+                    Text(label).font(.caption).foregroundStyle(palette.secondary)
                 }
             }
         }
     }
 }
 
-extension Palette {
-    func swatchFor(_ object: SkyObject) -> Color {
-        switch object {
-        case .sun: marginal
-        case .galacticCenter: accent
-        default: primary
-        }
-    }
+private extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }

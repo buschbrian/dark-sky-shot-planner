@@ -38,3 +38,24 @@ struct FieldModeToggle: View {
         .accessibilityHint("Switches the whole app to dim red")
     }
 }
+
+extension View {
+    /// Controls floating over content (map overlays): Liquid Glass in
+    /// standard mode, a solid near-black plate in field mode (glass is grey).
+    func floatingSurface(_ palette: Palette, shape: some Shape) -> some View {
+        modifier(FloatingSurface(palette: palette, shape: shape))
+    }
+}
+
+private struct FloatingSurface<S: Shape>: ViewModifier {
+    let palette: Palette
+    let shape: S
+
+    func body(content: Content) -> some View {
+        if palette.isField {
+            content.background(palette.background.opacity(0.85), in: shape)
+        } else {
+            content.glassEffect(.regular, in: shape)
+        }
+    }
+}
