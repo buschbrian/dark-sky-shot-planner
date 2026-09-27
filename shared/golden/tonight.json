@@ -1,0 +1,20 @@
+{
+  "rule": "Review B-2: 'tonight' is the previous evening's night only while it is still dark there (before its astronomical dawn, or civil dawn when the sun never reaches -18 degrees); otherwise the night that starts this evening. Where it never gets darker than civil twilight, this evening.",
+  "tolerance": { "time_s": 60 },
+  "cases": [
+    { "id": "candlestick-0300", "note": "03:00 MDT: still dark, still last night", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-27T09:00:00Z", "tonight": "2026-09-26" },
+    { "id": "candlestick-0540", "note": "Three minutes before astronomical dawn", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-27T11:40:00Z", "tonight": "2026-09-26" },
+    { "id": "candlestick-0547", "note": "Three minutes after astronomical dawn: the coming night", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-27T11:47:00Z", "tonight": "2026-09-27" },
+    { "id": "candlestick-0730", "note": "07:30 MDT, the review's morning check: the coming night", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-27T13:30:00Z", "tonight": "2026-09-27" },
+    { "id": "candlestick-2100", "note": "21:00 MDT: this evening", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-28T03:00:00Z", "tonight": "2026-09-27" },
+    { "id": "candlestick-0030", "note": "00:30 MDT, past local midnight: still the evening's night", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "instant_utc": "2026-09-28T06:30:00Z", "tonight": "2026-09-27" },
+    { "id": "glacier-solstice-0300", "note": "49 N at the solstice, no astronomical darkness: civil darkness still holds at 03:00 MDT", "latitude": 48.99, "longitude": -114.0, "time_zone": "America/Denver", "instant_utc": "2026-06-21T09:00:00Z", "tonight": "2026-06-20" },
+    { "id": "glacier-solstice-0730", "note": "49 N at the solstice: past civil dawn, the coming night", "latitude": 48.99, "longitude": -114.0, "time_zone": "America/Denver", "instant_utc": "2026-06-21T13:30:00Z", "tonight": "2026-06-21" },
+    { "id": "fairbanks-solstice-0200", "note": "65 N at the solstice, never darker than civil twilight: this evening", "latitude": 64.84, "longitude": -147.72, "time_zone": "America/Anchorage", "instant_utc": "2026-06-21T10:00:00Z", "tonight": "2026-06-21" }
+  ],
+  "darkness_end": [
+    { "id": "candlestick-2026-09-26", "note": "Astronomical dawn, the '5:43 AM' in 'last night (ended 5:43 AM)'", "latitude": 38.374031, "longitude": -109.965416, "time_zone": "America/Denver", "night": "2026-09-26", "end_utc": "2026-09-27T11:43:56Z" },
+    { "id": "glacier-2026-06-20", "note": "No astronomical darkness: civil dawn", "latitude": 48.99, "longitude": -114.0, "time_zone": "America/Denver", "night": "2026-06-20", "end_utc": "2026-06-21T10:48:53Z" },
+    { "id": "fairbanks-2026-06-20", "note": "No civil darkness: none", "latitude": 64.84, "longitude": -147.72, "time_zone": "America/Anchorage", "night": "2026-06-20", "end_utc": null }
+  ]
+}

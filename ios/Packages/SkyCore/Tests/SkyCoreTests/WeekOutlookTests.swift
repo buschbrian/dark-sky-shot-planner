@@ -214,11 +214,20 @@ struct WeekOutlookTests {
         let rule = try AuroraRule.bundled()
         let now = try ISO.date("2026-10-30T16:00:00Z") // 10:00 MDT
         let kp = [KpReading(start: try ISO.date("2026-10-30T15:00:00Z"), kp: 9, kind: .observed)]
+        // Stepped back to the night that just ended (review B-2 made it no longer the default).
         let rows = try WeekOutlook.build(
-            observer: observer(moab.lat, moab.lon), timeZone: denver, now: now, count: 2,
+            observer: observer(moab.lat, moab.lon), timeZone: denver, now: now,
+            first: try #require(NightDate(iso: "2026-10-29")), count: 2,
             clouds: [], kp: kp, auroraRule: rule, verdict: { _ in () })
         #expect(rows[0].night.date.iso == "2026-10-29")
         #expect(rows[0].aurora == .unavailable(.kpDoesNotCoverNight))
         #expect(rows[1].aurora == .possible(kp: 9, visibleKp: 7.67, basis: .observedNow))
+
+        // By default, after dawn the week starts at the coming night (B-2).
+        let byDefault = try WeekOutlook.build(
+            observer: observer(moab.lat, moab.lon), timeZone: denver, now: now, count: 2,
+            clouds: [], kp: kp, auroraRule: rule, verdict: { _ in () })
+        #expect(byDefault[0].night.date.iso == "2026-10-30")
+        #expect(byDefault[0].aurora == .possible(kp: 9, visibleKp: 7.67, basis: .observedNow))
     }
 }
