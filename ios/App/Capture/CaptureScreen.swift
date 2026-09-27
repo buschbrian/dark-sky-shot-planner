@@ -112,6 +112,7 @@ struct CaptureScreen: View {
             switch model.phase {
             case .idle: EmptyView()
             case .waitingForPreviousRun: statusLine("Finishing the previous sequence…")
+            case .preparing: statusLine("Locking exposure and focus…")
             case .countdown(let s): statusLine("Self-timer: \(s)")
             case .settling: statusLine("Waiting for the tripod to settle…")
             case .capturing(let i, let n): statusLine("Frame \(i) of \(n)")
@@ -301,7 +302,7 @@ struct CaptureScreen: View {
     /// work. Frames already shot are always kept.
     @ViewBuilder private var controls: some View {
         switch model.phase {
-        case .countdown, .settling, .capturing, .coolingDown:
+        case .preparing, .countdown, .settling, .capturing, .coolingDown:
             HStack(spacing: 12) {
                 bigButton("Stop and stack", symbol: "stop.circle", id: "capture.stopAndStack") { model.stopAndStack() }
                 bigButton("Cancel", symbol: "xmark.circle", id: "capture.cancel") { model.cancel() }

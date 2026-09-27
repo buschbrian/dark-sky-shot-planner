@@ -16,6 +16,7 @@ nonisolated func captureBenchInstall() {
     // With the self-test or lifecycle test, the bench runs after them in the same launch.
     guard defaults.bool(forKey: "CaptureBench"), !defaults.bool(forKey: "CaptureSelfTest"),
           !defaults.bool(forKey: "CaptureLifecycleTest") else { return }
+    DispatchQueue.main.async { UIApplication.shared.isIdleTimerDisabled = true }
     DispatchQueue.global(qos: .userInitiated).async {
         CaptureDebug.bench(frames: UserDefaults.standard.integer(forKey: "CaptureBenchFrames").nonZero ?? 8)
         fflush(stdout)
@@ -90,6 +91,7 @@ nonisolated enum CaptureDebug {
                 let r = SyntheticStarField.render(stars, width: w, height: h, channels: 3, frameFromReference: truth(i), seed: UInt64(i + 1))
                 try? r.data.write(to: url)
             }
+            say(String(format: "bench: frame %d rendered, footprint %d MB", i, Int(CaptureLog.footprint() / 1_000_000)))
             guard let mapped = try? Data(contentsOf: url, options: .alwaysMapped) else { say("bench: could not map frame \(i)"); return }
             rasters.append(RasterU16(width: w, height: h, channels: 3, data: mapped))
         }

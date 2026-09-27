@@ -73,6 +73,9 @@ nonisolated struct CapturedFrame: Sendable {
     let height: Int
     /// Seconds from the capture request to the sensor finishing the exposure.
     let requestToCaptured: Double
+    /// The photo's sensor timestamp (host clock seconds): consecutive new
+    /// exposures are at least one exposure apart.
+    let sensorTime: Double
 }
 
 enum CaptureError: LocalizedError {
@@ -200,12 +203,33 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
 
         photoOutput.maxPhotoQualityPrioritization = .speed
         photoOutput.isAppleProRAWEnabled = photoOutput.isAppleProRAWSupported
+        // Every frame must be a new exposure taken after its request. Zero
+        // shutter lag and responsive capture serve stills from a ring buffer
+        // of past frames (measured on the phone: five "1 s" frames in 0.6 s).
+        if photoOutput.isZeroShutterLagEnabled { photoOutput.isZeroShutterLagEnabled = false }
+        if photoOutput.isResponsiveCaptureEnabled { photoOutput.isResponsiveCaptureEnabled = false }
+        if photoOutput.isFastCapturePrioritizationEnabled { photoOutput.isFastCapturePrioritizationEnabled = false }
+        // The sequence runner also paces requests one exposure apart and
+        // checks each photo's sensor timestamp, so a buffered frame is caught
+        // even where zero shutter lag has to stay on (see below).
         let dims = format.supportedMaxPhotoDimensions
         if let largest = dims.max(by: { $0.width * $0.height < $1.width * $1.height }) {
             photoOutput.maxPhotoDimensions = largest
         }
         session.commitConfiguration()
         committed = true
+        // Measured on the phone: with zero shutter lag and responsive capture
+        // off, the running session listed no ProRAW. RAW matters more, so turn
+        // them back on when that happens and rely on pacing and timestamps.
+        if photoOutput.isAppleProRAWSupported,
+           !photoOutput.availableRawPhotoPixelFormatTypes.contains(where: { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) }) {
+            session.beginConfiguration()
+            if photoOutput.isZeroShutterLagSupported { photoOutput.isZeroShutterLagEnabled = true }
+            if photoOutput.isResponsiveCaptureSupported { photoOutput.isResponsiveCaptureEnabled = true }
+            session.commitConfiguration()
+            CaptureLog.event("ProRAW needs zero shutter lag on here: re-enabled (ZSL \(photoOutput.isZeroShutterLagEnabled), responsive \(photoOutput.isResponsiveCaptureEnabled))")
+        }
+        CaptureLog.event("photo output: ZSL \(photoOutput.isZeroShutterLagEnabled), responsive \(photoOutput.isResponsiveCaptureEnabled), fast \(photoOutput.isFastCapturePrioritizationEnabled), RAW \(photoOutput.availableRawPhotoPixelFormatTypes.map(CameraProbe.fourCC))")
         // The RAW list reflects the committed configuration.
         let proRaw = photoOutput.availableRawPhotoPixelFormatTypes.first { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) }
             ?? photoOutput.availableRawPhotoPixelFormatTypes.first { AVCapturePhotoOutput.isBayerRAWPixelFormat($0) }
@@ -273,8 +297,12 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
     /// Auto, Apple documents that the duration is applied as given (the
     /// streaming cap `activeMaxExposureDuration` is ignored).
     func lockExposure(seconds: Double, iso: Float, aperture: Float?) async throws {
+        // Returns once the first frame with these settings has been delivered
+        // (measured on the phone: without this wait, frame 1 was 1/15 s).
+        let applied = AsyncStream<Void>.makeStream()
         try await onQueue { [self] in
             guard let device else { throw CaptureError.notRunning }
+            let done: @Sendable (CMTime) -> Void = { _ in applied.continuation.finish() }
             let format = device.activeFormat
             let duration = CMTime(seconds: min(max(seconds, CMTimeGetSeconds(format.minExposureDuration)),
                                                CMTimeGetSeconds(format.maxExposureDuration)),
@@ -284,11 +312,18 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
             defer { device.unlockForConfiguration() }
             if #available(iOS 27.0, *), let aperture,
                format.supportsExposureModeCustom(lensAperture: aperture, duration: duration, iso: iso) {
-                device.setExposureModeCustom(lensAperture: aperture, duration: duration, iso: iso, completionHandler: nil)
+                device.setExposureModeCustom(lensAperture: aperture, duration: duration, iso: iso, completionHandler: done)
             } else {
-                device.setExposureModeCustom(duration: duration, iso: iso, completionHandler: nil)
+                device.setExposureModeCustom(duration: duration, iso: iso, completionHandler: done)
             }
         }
+        // The handler only fires while the session streams; don't wait forever.
+        let timeout = Task.detached {
+            try? await Task.sleep(for: .seconds(seconds + 3))
+            applied.continuation.finish()
+        }
+        for await _ in applied.stream {}
+        timeout.cancel()
     }
 
     /// Locks focus at a lens position (0 near … 1 far; 1 is not infinity).
@@ -300,6 +335,8 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
             device.setFocusModeLocked(lensPosition: min(max(position, 0), 1), completionHandler: nil)
         }
     }
+
+    var exposureDurationNow: Double { device.map { CMTimeGetSeconds($0.exposureDuration) } ?? 0 }
 
     /// One autofocus pass at the centre (a bright star or a distant light),
     /// then locks wherever it settled; returns that lens position.
@@ -449,7 +486,8 @@ nonisolated private final class PhotoWriter: NSObject, AVCapturePhotoCaptureDele
             focalLength35: exif[kCGImagePropertyExifFocalLenIn35mmFilm as String] as? Double,
             width: Int(raw ? photo.resolvedSettings.rawPhotoDimensions.width : dims.width),
             height: Int(raw ? photo.resolvedSettings.rawPhotoDimensions.height : dims.height),
-            requestToCaptured: (captured ?? Date()).timeIntervalSince(requested))
+            requestToCaptured: (captured ?? Date()).timeIntervalSince(requested),
+            sensorTime: CMTimeGetSeconds(photo.timestamp))
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: (any Error)?) {

@@ -32,6 +32,7 @@ final class CaptureModel {
     enum Phase: Equatable {
         case idle
         case waitingForPreviousRun
+        case preparing
         case countdown(Int)
         case settling
         case capturing(frame: Int, of: Int)
@@ -44,7 +45,7 @@ final class CaptureModel {
 
         var isAcquiring: Bool {
             switch self {
-            case .countdown, .settling, .capturing, .coolingDown, .draining: true
+            case .preparing, .countdown, .settling, .capturing, .coolingDown, .draining: true
             default: false
             }
         }
@@ -358,6 +359,7 @@ final class CaptureModel {
     }
 
     private func run(plan: CapturePlan, dims: CMVideoDimensions) async {
+        phase = .preparing
         UIApplication.shared.isIdleTimerDisabled = true
         log.removeAll()
         lastAssetIdentifiers = []
@@ -399,6 +401,7 @@ final class CaptureModel {
         let startTime = Date()
         let thermalAtStart = ProcessInfo.processInfo.thermalState
         var coolDowns = 0
+        var lastRequest: Date?
         frameLoop: for i in 0..<plan.frames {
             if shouldEnd() { break }
             thermal = ProcessInfo.processInfo.thermalState
@@ -418,6 +421,14 @@ final class CaptureModel {
                 endRequest = endRequest ?? .interrupted("camera interrupted")
                 break
             }
+            // Pace requests at least one exposure apart, so no two requests
+            // can be served by the same sensor frame.
+            if let last = lastRequest {
+                let wait = subExposure - Date().timeIntervalSince(last)
+                if wait > 0 { await pause(wait) }
+                if shouldEnd() { break }
+            }
+            lastRequest = Date()
             phase = .capturing(frame: i + 1, of: plan.frames)
             let base = folder.appending(path: String(format: "frame-%04d", i + 1))
             // Request the next frame as soon as this one's exposure ends; keep
@@ -466,9 +477,17 @@ final class CaptureModel {
         for item in pending { _ = await record(item, into: &entries) }
         pending.removeAll()
         let elapsed = Date().timeIntervalSince(startTime)
-        let intervals = zip(entries.dropFirst(), entries).map { $0.exposedAt - $1.exposedAt }
+        entries.sort { $0.index < $1.index }
+        // Sensor timestamps: a new exposure starts at least ~one exposure after
+        // the last; anything closer is a buffered or repeated frame.
+        for i in entries.indices.dropFirst() where entries[i].sensorTime - entries[i - 1].sensorTime < 0.9 * subExposure {
+            entries[i].moved = true
+            note(String(format: "Frame %d is only %.2f s after frame %d on the sensor clock (not a new %.1f s exposure); left out of the stack.",
+                        entries[i].index, entries[i].sensorTime - entries[i - 1].sensorTime, entries[i - 1].index, subExposure))
+        }
+        let intervals = zip(entries.dropFirst(), entries).map { $0.sensorTime - $1.sensorTime }
         let ended = endRequest
-        note(String(format: "%d of %d frames in %.1f s; frame interval %@; peak memory %d MB; thermal %@ → %@%@.",
+        note(String(format: "%d of %d frames in %.1f s; sensor-clock frame interval %@; peak memory %d MB; thermal %@ → %@%@.",
                     entries.count, plan.frames, elapsed,
                     intervals.isEmpty ? "n/a" : String(format: "mean %.2f s, max %.2f s", intervals.reduce(0, +) / Double(intervals.count), intervals.max()!),
                     Int(peakFootprint / 1_000_000), CameraProbe.thermalName(thermalAtStart),
@@ -522,13 +541,13 @@ final class CaptureModel {
             entries.append(SequenceLog.Frame(
                 index: item.index, file: frame.url.lastPathComponent, bytes: frame.bytes, exposure: frame.exposure,
                 iso: frame.iso, fNumber: frame.fNumber, width: frame.width, height: frame.height,
-                exposedAt: item.exposedAt, meanRotationRate: item.rate, moved: moved))
-            CaptureLog.event(String(format: "frame %d saved %@ %dx%d, exposure %@ s, ISO %@, f/%@, %.1f MB, at %.2f s",
+                exposedAt: item.exposedAt, sensorTime: frame.sensorTime, meanRotationRate: item.rate, moved: moved))
+            CaptureLog.event(String(format: "frame %d saved %@ %dx%d, exposure %@ s, ISO %@, f/%@, %.1f MB, exposure ended %.2f s into the run, sensor time %.3f",
                                     item.index, frame.url.lastPathComponent, frame.width, frame.height,
                                     frame.exposure.map { String(format: "%.4f", $0) } ?? "?",
                                     frame.iso.map { String(format: "%.0f", $0) } ?? "?",
                                     frame.fNumber.map { String(format: "%.2f", $0) } ?? "?",
-                                    Double(frame.bytes) / 1e6, item.exposedAt))
+                                    Double(frame.bytes) / 1e6, item.exposedAt, frame.sensorTime))
             if phoneGear == nil, let f = frame.focalLength, let f35 = frame.focalLength35, let n = frame.fNumber {
                 phoneGear = try? PhoneGear.profiles(name: "iPhone \(lens.title)", focalLengthMM: f,
                                                     focalLength35mmEquivalent: f35, fNumber: n,
@@ -556,7 +575,7 @@ final class CaptureModel {
     private func stack(log sequence: SequenceLog, folder: URL) async {
         let usable = sequence.frames.filter { !$0.moved }
         if usable.count < sequence.frames.count {
-            note("\(sequence.frames.count - usable.count) frame(s) moved and are left out of the stack (still saved).")
+            note("\(sequence.frames.count - usable.count) frame(s) moved or repeated and are left out of the stack (still saved).")
         }
         let frames = usable.map { StackBuilder.Frame(url: folder.appending(path: $0.file), exposure: $0.exposure, iso: $0.iso) }
         let trails = sequence.mode == Mode.trails.rawValue
@@ -571,6 +590,14 @@ final class CaptureModel {
             }
         }
         let start = Date()
+        let peak = PeakFootprint()
+        let sampler = Task.detached {
+            while !Task.isCancelled {
+                peak.sample()
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+        defer { sampler.cancel() }
         let work = Task.detached(priority: .userInitiated) { try builder.run(progress: progress) }
         // Cancelling the run (Cancel, leaving, background) cancels the stack.
         let result = await withTaskCancellationHandler {
@@ -584,8 +611,13 @@ final class CaptureModel {
         case .success(let report):
             finished.stack = report.description
             lastStack = output
-            note(String(format: "Stacked %d of %d frames in %.1f s%@.", report.used, report.frames, seconds,
-                        report.unalignedReason.map { " (\($0))" } ?? ""))
+            note(String(format: "Stacked %d of %d frames in %.1f s (decode %.1f, stars %.1f, align %.2f, combine %.1f, write %.1f s), peak memory %d MB%@.",
+                        report.used, report.frames, seconds, report.decodeSeconds, report.detectSeconds,
+                        report.registerSeconds, report.combineSeconds, report.writeSeconds, Int(peak.value / 1_000_000),
+                        report.unalignedReason.map { "; \($0)" } ?? ""))
+            for (i, r) in report.registrations.enumerated() where r == nil {
+                note("Frame \(i + 1) could not be aligned on stars and was left out (still saved).")
+            }
             phase = .finished("\(report.used) frames \(trails ? "combined" : "stacked"). Saved in Files › Dark Sky › Captures.")
         case .failure(let error as CancellationError):
             _ = error
@@ -609,6 +641,15 @@ final class CaptureModel {
         let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
         CaptureLog.event("photos add-only authorization: \(status.rawValue)")
         guard status == .authorized || status == .limited else { throw CaptureError.captureFailed("Photos access was not given") }
+        let ids = try await Self.addToPhotos(folder)
+        lastAssetIdentifiers = ids
+        CaptureLog.event("saved to Photos: \(ids.count) assets \(ids)")
+        return ids
+    }
+
+    /// Nonisolated so the change block runs on Photos' own queue without
+    /// inheriting the main actor (it trapped on the phone when it did).
+    nonisolated static func addToPhotos(_ folder: URL) async throws -> [String] {
         let files = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
             .filter { ["dng", "heic", "tif"].contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
@@ -620,8 +661,6 @@ final class CaptureModel {
                 if let id = request.placeholderForCreatedAsset?.localIdentifier { box.ids.append(id) }
             }
         }
-        lastAssetIdentifiers = box.ids
-        CaptureLog.event("saved to Photos: \(box.ids.count) assets \(box.ids)")
         return box.ids
     }
 
@@ -654,6 +693,16 @@ nonisolated private final class ResumeOnce: @unchecked Sendable {
     }
 }
 
+nonisolated private final class PeakFootprint: @unchecked Sendable {
+    private var peak: Int64 = 0
+    private let lock = NSLock()
+    func sample() {
+        let now = CaptureLog.footprint()
+        lock.withLock { peak = max(peak, now) }
+    }
+    var value: Int64 { lock.withLock { peak } }
+}
+
 nonisolated private final class ExposureFlag: @unchecked Sendable {
     private var flag = false
     private let lock = NSLock()
@@ -679,6 +728,8 @@ nonisolated struct SequenceLog: Codable, Sendable {
         let height: Int
         /// Seconds from the first frame request to this frame's exposure end.
         let exposedAt: Double
+        /// Sensor timestamp, host-clock seconds.
+        let sensorTime: Double
         var meanRotationRate: Double
         var moved: Bool
     }
