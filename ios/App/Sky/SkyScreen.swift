@@ -27,11 +27,13 @@ struct SkyScreen: View {
     @State private var panel: SkyPanel?
     @State private var findTarget: SkyFindTarget?
     @State private var trail: StarTrailSequence?
-    @State private var look = SimulatedLook()
+    @State private var look = SimulatedLook.initial
     @State private var lookAtDragStart: SimulatedLook?
     @State private var lookAtPinchStart: SimulatedLook?
     @State private var realismCache = SkyRealismCache()
     @State private var readout = SkyFrameReadout()
+    @State private var simulatedDisturbanceCleared = false
+    @State private var figureEightHidden = false
     @Environment(\.skyRadiants) private var radiantProvider
 
     static let arConfig = try? AppConfig.bundled().arOverlay
@@ -63,8 +65,16 @@ struct SkyScreen: View {
             updateSensors()
         }
         .onChange(of: scenePhase) { updateSensors() }
+        #if DEBUG
+        .task(id: SimulatedSky.diagnostics) {
+            guard SimulatedSky.diagnostics else { return }
+            while !Task.isCancelled {
+                print("SKYDIAG \(Date.now.formatted(.iso8601)) \(diagnosticsLine(simulated: simulatedReason != nil).text)")
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+        #endif
         .onChange(of: simulatedByChoice) { updateSensors() }
-        .onChange(of: state.fieldMode, initial: true) { sensors.allowsSystemHeadingPrompt = !state.fieldMode }
     }
 
     @ViewBuilder private var content: some View {
@@ -185,7 +195,7 @@ struct SkyScreen: View {
         let planetarium = simulated || layers.planetarium
         var backdropParams: SkyBackdropParams?
         let input = scene.map { scene in
-            let projector = SkyProjector(attitude: raw.applying(session.calibration), intrinsics: viewIntrinsics(size: size, simulated: simulated))
+            let projector = SkyProjector(attitude: raw.applying(session.correction), intrinsics: viewIntrinsics(size: size, simulated: simulated))
             var input = SkyOverlayInput(
                 projector: projector,
                 scene: scene, track: model.track, horizon: horizon,
@@ -306,6 +316,16 @@ struct SkyScreen: View {
                 .buttonStyle(SkyButtonStyle())
                 .accessibilityIdentifier("sky.calibrate")
             }
+            if let config = Self.arConfig, !figureEightHidden, sensorQuality(simulated: simulated != nil).needsFigureEight(config: config) {
+                FigureEightGuide(quality: sensorQuality(simulated: simulated != nil), onHide: { figureEightHidden = true })
+            }
+            #if DEBUG
+            if SimulatedSky.diagnostics {
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    SensorDiagnosticsPanel(line: diagnosticsLine(simulated: simulated != nil).text)
+                }
+            }
+            #endif
             if isLive, camera.access == .denied || camera.access == .restricted {
                 HStack {
                     Text("Camera is off for Dark Sky, so the overlay is drawn on black.")
@@ -314,7 +334,7 @@ struct SkyScreen: View {
                 }
             }
             if !style.isConfident {
-                Text(approximateNote(style))
+                Text(approximateNote(style, simulated: simulated != nil))
                     .font(.caption).foregroundStyle(palette.marginal)
                     .padding(8)
                     .background(palette.background.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
@@ -359,14 +379,31 @@ struct SkyScreen: View {
                 if calibrating {
                     CalibrationPanel(
                         targets: calibrationTargets(place: place, model: model, at: simulated == nil ? .now : time),
-                        choice: $calibrationChoice,
-                        isCalibrated: session.isCalibrated,
-                        onAlign: { align($0, place: place, time: simulated == nil ? .now : time, simulated: simulated != nil) },
+                        choice: Binding(get: { calibrationChoice }, set: { choice in
+                            calibrationChoice = choice
+                            if simulated != nil { pointSimulated(at: choice, place: place, model: model, time: time) }
+                        }), session: session,
+                        residualLimitDeg: Self.arConfig?.calibrationResidualMaxDeg,
+                        onAdd: { addAlignment($0, place: place, model: model, time: simulated == nil ? .now : time, simulated: simulated != nil) },
+                        onApply: { choice in
+                            let t = simulated == nil ? Date.now : time
+                            if let choice, !session.pending.contains(where: { $0.target == choice.name }) {
+                                addAlignment(choice, place: place, model: model, time: t, simulated: simulated != nil)
+                            }
+                            if session.apply(config: Self.arConfig, at: place, persist: simulated == nil) {
+                                sensors.resetDisturbance()
+                                simulatedDisturbanceCleared = true
+                                calibrating = false
+                            }
+                        },
                         onReset: {
                             session.reset(persist: simulated == nil)
                             calibrating = false
                         },
-                        onCancel: { calibrating = false })
+                        onCancel: {
+                            session.clearPending()
+                            calibrating = false
+                        })
                 } else {
                     // Live "Now" keeps ticking without redrawing the whole screen.
                     TimelineView(.periodic(from: .now, by: 15)) { tick in
@@ -441,7 +478,36 @@ struct SkyScreen: View {
     private func style(simulated: Bool) -> OverlayStyle {
         guard let config = Self.arConfig else { return .approximate(uncertaintyDeg: nil) }
         let heading = HeadingConfidence(headingAccuracyDeg: headingAccuracy(simulated: simulated), config: config)
-        return OverlayStyle(heading: heading, calibrated: session.isCalibrated)
+        let style = OverlayStyle(heading: heading, calibrated: session.isCalibrated)
+        // A magnetic disturbance or drift since calibration overrides everything until recalibrated.
+        switch disturbance(simulated: simulated) {
+        case .steady: return style
+        case .disturbed(let d), .drifted(let d):
+            if case .approximate(let u?) = style { return .approximate(uncertaintyDeg: max(u, abs(d))) }
+            return .approximate(uncertaintyDeg: style.isConfident ? abs(d) : nil)
+        }
+    }
+
+    private func disturbance(simulated: Bool) -> HeadingDisturbanceMonitor.State {
+        if simulated { return simulatedDisturbanceCleared ? .steady : SimulatedSky.disturbance }
+        return sensors.disturbance
+    }
+
+    private func diagnosticsLine(simulated: Bool) -> SensorDiagnosticsLine {
+        SensorDiagnosticsLine(
+            headingDeg: simulated ? look.attitude.headingDeg : sensors.rawHeadingDeg,
+            smoothingDeg: simulated ? 0 : sensors.smoothingDeg,
+            headingAccuracyDeg: headingAccuracy(simulated: simulated),
+            magnetic: simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy,
+            rateDegPerSecond: simulated ? 0 : sensors.headingRateDegPerSecond,
+            disturbance: disturbance(simulated: simulated),
+            correction: session.correction, pending: session.pending.count)
+    }
+
+    private func sensorQuality(simulated: Bool) -> SensorQuality {
+        SensorQuality(
+            magnetic: simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy,
+            headingAccuracyDeg: headingAccuracy(simulated: simulated))
     }
 
     private func headingText(simulated: Bool) -> String {
@@ -452,20 +518,31 @@ struct SkyScreen: View {
         } else {
             text += simulated ? " invalid" : (sensors.headingHardware ? " not valid yet" : " unavailable")
         }
+        text += " · magnetometer " + (simulated ? SimulatedSky.magneticAccuracy : sensors.magneticAccuracy).label
         if let target = session.calibratedOn {
-            text += String(format: " · calibrated on %@ (%+.1f°)", target, session.calibration.offsetDeg)
+            let c = session.correction
+            text += c.targets.count > 1
+                ? String(format: " · calibrated on %@ (%+.1f°, residual %.2f°)", target, c.yawDeg, c.residualDeg)
+                : String(format: " · calibrated on %@ (%+.1f°)", target, c.yawDeg)
             if session.restored { text += ", restored" }
         }
         return text
     }
 
-    private func approximateNote(_ style: OverlayStyle) -> String {
+    private func approximateNote(_ style: OverlayStyle, simulated: Bool) -> String {
+        switch disturbance(simulated: simulated) {
+        case .disturbed(let d):
+            return String(format: "Magnetic disturbance: the heading jumped %.0f° while the phone was still. Step away from the car, tripod or rock, then recalibrate.", abs(d))
+        case .drifted(let d):
+            return String(format: "The compass has drifted %.1f° from the gyroscope since calibration. Recalibrate on a target.", abs(d))
+        case .steady: break
+        }
         let why = if case .approximate(let u?) = style {
             "The compass reports ±\(Int(u.rounded()))°, so positions are approximate (rings show the error)."
         } else {
             "No valid compass heading, so positions may be far off."
         }
-        return why + " Calibrate on the Moon, a planet or a saved peak."
+        return why + " Calibrate on the Moon, a planet, a bright star or a saved peak."
     }
 
     // MARK: - Calibration
@@ -475,6 +552,15 @@ struct SkyScreen: View {
         if let scene = model.ephemeris.scene(at: date) ?? fallback.scene(place: place, at: date) {
             for body in scene.bodies where body.object != .galacticCenter && body.position.altitudeDeg > 0 {
                 out.append(.body(body.object))
+            }
+        }
+        // Bright named stars well above the horizon, brightest first.
+        if let stars = model.stars, let observer = try? place.observer() {
+            let catalog = stars.catalog
+            for hr in catalog.names.keys.sorted(by: { catalog.star(hr: $0)!.vmag < catalog.star(hr: $1)!.vmag }) {
+                guard let i = catalog.index(ofHR: hr), catalog.stars[i].vmag < 1.6,
+                      stars.field.position(ofStarAt: i, at: date, observer: observer).altitudeDeg > 8 else { continue }
+                out.append(.star(hr: hr, name: catalog.names[hr]!))
             }
         }
         let here = GeoCoordinate(latitude: place.latitude, longitude: place.longitude)
@@ -487,14 +573,26 @@ struct SkyScreen: View {
         return out
     }
 
-    private func align(_ target: CalibrationTarget, place: Place, time: Date, simulated: Bool) {
+    /// Records where the (heading-smoothed, uncorrected) sensors say the
+    /// crosshair points while the user holds `target` on it.
+    private func addAlignment(_ target: CalibrationTarget, place: Place, model: SkyModel, time: Date, simulated: Bool) {
         let raw = simulated ? look.attitude : sensors.attitude()
-        guard let raw, let computed = target.azimuthDeg(from: place, at: time) else { return }
-        let aligned = SkyProjector(attitude: raw, intrinsics: LensModel.assumed.intrinsics).boresight.azimuthDeg
-        session.calibrate(
-            HeadingCalibration(computedAzimuthDeg: computed, alignedAzimuthDeg: aligned), on: target.name,
-            at: place, persist: !simulated)
-        calibrating = false
+        guard let raw else { return }
+        var sensed = SkyProjector(attitude: raw, intrinsics: LensModel.assumed.intrinsics).boresight
+        if simulated, SimulatedSky.alignmentErrorDeg != 0 {
+            // Alternate the sign so repeated alignments disagree with each other.
+            let e = SimulatedSky.alignmentErrorDeg * (session.pending.count.isMultiple(of: 2) ? 1 : -1)
+            sensed = HorizontalPosition(altitudeDeg: sensed.altitudeDeg + e, azimuthDeg: sensed.azimuthDeg)
+        }
+        guard let truth = target.direction(from: place, at: time, stars: model.stars, sensedAltitudeDeg: sensed.altitudeDeg) else { return }
+        session.add(CalibrationObservation(target: target.name, trueDirection: truth, sensedDirection: sensed))
+    }
+
+    /// The simulated view has no hands to point it: picking a calibration
+    /// target turns it there, as a user would.
+    private func pointSimulated(at target: CalibrationTarget?, place: Place, model: SkyModel, time: Date) {
+        guard let target, let truth = target.direction(from: place, at: time, stars: model.stars, sensedAltitudeDeg: look.pitchDeg) else { return }
+        look.point(at: truth)
     }
 
     private func restoreCalibration(for place: Place, simulated: Bool) {
@@ -600,6 +698,15 @@ struct SimulatedLook: Equatable {
 
     var attitude: DeviceAttitude { .upright(facingAzimuth: azimuthDeg, pitchDeg: pitchDeg) }
 
+    /// `-SkyDemoLook "azimuth,pitch,fov"` starts the simulated view elsewhere (screenshots).
+    static var initial: SimulatedLook {
+        var look = SimulatedLook()
+        let parts = (UserDefaults.standard.string(forKey: "SkyDemoLook") ?? "").split(separator: ",").compactMap { Double($0) }
+        if parts.count >= 2 { (look.azimuthDeg, look.pitchDeg) = (parts[0], parts[1]) }
+        if parts.count >= 3 { look.fieldOfViewDeg = parts[2] }
+        return look
+    }
+
     var description: String {
         "facing \(CompassPoint.abbreviation(forAzimuth: azimuthDeg)), \(Int(pitchDeg.rounded()))° up, \(Int(fieldOfViewDeg.rounded()))° lens · drag to look, pinch to zoom"
     }
@@ -657,6 +764,31 @@ enum SimulatedSky {
         guard let value = defaults.string(forKey: "SkyDemoHeadingAccuracy") else { return 3 }
         return value == "invalid" ? -1 : Double(value) ?? -1
     }
+
+    /// `-SkyDemoMagneticAccuracy uncalibrated|low|medium|high` simulates
+    /// Core Motion's magnetometer calibration state (default high).
+    static var magneticAccuracy: MagneticFieldAccuracy {
+        switch defaults.string(forKey: "SkyDemoMagneticAccuracy") {
+        case "uncalibrated": .uncalibrated
+        case "low": .low
+        case "medium": .medium
+        default: .high
+        }
+    }
+
+    /// `-SkyDemoDisturbance YES` simulates a magnetic disturbance (an 8°
+    /// heading jump while still) until the next calibration.
+    static var disturbance: HeadingDisturbanceMonitor.State {
+        defaults.bool(forKey: "SkyDemoDisturbance") ? .disturbed(jumpDeg: 8) : .steady
+    }
+
+    /// `-SkyDemoAlignmentError <deg>`: each simulated alignment is off by
+    /// this much in altitude, alternating up and down (tests the residual).
+    static var alignmentErrorDeg: Double { defaults.double(forKey: "SkyDemoAlignmentError") }
+
+    /// `-SkySensorDiagnostics YES` (Debug builds): the diagnostics panel and
+    /// a `SKYDIAG` stdout line every second.
+    static var diagnostics: Bool { defaults.bool(forKey: "SkySensorDiagnostics") }
 
     /// `-SkyDemoSweep YES` swings the simulated phone around the south at
     /// display rate, exercising the same per-frame path as the sensors.

@@ -118,6 +118,35 @@ struct StarFieldTests {
         #expect(azimuthDelta(pos.azimuthDeg, r.az) * cos(r.alt * .pi / 180) < 0.002 || abs(r.alt) > 89)
     }
 
+    /// `ios/scripts/star-reference.cjs`: the 20 brightest stars of the
+    /// bundled file itself (same positions and proper motions), through
+    /// astronomy-engine's DefineStar + Equator (of date, aberration) + Horizon
+    /// (normal refraction), so this pins SkyCore's pipeline.
+    static let brightest: [(hr: Int, alt: Double, az: Double)] = [
+        (2491, -59.9547, 309.9372), (2326, -70.8701, 215.1713), (5340, 47.4675, 255.6914), (5459, -13.4327, 197.8379),
+        (7001, 73.3397, 81.8143), (1708, -4.9783, 358.9148), (1713, -59.5663, 358.3340), (2943, -34.1551, 313.2067),
+        (472, -50.5180, 136.3460), (2061, -42.7325, 344.9252), (5267, -15.4538, 201.8736), (7557, 43.6797, 118.7977),
+        (1457, -34.0508, 10.1792), (6134, 24.4523, 190.1592), (5056, 17.7008, 239.0533), (2990, -13.9218, 325.2895),
+        (8728, -14.8828, 115.6361), (4853, -21.5418, 209.6259), (7924, 51.0166, 62.3102), (4730, -25.6386, 208.3026),
+    ]
+
+    @Test("20 brightest stars: alt/az within 0.05° of astronomy-engine (Candlestick Camp, 2026-07-15 05:00 UTC)")
+    func twentyBrightest() throws {
+        let date = try ISO.date("2026-07-15T05:00:00Z")
+        let field = StarField(catalog: Self.catalog, epoch: date)
+        #expect(Self.brightest.count == 20)
+        var worst = 0.0
+        for r in Self.brightest {
+            let i = try #require(Self.catalog.index(ofHR: r.hr))
+            let pos = field.position(ofStarAt: i, at: date, observer: Self.candlestick)
+            let sep = SkyBrightness.angularSeparationDeg(pos, HorizontalPosition(altitudeDeg: r.alt, azimuthDeg: r.az))
+            worst = max(worst, sep)
+            #expect(sep < 0.05, "HR \(r.hr): \(sep)°")
+        }
+        // In practice the agreement is far tighter than the 0.05° bound.
+        #expect(worst < 0.005, "worst \(worst)°")
+    }
+
     @Test("apparent altitude includes standard refraction like Horizon()")
     func refraction() throws {
         let date = try ISO.date("2026-12-15T12:00:00Z")

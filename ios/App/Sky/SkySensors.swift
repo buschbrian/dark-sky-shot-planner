@@ -18,13 +18,24 @@ final class SkySensors: NSObject, CLLocationManagerDelegate {
     private(set) var headingUpdatedAt: Date?
     private(set) var motionStartedAt: Date?
 
+    /// `CMDeviceMotion.magneticField.accuracy`, sampled with the attitude.
+    private(set) var magneticAccuracy = MagneticFieldAccuracy.uncalibrated
+    /// Magnetic disturbance or drift since the last calibration (never observed per frame).
+    private(set) var disturbance = HeadingDisturbanceMonitor.State.steady
+
     @ObservationIgnored private let locationManager = CLLocationManager()
     @ObservationIgnored private let motion = CMMotionManager()
     @ObservationIgnored private var running = false
-    /// iOS's compass-calibration prompts are white system chrome; field mode turns them off.
-    @ObservationIgnored var allowsSystemHeadingPrompt = true {
-        didSet { motion.showsDeviceMovementDisplay = allowsSystemHeadingPrompt }
-    }
+    @ObservationIgnored private var filter = HeadingFilter()
+    @ObservationIgnored private var monitor = HeadingDisturbanceMonitor(
+        jumpThresholdDeg: SkyScreen.arConfig?.headingJumpDisturbanceDeg ?? 4,
+        driftThresholdDeg: SkyScreen.arConfig?.headingDriftMaxDeg ?? 3)
+    @ObservationIgnored private var lastSampleTime: TimeInterval?
+    @ObservationIgnored private var lastAttitude: DeviceAttitude?
+    /// Latest raw readings for the diagnostics log.
+    @ObservationIgnored private(set) var rawHeadingDeg: Double?
+    @ObservationIgnored private(set) var headingRateDegPerSecond = 0.0
+    @ObservationIgnored private(set) var smoothingDeg = 0.0
 
     let headingHardware = CLLocationManager.headingAvailable()
 
@@ -66,13 +77,39 @@ final class SkySensors: NSObject, CLLocationManagerDelegate {
     }
 
     /// Latest attitude in `.xTrueNorthZVertical`, copied field for field as
-    /// SkyFrames.swift documents; nil until the first sample arrives.
+    /// SkyFrames.swift documents, with its heading smoothed by
+    /// `HeadingFilter` (gyro-predicted, so turns do not lag); nil until the
+    /// first sample arrives. Each new Core Motion sample also feeds the
+    /// disturbance monitor.
     func attitude() -> DeviceAttitude? {
-        guard let m = motion.deviceMotion?.attitude.rotationMatrix else { return nil }
-        return DeviceAttitude(coreMotionRotationMatrix: RotationMatrix(
+        guard let dm = motion.deviceMotion else { return nil }
+        let m = dm.attitude.rotationMatrix
+        let raw = DeviceAttitude(coreMotionRotationMatrix: RotationMatrix(
             m11: m.m11, m12: m.m12, m13: m.m13,
             m21: m.m21, m22: m.m22, m23: m.m23,
             m31: m.m31, m32: m.m32, m33: m.m33))
+        if dm.timestamp != lastSampleTime {
+            lastSampleTime = dm.timestamp
+            let r = dm.rotationRate
+            let rate = raw.headingRateDegPerSecond(deviceRotationRate: SIMD3(r.x, r.y, r.z))
+            let heading = raw.headingDeg
+            filter.update(measuredDeg: heading, at: dm.timestamp, rateDegPerSecond: rate)
+            let state = monitor.update(headingDeg: heading, rateDegPerSecond: rate, at: dm.timestamp)
+            if state != disturbance { disturbance = state }
+            let accuracy = MagneticFieldAccuracy(rawValue: Int(dm.magneticField.accuracy.rawValue)) ?? .uncalibrated
+            if accuracy != magneticAccuracy { magneticAccuracy = accuracy }
+            rawHeadingDeg = heading
+            headingRateDegPerSecond = rate
+            smoothingDeg = filter.correctionDeg(forMeasuredDeg: heading)
+        }
+        lastAttitude = raw
+        return raw.applying(HeadingCalibration(offsetDeg: smoothingDeg))
+    }
+
+    /// After a calibration the heading is trusted again.
+    func resetDisturbance() {
+        monitor.reset()
+        disturbance = .steady
     }
 
     private func startUpdates() {
@@ -83,10 +120,14 @@ final class SkySensors: NSObject, CLLocationManagerDelegate {
             // Polled once per displayed frame (Apple's pattern for render
             // loops); 100 Hz keeps the newest sample under 10 ms old at 120 Hz ProMotion.
             motion.deviceMotionUpdateInterval = 1.0 / 100
-            motion.showsDeviceMovementDisplay = allowsSystemHeadingPrompt
+            // The Sky view draws its own palette-coloured figure-8 guide
+            // instead of iOS's white calibration prompt.
+            motion.showsDeviceMovementDisplay = false
             // True north needs location; Core Motion starts once it has a fix.
             motion.startDeviceMotionUpdates(using: .xTrueNorthZVertical)
             motionStartedAt = .now
+            filter.reset()
+            lastSampleTime = nil
         }
     }
 
@@ -128,7 +169,6 @@ final class SkySensors: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {}
 
-    nonisolated func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {
-        MainActor.assumeIsolated { allowsSystemHeadingPrompt }
-    }
+    /// Never iOS's white prompt: the Sky view shows its own figure-8 guide.
+    nonisolated func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool { false }
 }

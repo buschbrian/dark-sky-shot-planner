@@ -56,3 +56,23 @@ for (const iso of times) {
   const sep = A.AngleBetween(v1, v2);
   console.log(`// ${iso}: Polaris is ${sep.toFixed(4)} deg from the mean-of-date pole (J2000 pole direction ${pole.lon.toFixed(4)}, ${pole.lat.toFixed(4)})`);
 }
+
+// 20 bright stars straight from the bundled BSC5 file (its J2000 position
+// and proper motion), so this checks SkyCore's pipeline, not the catalogue.
+const fs = require("fs");
+const path = require("path");
+const csv = fs.readFileSync(path.join(__dirname, "../Packages/SkyCore/Sources/SkyCore/Resources/sky/bsc5-stars.csv"), "utf8");
+const rows = csv.trim().split("\n").slice(1).map((l) => l.split(",").map(Number));
+const bright = rows.sort((a, b) => a[3] - b[3]).slice(0, 20);
+const when = new Date("2026-07-15T05:00:00Z");
+const site = new A.Observer(38.374031, -109.965416, 0);
+const yrs = (when.getTime() - Date.UTC(2000, 0, 1, 12)) / (365.25 * 86400000);
+console.log("// 20 brightest BSC5 stars at Candlestick Camp, 2026-07-15T05:00:00Z");
+for (const [hr, ra, dec, v, , pmra, pmdec] of bright) {
+  const d = dec + (pmdec * yrs) / 3.6e6;
+  const r = ra + (pmra * yrs) / 3.6e6 / Math.max(Math.cos((dec * Math.PI) / 180), 1e-6);
+  A.DefineStar(A.Body.Star1, r / 15, d, 1000);
+  const eq = A.Equator(A.Body.Star1, when, site, true, true);
+  const hor = A.Horizon(when, site, eq.ra, eq.dec, "normal");
+  console.log(`(${hr}, ${hor.altitude.toFixed(4)}, ${hor.azimuth.toFixed(4)}),`);
+}

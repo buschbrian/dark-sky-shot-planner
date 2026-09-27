@@ -143,6 +143,24 @@ struct StarTrailsTests {
         #expect(throws: ExposureError.self) { try StarTrailSequence(start: start, exposure: 30, interval: 20, frames: 10) }
     }
 
+    @Test("30, 60 and 120 min designs: arc length and the pole over Candlestick Camp", arguments: [
+        (30, 7.5205), (60, 15.0411), (120, 30.0821),
+    ])
+    func designs(_ c: (minutes: Int, arcDeg: Double)) throws {
+        let start = try ISO.date("2026-07-15T04:30:00Z")
+        let seq = try StarTrailSequence(start: start, exposure: 30, interval: 30, frames: c.minutes * 2)
+        #expect(seq.duration == Double(c.minutes * 60))
+        #expect(abs(seq.arcDeg - c.arcDeg) < 0.0005)
+        let field = StarField(catalog: StarCatalogTests.catalog, epoch: start)
+        let preview = StarTrailPreview(sequence: seq, field: field, observer: Self.candlestick, magnitudeLimit: 2)
+        #expect(abs(preview.pole.altitudeDeg - 38.395) < 0.01 && azimuthDelta(preview.pole.azimuthDeg, 0) < 0.01)
+        // Each arc spans the sequence: Arcturus turns by the arc length about the pole.
+        let arcturus = try #require(preview.arcs.first { $0.index == StarCatalogTests.catalog.index(ofHR: 5340) })
+        let p = preview.pole.referenceVector
+        func perp(_ v: SIMD3<Double>) -> SIMD3<Double> { v - p * (v * p).sum() }
+        #expect(abs(angle(perp(arcturus.points.first!), perp(arcturus.points.last!)) - c.arcDeg) < 0.1)
+    }
+
     @Test("the celestial pole stands at the latitude (plus refraction) due north")
     func pole() throws {
         let date = try ISO.date("2026-07-15T05:00:00Z")
