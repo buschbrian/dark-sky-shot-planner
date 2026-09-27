@@ -58,8 +58,14 @@ enum Voice {
         return "\(day) \(hour)"
     }
 
-    /// SkyCore's reasons, reworded for the screen. The Worker is only
-    /// "unreachable" when one is configured; otherwise it is not set up.
+    /// Source names as shown in provenance. The direct fallback is named for
+    /// what it is; why it was used is said once, in the conditions status line.
+    static func source(_ raw: String) -> String {
+        raw == OpenMeteoDirect.source ? "Open-Meteo direct" : raw
+    }
+
+    /// SkyCore's reasons, reworded for the screen. The Worker "didn't answer"
+    /// only when one is configured; otherwise it is not set up.
     static func reason(_ raw: String, workerConfigured: Bool) -> String {
         switch raw {
         case OpenMeteoDirect.otherFieldsReason:

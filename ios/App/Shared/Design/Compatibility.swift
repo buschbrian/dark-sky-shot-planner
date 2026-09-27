@@ -63,10 +63,6 @@ struct PaletteButtonStyle: ButtonStyle {
 @available(*, deprecated, message: "Use PaletteToggleStyle()")
 typealias MapToggleStyle = PaletteToggleStyle
 
-extension PaletteToggleStyle {
-    @available(*, deprecated, message: "Use PaletteToggleStyle(); it reads the palette from the environment")
-    init(palette: Palette) { self.init() }
-}
 
 extension View {
     @available(*, deprecated, message: "Use SectionCard")

@@ -12,6 +12,7 @@ struct NightScrubber: View {
     @Binding var time: Date
 
     @Environment(\.palette) private var palette
+    @Environment(\.dynamicTypeSize) private var typeSize
     static let step: TimeInterval = 5 * 60
 
     var body: some View {
@@ -43,10 +44,11 @@ struct NightScrubber: View {
                         .frame(width: w)
                     ForEach(hourTicks, id: \.self) { t in
                         Rectangle().fill(palette.tertiary).frame(width: 1, height: 5).offset(x: x(t, w), y: 17)
-                        if hour(t) % 2 == 0 {
+                        if hour(t) % (typeSize.isAccessibilitySize ? 4 : 2) == 0 {
                             Text(t.formatted(Date.FormatStyle(timeZone: timeZone).hour(.defaultDigits(amPM: .narrow))))
                                 .font(.dsData)
                                 .foregroundStyle(palette.secondary)
+                                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                                 .fixedSize()
                                 .frame(width: 40)
                                 .offset(x: x(t, w) - 20, y: 23)

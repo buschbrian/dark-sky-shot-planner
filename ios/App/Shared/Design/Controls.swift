@@ -69,6 +69,9 @@ struct PaletteToggleStyle: ToggleStyle {
 
     init() {}
 
+    @available(*, deprecated, message: "Use PaletteToggleStyle(); it reads the palette from the environment")
+    init(palette: Palette) {}
+
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: {
             HStack(alignment: .center, spacing: DS.Space.m) {

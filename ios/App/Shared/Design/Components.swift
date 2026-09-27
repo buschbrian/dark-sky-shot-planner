@@ -60,7 +60,7 @@ struct SourceInfo: Hashable {
 
     init(source: String, model: String? = nil, run: Date? = nil, asOf: Date? = nil,
          freshness: Freshness? = nil, note: String? = nil) {
-        self.source = source
+        self.source = Voice.source(source)
         self.model = model
         self.run = run
         self.asOf = asOf

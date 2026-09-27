@@ -10,7 +10,7 @@ final class MapTests: XCTestCase {
     @MainActor
     private func openMap() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-resetMapState"]
+        app.launchArguments = ["-resetMapState", "-FieldMode", "NO"]
         app.launch()
         app.tabBars.buttons["Map"].tap()
         return app

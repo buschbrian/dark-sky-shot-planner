@@ -110,6 +110,7 @@ struct MapScreen: View {
                     .padding(.horizontal, DS.Space.s)
                     .padding(.vertical, DS.Space.xs)
                     .floatingSurface(palette, shape: Capsule())
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .padding(DS.Space.s)
                     .allowsHitTesting(false)
             }
@@ -183,6 +184,8 @@ struct MapScreen: View {
                 .padding(.horizontal, DS.Space.s)
                 .padding(.vertical, DS.Space.xs + 2)
                 .floatingSurface(palette, shape: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
+                // Overlays on the map stay small so the map stays visible.
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .padding(DS.Space.s)
             }
         }

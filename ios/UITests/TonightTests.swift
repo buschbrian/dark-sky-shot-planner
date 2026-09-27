@@ -8,7 +8,7 @@ final class TonightTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-DarkSkyUITest"]
+        app.launchArguments = ["-DarkSkyUITest", "-FieldMode", "NO"]
         app.launch()
     }
 

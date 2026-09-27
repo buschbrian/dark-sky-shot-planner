@@ -265,12 +265,16 @@ struct WeekRowView: View {
                     badge
                 }
             }
-            HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
-                Text(minutesText).font(.dsMetric).foregroundStyle(palette.primary)
-                Text(minutesUnit).font(.dsCallout).foregroundStyle(palette.secondary)
-                Spacer(minLength: DS.Space.s)
-                Text("moon \(WeekFormat.percent(night.outlook.report.moonIllumFraction * 100)) lit")
-                    .font(.dsFootnote).foregroundStyle(palette.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+                    minutes
+                    Spacer(minLength: DS.Space.s)
+                    moon
+                }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    minutes
+                    moon
+                }
             }
             NightBar(span: NightStrip.span(for: night.outlook.report, evening: night.outlook.evening),
                      darkness: night.outlook.darkness, moonFree: night.outlook.moonFreeDarkness,
@@ -293,6 +297,18 @@ struct WeekRowView: View {
         case .success(let v): StatusBadge(level: StatusLevel(v.level))
         case .failure: StatusBadge(level: .unavailable, qualifier: "no verdict")
         }
+    }
+
+    private var minutes: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+            Text(minutesText).font(.dsMetric).foregroundStyle(palette.primary)
+            Text(minutesUnit).font(.dsCallout).foregroundStyle(palette.secondary)
+        }
+    }
+
+    private var moon: some View {
+        Text("moon \(WeekFormat.percent(night.outlook.report.moonIllumFraction * 100)) lit")
+            .font(.dsFootnote).foregroundStyle(palette.secondary)
     }
 
     private var minutesText: String {

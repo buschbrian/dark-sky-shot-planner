@@ -10,7 +10,7 @@ final class SpotsTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-resetSpots"] + (name.contains("GoNight") ? ["-stubConditions", "go"] : [])
+        app.launchArguments = ["-resetSpots", "-FieldMode", "NO"] + (name.contains("GoNight") ? ["-stubConditions", "go"] : [])
         app.launch()
         app.tabBars.buttons["Spots"].tap()
     }
