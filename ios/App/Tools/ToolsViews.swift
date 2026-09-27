@@ -13,21 +13,21 @@ struct FieldRow: View {
 
     var body: some View {
         let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
-            : AnyLayout(HStackLayout(spacing: 8))
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.xs))
+            : AnyLayout(HStackLayout(spacing: DS.Space.s))
         layout {
-            Text(label).foregroundStyle(palette.primary)
+            Text(label).font(.dsCallout).foregroundStyle(palette.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityHidden(true)
-            HStack(spacing: 4) {
+            HStack(spacing: DS.Space.xs) {
                 NumberField(label: label, text: $text, placeholder: placeholder, allowsNegative: allowsNegative, identifier: id)
                     .frame(minWidth: 80, maxWidth: typeSize.isAccessibilitySize ? .infinity : 140)
                 if let unit {
-                    Text(unit).foregroundStyle(palette.secondary).accessibilityHidden(true)
+                    Text(unit).font(.dsCallout).foregroundStyle(palette.secondary).accessibilityHidden(true)
                 }
             }
-            .padding(.horizontal, 10)
-            .background(palette.background, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, DS.Space.m)
+            .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
         }
     }
 }
@@ -40,11 +40,12 @@ struct ResultRow: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.subheadline).foregroundStyle(palette.secondary)
-            Text(value).font(.title3.bold()).foregroundStyle(palette.primary)
+        VStack(alignment: .leading, spacing: DS.Space.xxs) {
+            Text(label).font(.dsFootnote.weight(.semibold)).foregroundStyle(palette.secondary)
+            Text(value).font(.title2.weight(.medium).monospacedDigit()).foregroundStyle(palette.primary)
             if let note {
-                Text(note).font(.caption).foregroundStyle(palette.secondary)
+                Text(note).font(.dsFootnote).foregroundStyle(palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

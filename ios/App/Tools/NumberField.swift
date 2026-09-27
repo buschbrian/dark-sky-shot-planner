@@ -121,13 +121,13 @@ final class NumberKeypad: UIView {
         ]
         let grid = UIStackView()
         grid.axis = .vertical
-        grid.spacing = 6
+        grid.spacing = KeypadMetrics.spacing
         grid.distribution = .fillEqually
         grid.translatesAutoresizingMaskIntoConstraints = false
         for row in rows {
             let line = UIStackView()
             line.axis = .horizontal
-            line.spacing = 6
+            line.spacing = KeypadMetrics.spacing
             line.distribution = .fillEqually
             for key in row {
                 let button = UIButton(configuration: .plain())
@@ -157,15 +157,15 @@ final class NumberKeypad: UIView {
         self.palette = palette
         backgroundColor = UIColor(palette.background)
         let font = UIFontMetrics(forTextStyle: .title2)
-            .scaledFont(for: .systemFont(ofSize: 22, weight: .medium), maximumPointSize: 30)
+            .scaledFont(for: .monospacedDigitSystemFont(ofSize: 22, weight: .regular), maximumPointSize: 30)
         for (key, button) in buttons {
             var config = UIButton.Configuration.plain()
             var title = AttributedString(key.title)
             title.font = key == .done ? font.withWeight(.semibold) : font
             config.attributedTitle = title
             config.baseForegroundColor = UIColor(key == .done ? palette.accent : palette.primary)
-            config.background.backgroundColor = UIColor(palette.surface)
-            config.background.cornerRadius = 8
+            config.background.backgroundColor = UIColor(palette.raised)
+            config.background.cornerRadius = KeypadMetrics.cornerRadius
             button.configuration = config
         }
     }

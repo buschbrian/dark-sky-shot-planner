@@ -72,11 +72,13 @@ struct CalculatorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Card {
-                    Text(kit.name).font(.headline).foregroundStyle(palette.primary)
-                    Text("\(kit.lensSummary) on \(kit.camera.name): \(kit.cameraSummary)")
-                        .font(.caption).foregroundStyle(palette.secondary)
+            VStack(alignment: .leading, spacing: DS.Space.cardGap) {
+                SectionCard("Gear") {
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                        Text(kit.name).font(.dsHeadline).foregroundStyle(palette.primary)
+                        Text("\(kit.lensSummary) on \(kit.camera.name): \(kit.cameraSummary)")
+                            .font(.dsData).foregroundStyle(palette.secondary)
+                    }
                 }
                 switch calculator {
                 case .starExposure: starExposure
@@ -85,14 +87,14 @@ struct CalculatorView: View {
                 case .stacking: stacking
                 case .timelapse: timelapse
                 }
-                Text("Computed on this phone from the gear profile you entered.")
-                    .font(.footnote).foregroundStyle(palette.secondary)
+                ProvenanceChip(info: SourceInfo(source: "your gear profile", note: Voice.onDevice))
             }
-            .padding()
+            .padding(.horizontal, DS.Space.screen)
+            .padding(.vertical, DS.Space.s)
         }
         .background(palette.background)
         .scrollDismissesKeyboard(.interactively)
-        .paletteChrome(calculator.title, pushed: true)
+        .screenChrome(calculator.title, pushed: true)
     }
 
     // MARK: Shared inputs
@@ -108,11 +110,11 @@ struct CalculatorView: View {
                      allowsNegative: true, id: "tools.declination")
             HStack {
                 Text("Default: the Galactic Center, \(ToolsFormat.gcDeclinationText)°. 0° (the celestial equator) is the worst case.")
-                    .font(.caption).foregroundStyle(palette.secondary)
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
                 Spacer(minLength: 4)
                 if inputs.declination != ToolsFormat.gcDeclinationText {
                     Button("Use Galactic Center") { inputs.declination = ToolsFormat.gcDeclinationText }
-                        .font(.caption.bold()).foregroundStyle(palette.accent)
+                        .buttonStyle(ActionButtonStyle(.quiet))
                 }
             }
         }
@@ -124,15 +126,15 @@ struct CalculatorView: View {
     // MARK: Calculators
 
     @ViewBuilder private var starExposure: some View {
-        Card {
+        SectionCard {
             apertureRow
             declinationRows
             ChoiceRow(label: "NPF k", options: [(1.0, "1 strict"), (2.0, "2 default"), (3.0, "3 loose")],
                       selection: $inputs.k, id: "tools.k")
             Text("k = 1: a star moves one radius (strict). k = 2: one diameter, barely visible (PhotoPills' default). k = 3: visible trailing.")
-                .font(.caption).foregroundStyle(palette.secondary)
+                .font(.dsFootnote).foregroundStyle(palette.secondary)
         }
-        Card {
+        SectionCard {
             let npf = Result { () throws(ExposureError) in
                 try StarExposure.npf(camera: kit.camera, lens: kit.lens, fNumber: fNumber, declinationDeg: declination, k: inputs.k)
             }
@@ -151,11 +153,11 @@ struct CalculatorView: View {
     }
 
     @ViewBuilder private var starTrails: some View {
-        Card {
+        SectionCard {
             FieldRow(label: "Exposure", unit: "s", text: $inputs.trailExposure, placeholder: "20", id: "tools.trailExposure")
             declinationRows
         }
-        Card {
+        SectionCard {
             let px = Result { () throws(ExposureError) in
                 try StarExposure.starTrailLengthPixels(
                     exposure: ToolsFormat.required(inputs.trailExposure), camera: kit.camera, lens: kit.lens,
@@ -176,11 +178,11 @@ struct CalculatorView: View {
     }
 
     @ViewBuilder private var depthOfField: some View {
-        Card {
+        SectionCard {
             apertureRow
             FieldRow(label: "Focus distance", unit: "m", text: $inputs.focusDistance, placeholder: "hyperfocal", id: "tools.focus")
         }
-        Card {
+        SectionCard {
             let h = Result { () throws(ExposureError) in
                 try DepthOfField.hyperfocalMeters(camera: kit.camera, lens: kit.lens, fNumber: fNumber)
             }
@@ -204,11 +206,11 @@ struct CalculatorView: View {
     }
 
     @ViewBuilder private var stacking: some View {
-        Card {
+        SectionCard {
             FieldRow(label: "Target SNR gain", unit: "×", text: $inputs.snrGain, placeholder: "3", id: "tools.snrGain")
             FieldRow(label: "Sub-exposure", unit: "s", text: $inputs.subExposure, placeholder: "15", id: "tools.subExposure")
         }
-        Card {
+        SectionCard {
             let plan = Result { () throws(ExposureError) in
                 try Stacking.plan(snrGain: ToolsFormat.required(inputs.snrGain), subExposure: ToolsFormat.required(inputs.subExposure))
             }
@@ -222,7 +224,7 @@ struct CalculatorView: View {
     }
 
     @ViewBuilder private var timelapse: some View {
-        Card {
+        SectionCard {
             ChoiceRow(label: "Solve from", options: TimelapseMode.allCases.map { ($0, $0.rawValue) },
                       selection: $inputs.timelapseMode, id: "tools.tlMode")
             FieldRow(label: "Exposure", unit: "s", text: $inputs.tlExposure, placeholder: "15", id: "tools.tlExposure")
@@ -238,7 +240,7 @@ struct CalculatorView: View {
                 FieldRow(label: "Event duration", unit: "min", text: $inputs.tlEventMinutes, placeholder: "60", id: "tools.tlEvent")
             }
         }
-        Card {
+        SectionCard {
             let exposure = ToolsFormat.required(inputs.tlExposure)
             let buffer = ToolsFormat.required(inputs.tlBuffer)
             let fps = ToolsFormat.required(inputs.tlFPS)
@@ -277,6 +279,6 @@ struct CalculatorView: View {
     }
 
     private func credit(_ text: String) -> some View {
-        Text(text).font(.footnote).foregroundStyle(palette.secondary)
+        Text(text).font(.dsFootnote).foregroundStyle(palette.tertiary).fixedSize(horizontal: false, vertical: true)
     }
 }

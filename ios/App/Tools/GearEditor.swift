@@ -28,13 +28,11 @@ struct GearEditor: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Card {
-                        section("Profile")
+                VStack(alignment: .leading, spacing: DS.Space.cardGap) {
+                    SectionCard("Profile") {
                         textRow("Name (optional)", $name, id: "gear.name")
                     }
-                    Card {
-                        section("Camera")
+                    SectionCard("Camera") {
                         textRow("Camera name", $cameraName, id: "gear.cameraName")
                         FieldRow(label: "Sensor width", unit: "mm", text: $sensorWidth, placeholder: "35.9", id: "gear.sensorWidth")
                         FieldRow(label: "Sensor height", unit: "mm", text: $sensorHeight, placeholder: "23.9", id: "gear.sensorHeight")
@@ -43,8 +41,7 @@ struct GearEditor: View {
                         FieldRow(label: "Pixel pitch (optional)", unit: "µm", text: $pixelPitch, placeholder: "from width", id: "gear.pixelPitch")
                         note("Give the image size in pixels, or the pixel pitch from the spec sheet. A stated pitch wins.")
                     }
-                    Card {
-                        section("Lens")
+                    SectionCard("Lens") {
                         textRow("Lens name", $lensName, id: "gear.lensName")
                         FieldRow(label: "Focal length", unit: "mm", text: $focalLength, placeholder: "20", id: "gear.focalLength")
                         FieldRow(label: "Widest aperture (f-number)", unit: nil, text: $maxAperture, placeholder: "1.4", id: "gear.maxAperture")
@@ -64,21 +61,15 @@ struct GearEditor: View {
                 .padding()
             }
             .background(palette.background)
-            .navigationTitle(gear == nil ? "New gear" : "Edit gear")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save).disabled((try? draft.get()) == nil)
-                        .accessibilityIdentifier("gear.save")
-                }
-            }
+            .sheetChrome(gear == nil ? "New gear" : "Edit gear",
+                         cancel: SheetAction(title: "Cancel") { dismiss() },
+                         confirm: SheetAction(title: "Save", id: "gear.save", enabled: (try? draft.get()) != nil, action: save))
             .confirmationDialog("Delete this gear?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
         .tint(palette.accent)
-        .presentationBackground(palette.background)
+        .sheetPresentation(palette)
         .onAppear(perform: load)
     }
 
@@ -153,12 +144,8 @@ struct GearEditor: View {
         dismiss()
     }
 
-    private func section(_ title: String) -> some View {
-        Text(title).font(.headline).foregroundStyle(palette.primary).accessibilityAddTraits(.isHeader)
-    }
-
     private func note(_ text: String) -> some View {
-        Text(text).font(.caption).foregroundStyle(palette.secondary)
+        Text(text).font(.dsFootnote).foregroundStyle(palette.secondary)
     }
 
     private func textRow(_ label: String, _ text: Binding<String>, id: String) -> some View {
@@ -166,7 +153,9 @@ struct GearEditor: View {
             .textFieldStyle(.plain)
             .foregroundStyle(palette.primary)
             .autocorrectionDisabled()
-            .padding(.vertical, 8)
+            .padding(.horizontal, DS.Space.m)
+            .frame(minHeight: DS.minTarget)
+            .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
             .accessibilityIdentifier(id)
     }
 }

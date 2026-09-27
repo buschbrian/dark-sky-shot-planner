@@ -28,42 +28,27 @@ struct LocationSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                     if let working {
-                        Text(working)
-                            .foregroundStyle(palette.secondary)
+                        DataStatusLine(symbol: "clock", text: working)
                             .accessibilityIdentifier("location.working")
                     }
                     gpsSection
                     entrySection
                     spotsSection
-                    Text("Precise coordinates stay on this phone. Weather requests and the time-zone lookup use a 0.05° cell (about 5 km).")
-                        .font(.footnote)
+                    Label("Precise coordinates stay on this phone. Weather requests and the time-zone lookup use a 0.05° cell (about 5 km).",
+                          systemImage: "lock")
+                        .font(.dsFootnote)
                         .foregroundStyle(palette.secondary)
                 }
-                .padding()
+                .padding(DS.Space.screen)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(palette.background)
-            .navigationTitle("Location")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Location").font(.headline).foregroundStyle(palette.primary)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(palette.accent)
-                        .accessibilityIdentifier("location.cancel")
-                }
-                .sharedBackgroundVisibility(state.fieldMode ? .hidden : .automatic)
-            }
+            .sheetChrome("Location", cancel: SheetAction(title: "Cancel", id: "location.cancel") { dismiss() })
         }
-        .presentationBackground(palette.background)
         .presentationDragIndicator(.hidden)
-        .fieldSafe(state.fieldMode)
+        .sheetPresentation(palette)
     }
 
     private var gpsSection: some View {
@@ -71,9 +56,9 @@ struct LocationSheet: View {
             Button {
                 Task { await useGPS() }
             } label: {
-                Label("Use my location", systemImage: "location")
+                Label("Use my location", systemImage: "location").frame(maxWidth: .infinity)
             }
-            .buttonStyle(PaletteButtonStyle(palette: palette))
+            .buttonStyle(ActionButtonStyle(.secondary))
             .disabled(gps.status == .locating || working != nil)
             .accessibilityIdentifier("location.gps")
             switch gps.status {
@@ -90,10 +75,10 @@ struct LocationSheet: View {
             if state.fieldMode {
                 Text(text.isEmpty ? "38.35, -109.95" : text)
                     .font(.title3.monospacedDigit())
-                    .foregroundStyle(text.isEmpty ? palette.secondary : palette.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+                    .foregroundStyle(text.isEmpty ? palette.tertiary : palette.primary)
+                    .frame(maxWidth: .infinity, minHeight: DS.minTarget, alignment: .leading)
+                    .padding(.horizontal, DS.Space.m)
+                    .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
                     .accessibilityLabel("Coordinates")
                     .accessibilityValue(text.isEmpty ? "empty" : text)
                     .accessibilityIdentifier("location.input")
@@ -105,9 +90,11 @@ struct LocationSheet: View {
                     .autocorrectionDisabled()
                     .submitLabel(.done)
                     .onSubmit(useText)
+                    .font(.dsNumber)
                     .foregroundStyle(palette.primary)
-                    .padding(10)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, DS.Space.m)
+                    .frame(minHeight: DS.minTarget)
+                    .background(palette.raised, in: RoundedRectangle(cornerRadius: DS.Radius.control, style: .continuous))
                     .accessibilityLabel("Coordinates or web link")
                     .accessibilityIdentifier("location.input")
             }
@@ -120,17 +107,18 @@ struct LocationSheet: View {
                 }
                 .labelStyle(.titleAndIcon)
                 .buttonBorderShape(.roundedRectangle)
-                .tint(palette.surface)
+                .tint(palette.raised)
                 .foregroundStyle(palette.primary)
                 Spacer()
                 Button("Use", action: useText)
-                    .buttonStyle(PaletteButtonStyle(palette: palette, prominent: true))
+                    .buttonStyle(ActionButtonStyle(.primary))
                     .disabled(working != nil)
                     .accessibilityLabel("Use these coordinates")
                     .accessibilityIdentifier("location.use")
             }
             if let problem {
                 Text(problem)
+                    .font(.dsFootnote)
                     .foregroundStyle(palette.poor)
                     .accessibilityIdentifier("location.problem")
             }
@@ -147,17 +135,17 @@ struct LocationSheet: View {
                         onChoose(LocationChoice(place: spot.place, zoneIsDeviceGuess: false, night: nil))
                         dismiss()
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(spot.name).foregroundStyle(palette.primary)
-                            Text(Format.coordinate(spot.latitude, spot.longitude))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(palette.secondary)
+                        Disclosure {
+                            VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                                Text(spot.name).font(.dsBody).foregroundStyle(palette.primary)
+                                Text(Format.coordinate(spot.latitude, spot.longitude))
+                                    .font(.dsData)
+                                    .foregroundStyle(palette.secondary)
+                            }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+                        .frame(minHeight: DS.minTarget)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressDimStyle())
                     .accessibilityElement(children: .combine)
                     .accessibilityHint("Plans tonight for this spot")
                 }
@@ -166,17 +154,11 @@ struct LocationSheet: View {
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(palette.primary)
-                .accessibilityAddTraits(.isHeader)
-            content()
-        }
+        SectionCard(title) { content() }
     }
 
     private func note(_ s: String) -> some View {
-        Text(s).font(.subheadline).foregroundStyle(palette.secondary)
+        Text(s).font(.dsFootnote).foregroundStyle(palette.secondary)
     }
 
     private func useText() {
