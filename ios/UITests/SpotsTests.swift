@@ -10,7 +10,9 @@ final class SpotsTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-resetSpots", "-FieldMode", "NO"] + (name.contains("GoNight") ? ["-stubConditions", "go"] : [])
+        let stub = name.contains("GoNight") ? ["-stubConditions", "go"]
+            : name.contains("Unavailable") ? ["-stubConditions", "unavailable"] : []
+        app.launchArguments = ["-resetSpots", "-FieldMode", "NO"] + stub
         app.launch()
         app.tabBars.buttons["Spots"].tap()
     }
@@ -213,13 +215,16 @@ final class SpotsTests: XCTestCase {
         }
     }
 
-    /// Scans the region between the navigation bar and the tab bar. Pixels are
+    /// Scans the region between the navigation bar and the tab bar (in field
+    /// mode, the palette dock that replaces it). Pixels are
     /// allowed any red; green and blue must stay dark (≤ 24 of 255).
     func assertRedOnly(_ label: String) throws {
         let image = XCUIScreen.main.screenshot().image
         guard let cg = image.cgImage else { throw XCTSkip("no CGImage") }
         let nav = app.navigationBars.firstMatch.frame
-        let tabs = app.tabBars.firstMatch.frame
+        // Field mode hides the system tab bar; the dock's brightness row is its top.
+        let dock = el("field.brightness")
+        let tabs = dock.exists ? dock.frame : app.tabBars.firstMatch.frame
         let scale = CGFloat(cg.height) / app.frame.height
         let top = Int((nav.maxY + 1) * scale)
         let bottom = Int((tabs.minY - 1) * scale)
@@ -229,6 +234,7 @@ final class SpotsTests: XCTestCase {
         let ctx = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        XCTAssertGreaterThan(bottom - top, height / 3, "\(label): scan region collapsed")
         var bad = 0
         var example = ""
         for y in top..<max(top, bottom) {
@@ -245,10 +251,12 @@ final class SpotsTests: XCTestCase {
 }
 
 extension XCUIElement {
-    func swipeUpUntilVisible(in app: XCUIApplication, attempts: Int = 6) {
+    /// Slow swipes so a lazy List does not scroll the element past and recycle
+    /// it; if it did go above the middle, come back down.
+    func swipeUpUntilVisible(in app: XCUIApplication, attempts: Int = 10) {
         var n = 0
-        while (!exists || !isHittable) && n < attempts {
-            app.swipeUp()
+        while !(exists && isHittable) && n < attempts {
+            if exists, frame.maxY < app.frame.midY { app.swipeDown(velocity: .slow) } else { app.swipeUp(velocity: .slow) }
             n += 1
         }
     }
