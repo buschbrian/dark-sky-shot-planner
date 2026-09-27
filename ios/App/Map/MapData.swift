@@ -64,6 +64,10 @@ final class MapData {
     /// Empty (every layer `unknown`) until data-status.json has been read.
     private(set) var dataStatus = PagesDataStatus(data: nil)
     private(set) var smoke: Data?
+    /// Polygons in the cached HMS answer; nil when there is no readable copy.
+    private(set) var smokeCount: Int?
+    /// A smoke fetch has finished (either way) since launch.
+    private(set) var smokeChecked = false
     private(set) var smokeAnalysis: (start: Date?, end: Date?) = (nil, nil)
     private(set) var irFrames: [Date] = []
     /// When each cached file was last written (its age when offline).
@@ -75,14 +79,14 @@ final class MapData {
     private let cacheDir: URL
     private let session: URLSession
 
-    init(cacheDir: URL? = nil) {
+    init(cacheDir: URL? = nil, session: URLSession? = nil) {
         MapNetwork.configure()
         let base = cacheDir ?? URL.applicationSupportDirectory.appending(path: "MapData", directoryHint: .isDirectory)
         self.cacheDir = base
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 20
         config.waitsForConnectivity = false
-        session = URLSession(configuration: config)
+        self.session = session ?? URLSession(configuration: config)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         MLNOfflineStorage.shared.setMaximumAmbientCacheSize(Self.ambientCacheBytes) { _ in }
         loadFromDisk()
@@ -169,6 +173,7 @@ final class MapData {
         guard let a = (try? AppConfig.bundled())?.aoi.bbox else { return }
         let gotPolygons = await fetch(HMSSmoke.queryURL(west: a.west, south: a.south, east: a.east, north: a.north), to: "hms/smoke.geojson")
         let gotStats = await fetch(HMSSmoke.statsURL, to: "hms/stats.json")
+        smokeChecked = true
         if gotPolygons || gotStats { loadFromDisk() }
     }
 
@@ -190,6 +195,7 @@ final class MapData {
         }
         manifests = m
         smoke = read("hms/smoke.geojson")
+        smokeCount = smoke.flatMap(Self.featureCount)
         smokeAnalysis = read("hms/stats.json").map(HMSSmoke.analysisWindow(fromStats:)) ?? (nil, nil)
         let xml = read("gibs/domains.xml").flatMap { String(data: $0, encoding: .utf8) } ?? ""
         irFrames = GIBSTimeDomain.loopFrames(
@@ -202,6 +208,15 @@ final class MapData {
             }
         }
         fetched = f
+    }
+
+    /// Features in a GeoJSON FeatureCollection; nil when it isn't one.
+    static func featureCount(_ data: Data) -> Int? {
+        struct Collection: Decodable {
+            struct Feature: Decodable {}
+            let features: [Feature]
+        }
+        return (try? JSONDecoder().decode(Collection.self, from: data))?.features.count
     }
 
     /// "Data refreshed …" for a USGS basemap source, from its cached service description.

@@ -23,8 +23,6 @@ struct LocationSheet: View {
     @State private var working: String?
     @State private var gps = LocationProvider()
 
-    private var lookupZones: Bool { !ProcessInfo.processInfo.arguments.contains("-DarkSkyUITest") }
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -181,12 +179,9 @@ struct LocationSheet: View {
 
     private func choose(latitude: Double, longitude: Double, name: String, night: NightDate?) async {
         working = "Looking up the time zone…"
-        let zone = lookupZones ? await TimeZoneLookup.zone(latitude: latitude, longitude: longitude) : nil
+        let choice = await PlaceChoice.coordinates(latitude: latitude, longitude: longitude, name: name, night: night)
         working = nil
-        let tz = zone ?? .current
-        onChoose(LocationChoice(
-            place: Place(name: name, latitude: latitude, longitude: longitude, timeZoneID: tz.identifier),
-            zoneIsDeviceGuess: zone == nil, night: night))
+        onChoose(choice)
         dismiss()
     }
 }

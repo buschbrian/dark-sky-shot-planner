@@ -74,15 +74,27 @@ struct RememberedPlace: Codable, Equatable {
     var zoneIsDeviceGuess: Bool
 
     static let key = "tonight.place"
+    /// `-DarkSkyUITestPersist`: a relaunch test's own key, never the owner's.
+    static let testKey = "uitest.tonight.place"
 
-    static func load(_ defaults: UserDefaults = .standard) -> RememberedPlace? {
-        defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(RememberedPlace.self, from: $0) }
+    static func key(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> String {
+        arguments.contains("-DarkSkyUITestPersist") ? testKey : key
     }
 
     /// UI tests never persist a place: a later launch (another test, or the
-    /// owner's) must not open on a test's coordinates (review P2 #3).
+    /// owner's) must not open on a test's coordinates (review P2 #3). The
+    /// relaunch test persists under `testKey` instead.
+    static func persists(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+        arguments.contains("-DarkSkyUITestPersist")
+            || !(arguments.contains("-DarkSkyUITest") || arguments.contains("-DarkSkyUITestLive"))
+    }
+
+    static func load(_ defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) -> RememberedPlace? {
+        defaults.data(forKey: key(arguments)).flatMap { try? JSONDecoder().decode(RememberedPlace.self, from: $0) }
+    }
+
     func save(_ defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) {
-        guard !arguments.contains("-DarkSkyUITest"), !arguments.contains("-DarkSkyUITestLive") else { return }
-        if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.key) }
+        guard Self.persists(arguments) else { return }
+        if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.key(arguments)) }
     }
 }

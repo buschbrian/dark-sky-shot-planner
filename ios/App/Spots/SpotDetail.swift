@@ -36,7 +36,7 @@ struct SpotDetail: View {
                     }
                 }
                 Button {
-                    state.place = spot.place
+                    state.choose(spot: spot)
                 } label: {
                     Label(inUse ? "In use on Tonight and Week" : "Use this spot",
                           systemImage: inUse ? "checkmark.circle.fill" : "location.circle")
