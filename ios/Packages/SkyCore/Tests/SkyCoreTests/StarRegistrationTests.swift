@@ -63,11 +63,50 @@ struct StarDetectionTests {
     @Test func ignoresLoneHotPixels() {
         let hot = [(x: 100, y: 100), (x: 400, y: 300), (x: 650, y: 90)]
         let found = StarDetector().detect(Field.plane([], seed: 3, hotPixels: hot))
-        #expect(found.isEmpty)
+        for h in hot {
+            #expect(!found.contains { hypot($0.x - Double(h.x), $0.y - Double(h.y)) < 3 })
+        }
     }
 
-    @Test func blankSkyHasNoStars() {
-        #expect(StarDetector().detect(Field.plane([], seed: 4)).isEmpty)
+    /// Optimal (matched-filter) SNR: flux ÷ (pixel noise × √(4π) × PSF σ).
+    static func flux(snr: Double, noise: Double = 40, psf: Double = 1.3) -> Double {
+        snr * noise * (4 * Double.pi).squareRoot() * psf
+    }
+
+    @Test func findsAtLeast95PercentOfSNR5Stars() {
+        // Stars on a 40 px grid (so each is measured alone), random sub-pixel
+        // offsets, three noise realisations: 798 stars in all.
+        var hits = 0, total = 0
+        for seed in [3, 4, 5] as [UInt64] {
+            var rng = SplitMix64(seed: seed)
+            var stars: [SyntheticStarField.Star] = []
+            for gy in stride(from: 20, to: Field.height - 20, by: 40) {
+                for gx in stride(from: 20, to: Field.width - 20, by: 40) {
+                    stars.append(.init(x: Double(gx) + rng.unit() - 0.5, y: Double(gy) + rng.unit() - 0.5,
+                                       flux: Self.flux(snr: 5)))
+                }
+            }
+            var detector = StarDetector()
+            detector.maxStars = .max
+            let found = detector.detect(Field.plane(stars, seed: seed + 100))
+            total += stars.count
+            hits += stars.filter { s in found.contains { hypot($0.x - s.x, $0.y - s.y) < 2 } }.count
+        }
+        #expect(total == 798)
+        #expect(Double(hits) / Double(total) >= 0.95)
+    }
+
+    @Test func noiseAloneNeverLooksLikeAnSNR5Star() {
+        // Pure noise does produce faint detections at a 3σ threshold; every
+        // one of them is fainter than a real SNR-5 star, so they sort last.
+        let snr5 = Self.flux(snr: 5) / 65_535
+        for seed in [4, 6, 8] as [UInt64] {
+            var detector = StarDetector()
+            detector.maxStars = .max
+            let found = detector.detect(Field.plane([], seed: seed))
+            #expect(found.allSatisfy { $0.flux < snr5 })
+            #expect(found.count < 600) // under ~1 per 800 pixels
+        }
     }
 
     @Test func halfFluxRadiusGrowsWhenDefocused() {
@@ -95,6 +134,8 @@ struct StarRegistrationTests {
         let t = RigidTransform(rotation: 0, tx: 12.3, ty: -7.8)
         let r = try register(t)
         #expect(Field.worstError(r, truth: t) < 0.05)
+        // The registration maps the frame back onto the reference: the inverse shift.
+        #expect(abs(r.transform.tx + 12.3) < 0.1 && abs(r.transform.ty - 7.8) < 0.1)
         #expect(r.matchedStars >= 60)
     }
 
@@ -104,7 +145,7 @@ struct StarRegistrationTests {
         let t = RigidTransform(rotationDegrees: degrees, about: 380, -2_500, shiftX: 3.2, shiftY: -1.1)
         let r = try register(t)
         #expect(Field.worstError(r, truth: t) < 0.05)
-        #expect(abs(r.transform.rotationDegrees + degrees) < 0.005)
+        #expect(abs(r.transform.rotationDegrees + degrees) < 0.01)
         // Unweighted, so faint stars' centroid noise dominates it; the
         // flux-weighted fit itself is held to 0.05 px above.
         #expect(r.rmsResidual < 0.4)

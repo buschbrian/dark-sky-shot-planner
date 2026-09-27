@@ -90,7 +90,8 @@ struct FrameStackerTests {
         let stacked = Self.rmsError(result.raster)
         // √8 = 2.8× lower noise from averaging alone; clipping costs a little.
         #expect(stacked < single / 2.3)
-        #expect(Self.streakExcess(result.raster) < 60)
+        // The satellite was 5000 above the sky; what is left of it is under 1 %.
+        #expect(Self.streakExcess(result.raster) < 0.01 * Self.streak.brightness)
     }
 
     @Test func plainMeanKeepsAFaintSatellite() {
@@ -116,6 +117,37 @@ struct FrameStackerTests {
             best = min(best, v[y * w + x])
         }
         return best
+    }
+
+    /// Star trails: a star 400 px from the pole turns 0.1° per 1 s frame, so it
+    /// moves 0.7 px while the shutter is open and the frames follow one another
+    /// without a gap. The maximum of the frames draws one unbroken arc.
+    @Test func maximumDrawsContinuousArcs() {
+        let w = 320, h = 240, frames = 40
+        let pole = (x: 160.0, y: -200.0), radius = 400.0, start = 80.0 * .pi / 180, step = 0.1 * .pi / 180
+        func position(_ angle: Double) -> (x: Double, y: Double) {
+            (pole.x + radius * cos(angle), pole.y + radius * sin(angle))
+        }
+        var acc = StackAccumulator(mode: .maximum, width: w, height: h, channels: 1)
+        for i in 0..<frames {
+            // One exposure: the star smeared over its path, as 8 sub-positions.
+            let sub = (0..<8).map { k -> SyntheticStarField.Star in
+                let p = position(start + step * (Double(i) + Double(k) / 8))
+                return .init(x: p.x, y: p.y, flux: 40_000 / 8)
+            }
+            acc.add(SyntheticStarField.render(sub, width: w, height: h, seed: UInt64(i + 1)))
+        }
+        let v = acc.result.values
+        // Sample the true arc every 0.25 px: every sample is well above the sky.
+        var lowest = UInt16.max
+        var angle = start + step * 0.5
+        while angle < start + step * (Double(frames) - 0.5) {
+            let p = position(angle)
+            lowest = min(lowest, v[Int(p.y.rounded()) * w + Int(p.x.rounded())])
+            angle += 0.25 / radius
+        }
+        // Sky 2000 ± 40 (the maximum of 40 frames sits near 2000 + 2.3σ); a gap would read ~2100.
+        #expect(lowest > 2_600)
     }
 
     @Test func endToEndRegistrationThenStack() throws {
