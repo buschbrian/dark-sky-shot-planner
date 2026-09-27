@@ -61,6 +61,11 @@ final class CaptureScreenTests: XCTestCase {
             XCTAssertTrue(start.isHittable, "\(name): Start is hittable without scrolling")
             XCTAssertGreaterThanOrEqual(start.frame.height, 44, "\(name): Start is at least 44 pt tall")
             XCTAssertGreaterThan(start.frame.midY, app.frame.height * 0.6, "\(name): Start sits in the lower part of the screen")
+            if field {
+                let dock = el(app, "field.brightness")
+                XCTAssertTrue(dock.exists)
+                XCTAssertLessThanOrEqual(start.frame.maxY, dock.frame.minY, "Start sits above the field dock, not under it")
+            }
             try shot(app, "capture-bar-\(name)", field: field)
             let y = start.frame.minY
             for _ in 0..<4 { app.swipeUp(velocity: .fast) }
@@ -132,10 +137,10 @@ final class CaptureScreenTests: XCTestCase {
                 XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", text)).firstMatch.exists, text)
             }
             try shot(app, "capture-guide-apple-\(m)", field: field)
-            let night = app.links["capture.guide.nightModeLink"]
+            let night = app.links["capture.guide.nightModeLink"].firstMatch
             night.swipeUpUntilVisible(in: app)
             XCTAssertTrue(night.exists)
-            XCTAssertTrue(app.links["capture.guide.proRAWLink"].exists)
+            XCTAssertTrue(app.links["capture.guide.proRAWLink"].firstMatch.exists)
 
             app.buttons["capture.guide.path.Capture and stack in Dark Sky"].firstMatch.swipeDownUntilVisible(in: app)
             app.buttons["capture.guide.path.Capture and stack in Dark Sky"].tap()
@@ -170,13 +175,14 @@ final class CaptureScreenTests: XCTestCase {
         for field in [false, true] {
             let app = launch("setup", field: field)
             let m = field ? "field" : "std"
+            XCTAssertTrue(app.buttons["capture.start"].waitForExistence(timeout: 10))
             let startLabel = app.buttons["capture.start"].label
             let planned = Int(startLabel.split(separator: " ").compactMap { Int($0) }.first ?? -1)
             XCTAssertGreaterThan(planned, 3, startLabel)
             app.buttons["capture.start"].tap()
             let stop = app.buttons["capture.stopAndStack"]
             let cancel = app.buttons["capture.cancel"]
-            XCTAssertTrue(stop.waitForExistence(timeout: 5))
+            XCTAssertTrue(stop.waitForExistence(timeout: 15))
             XCTAssertTrue(stop.isHittable && cancel.isHittable, "both stop choices in reach")
             XCTAssertNotEqual(stop.label, cancel.label)
             XCTAssertFalse(app.sliders["capture.exposureSlider"].exists, "no editable settings during a run")

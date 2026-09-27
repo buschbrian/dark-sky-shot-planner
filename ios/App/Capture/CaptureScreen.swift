@@ -26,6 +26,12 @@ struct CaptureScreen: View {
     @AppStorage("capture.focus") private var storedFocus = 1.0
     @AppStorage("capture.timer") private var storedTimer = 5
     @AppStorage("capture.guideSeen") private var guideSeen = false
+    /// The field dock's tab label (caption2) grows with Dynamic Type.
+    @ScaledMetric(relativeTo: .caption2) private var dockLabelLine: CGFloat = 13.5
+
+    /// FieldDock: 8 top padding + 32 brightness + 8 spacing + a tab row of
+    /// max(44, 20 pt icon + 2 + caption2 line).
+    private var fieldDockClearance: CGFloat { 48 + max(DS.minTarget, 26 + dockLabelLine) }
 
     var body: some View {
         ScrollView {
@@ -64,6 +70,11 @@ struct CaptureScreen: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.camera != nil {
                 CaptureControlBar(model: model) { showResult = true }
+                    // Field mode's dock is a safe-area inset on the Tools
+                    // stack that does not reach this pushed screen, so the
+                    // bar clears it itself (measured: 92 pt at default size).
+                    .padding(.bottom, palette.isField ? fieldDockClearance : 0)
+                    .background(palette.background)
             }
         }
         .background(palette.background)
@@ -149,23 +160,26 @@ struct CaptureScreen: View {
     // MARK: Preview and focus assist
 
     private var preview: some View {
-        ZStack(alignment: .topTrailing) {
-            previewPicture
-                .aspectRatio(3 / 4, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: 440)
-                .background(Color.black)
-                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
-                .accessibilityLabel("Camera preview")
-            if showMagnifier, let crop = model.focusCrop, let image = FocusImage.make(crop) {
-                Image(decorative: image, scale: 1)
-                    .interpolation(.none)
-                    .resizable()
-                    .frame(width: 128, height: 128)
-                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.control).stroke(palette.accent, lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.control))
-                    .padding(DS.Space.s)
-                    .accessibilityLabel("Magnified centre of the frame, for focusing")
-            }
+        previewPicture
+            .aspectRatio(3 / 4, contentMode: .fit)
+            .frame(maxHeight: 440)
+            .background(Color.black)
+            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+            .accessibilityLabel("Camera preview")
+            .overlay(alignment: .topTrailing) { magnifier }
+            .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private var magnifier: some View {
+        if showMagnifier, let crop = model.focusCrop, let image = FocusImage.make(crop) {
+            Image(decorative: image, scale: 1)
+                .interpolation(.none)
+                .resizable()
+                .frame(width: 128, height: 128)
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.control).stroke(palette.accent, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.control))
+                .padding(DS.Space.s)
+                .accessibilityLabel("Magnified centre of the frame, for focusing")
         }
     }
 

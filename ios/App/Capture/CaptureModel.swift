@@ -992,6 +992,7 @@ extension CaptureModel {
         let images = CaptureDemoImages.shared
         demoPreview = images.preview
         focusCrop = images.crop
+        focusPosition = 0.95
         focusHFR = 1.62
         focusStars = 6
         switch state {

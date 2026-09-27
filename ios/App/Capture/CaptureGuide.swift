@@ -73,7 +73,7 @@ struct CaptureGuideSheet: View {
                         .font(.dsFootnote).foregroundStyle(palette.primary).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("capture.guide.ceiling")
                     CaptureRow("Camera", camera.lens.title)
-                    CaptureRow("ISO", "\(Int(camera.minISO))–\(Int(camera.maxISO))")
+                    CaptureRow("ISO", "\(Int(camera.minISO).formatted())–\(Int(camera.maxISO).formatted())")
                     CaptureRow("Aperture", camera.apertures.map { Self.fNumber($0) }.joined(separator: ", "))
                     CaptureRow("RAW", model.rawAvailable ? model.rawTitle : "not offered")
                     Text("Read from the camera just now, not assumed. Apps cannot use Night mode, so longer light comes from stacking many frames.")
