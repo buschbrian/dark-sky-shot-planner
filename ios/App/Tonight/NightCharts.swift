@@ -227,7 +227,7 @@ struct ConditionsStripChart: View {
         .chartYScale(domain: 0...1)
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
-        .chartXAxis { if axis { DSChart.hourAxis(palette) } }
+        .chartXAxis { DSChart.hourAxis(palette) }
         .chartXAxis(axis ? .automatic : .hidden)
         .chartPlotStyle { $0.background(palette.data.twilight.opacity(0.35)).clipped() }
         .environment(\.timeZone, timeZone)

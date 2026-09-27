@@ -20,15 +20,15 @@ struct SkyEventBadge: View {
             if let all = store.highlights(place: place, first: runStart) {
                 let badges = SkyEventHighlights.badges(all, on: night)
                 if let first = badges.first {
-                    HStack(spacing: 5) {
+                    HStack(spacing: DS.Space.xs) {
                         Image(systemName: SkyEventsFormat.symbol(first.item)).accessibilityHidden(true)
                         Text(first.badge).lineLimit(1)
                         if badges.count > 1 { Text("+\(badges.count - 1)") }
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(.dsFootnote.weight(.semibold))
                     .foregroundStyle(palette.accent)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .overlay(Capsule().stroke(palette.accent.opacity(0.6), lineWidth: 1))
+                    .padding(.horizontal, DS.Space.s).padding(.vertical, DS.Space.xxs)
+                    .overlay(Capsule().strokeBorder(palette.accentEdge, lineWidth: DS.Stroke.hairline))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Sky event: " + badges.map(\.badge).joined(separator: ", "))
                     .accessibilityIdentifier("skyEvents.badge")

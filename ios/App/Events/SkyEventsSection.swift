@@ -11,21 +11,16 @@ struct SkyEventsSection: View {
     let night: NightDate
     /// How many highlights to show before "All sky events".
     var limit = 4
+    /// Called after "Plan this" has set the night and target (Tonight scrolls to its shot plan).
+    var onPlan: (() -> Void)? = nil
 
     @Environment(\.palette) private var palette
     private let store = SkyEventsStore.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(palette.primary)
-                .accessibilityAddTraits(.isHeader)
+        SectionCard(title) {
             content
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
         .task(id: SkyEventsStore.RunKey(key: SkyEventsStore.key(place: place, night: night), first: night)) {
             await store.load(place: place, night: night)
         }
@@ -41,13 +36,18 @@ struct SkyEventsSection: View {
 
     @ViewBuilder private var content: some View {
         if case .failed(let message)? = store.entry(place: place, night: night) {
-            Text(message).font(.subheadline).foregroundStyle(palette.poor)
+            UnavailableValue(reason: message)
         } else if let all = store.highlights(place: place, first: night) {
-            VStack(alignment: .leading, spacing: 12) { rows(all) }
+            VStack(alignment: .leading, spacing: DS.Space.l) { rows(all) }
                 .onAppear { store.contentShown(place: place, night: night, by: "section") }
         } else {
-            Text("Working out what else is in the sky…")
-                .font(.subheadline).foregroundStyle(palette.secondary)
+            // The rows' shape while the agenda is worked out, so the page below does not jump.
+            VStack(alignment: .leading, spacing: DS.Space.l) {
+                ForEach(0..<2, id: \.self) { _ in SkyEventPlaceholderRow() }
+            }
+            .redacted(reason: .placeholder)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Working out what else is in the sky")
         }
     }
 
@@ -59,14 +59,14 @@ struct SkyEventsSection: View {
 
         if week.isEmpty {
             Text("Nothing notable in the sky this week beyond the Moon and the Milky Way.")
-                .font(.subheadline).foregroundStyle(palette.secondary)
+                .font(.dsCallout).foregroundStyle(palette.secondary)
         }
         ForEach(week.prefix(limit)) { h in
-            SkyEventHighlightRow(highlight: h, timeZone: place.timeZone, tonight: tonight)
+            SkyEventHighlightRow(highlight: h, timeZone: place.timeZone, tonight: tonight, onPlan: onPlan)
         }
         if week.count < 2, let next = later.sorted(by: { $0.night < $1.night }).first {
-            Text("Coming up").font(.subheadline.bold()).foregroundStyle(palette.secondary)
-            SkyEventHighlightRow(highlight: next, timeZone: place.timeZone, tonight: tonight)
+            Text("Coming up").eyebrow(palette)
+            SkyEventHighlightRow(highlight: next, timeZone: place.timeZone, tonight: tonight, onPlan: onPlan)
         }
         NavigationLink {
             SkyEventsList(place: place, night: night)
@@ -76,65 +76,105 @@ struct SkyEventsSection: View {
                 Spacer()
                 Image(systemName: "chevron.right").imageScale(.small)
             }
-            .font(.subheadline.weight(.semibold))
+            .font(.dsCallout.weight(.semibold))
             .foregroundStyle(palette.accent)
-            .frame(minHeight: 44)
+            .frame(minHeight: DS.minTarget)
             .contentShape(Rectangle())
         }
         .accessibilityIdentifier("skyEvents.all")
     }
 }
 
-/// One highlight: symbol, title and night, then why, best time, Moon and source.
+/// One highlight: symbol, title and night, then why, the best time from
+/// this place (not the event's global peak), the Moon and the source, and
+/// "Plan this" when the event has one target.
 struct SkyEventHighlightRow: View {
     let highlight: SkyEventHighlight
     let timeZone: TimeZone
     let tonight: NightDate
+    var onPlan: (() -> Void)? = nil
     @Environment(\.palette) private var palette
+    @Environment(AppState.self) private var state
+    @AppStorage(ShotPlan.storageKey) private var plan = ShotPlan()
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: SkyEventsFormat.symbol(highlight.item))
-                .foregroundStyle(palette.accent)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline) {
-                        title
-                        Spacer(minLength: 6)
-                        when
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: DS.Space.m) {
+                Image(systemName: SkyEventsFormat.symbol(highlight.item))
+                    .foregroundStyle(palette.accent)
+                    .frame(width: 22)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline) {
+                            title
+                            Spacer(minLength: DS.Space.s)
+                            when
+                        }
+                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                            title
+                            when
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        title
-                        when
+                    Text(highlight.whyItMatters)
+                        .font(.dsCallout).foregroundStyle(palette.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let best = SkyEventsFormat.best(highlight, timeZone) {
+                        Label("Best from here: \(best)", systemImage: "clock")
+                            .font(.dsFootnote).foregroundStyle(palette.primary)
                     }
+                    if let moon = SkyEventsFormat.moon(highlight.moon, timeZone) {
+                        Label(moon, systemImage: "moon")
+                            .font(.dsFootnote)
+                            .foregroundStyle(SkyEventsFormat.moonIsBad(highlight.moon) ? palette.marginal : palette.secondary)
+                    }
+                    Text(SkyEventsFormat.provenance(highlight.item.provenance))
+                        .font(.dsData).foregroundStyle(palette.secondary)
                 }
-                Text(highlight.whyItMatters)
-                    .font(.subheadline).foregroundStyle(palette.primary)
-                if let best = SkyEventsFormat.best(highlight, timeZone) {
-                    Label(best, systemImage: "clock")
-                        .font(.footnote).foregroundStyle(palette.primary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("skyEvents.row")
+            if let target = highlight.shotTarget {
+                Button { planThis(target) } label: {
+                    Label("Plan this: \(target.shortName), \(SkyEventsFormat.nightLabel(highlight.night, tonight: tonight))",
+                          systemImage: "scope")
                 }
-                if let moon = SkyEventsFormat.moon(highlight.moon, timeZone) {
-                    Label(moon, systemImage: "moon")
-                        .font(.footnote)
-                        .foregroundStyle(SkyEventsFormat.moonIsBad(highlight.moon) ? palette.marginal : palette.secondary)
-                }
-                Text(SkyEventsFormat.provenance(highlight.item.provenance))
-                    .font(.caption2).foregroundStyle(palette.secondary)
+                .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                .padding(.leading, 22 + DS.Space.m)
+                .accessibilityIdentifier("skyEvents.plan")
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("skyEvents.row")
+    }
+
+    /// The event's night and target become Tonight's shot plan.
+    private func planThis(_ target: ShotTarget) {
+        plan.target = target
+        state.chosenNight = highlight.night == state.tonight() ? nil : highlight.night
+        state.prefetchSkyEvents()
+        onPlan?()
     }
 
     private var title: some View {
-        Text(highlight.item.title).font(.subheadline.bold()).foregroundStyle(palette.primary)
+        Text(highlight.item.title).font(.dsCallout.weight(.semibold)).foregroundStyle(palette.primary)
     }
 
     private var when: some View {
         Text(SkyEventsFormat.nightLabel(highlight.night, tonight: tonight))
-            .font(.caption.weight(.semibold)).foregroundStyle(palette.secondary)
+            .font(.dsFootnote.weight(.semibold)).foregroundStyle(palette.secondary)
+    }
+}
+
+/// A highlight's shape, drawn redacted while the agenda loads.
+private struct SkyEventPlaceholderRow: View {
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.m) {
+            Image(systemName: "sparkles").frame(width: 22)
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text("Jupiter at opposition · Sat, Oct 10").font(.dsCallout.weight(.semibold))
+                Text("At its closest and brightest, up from dusk to dawn, all night long.").font(.dsCallout)
+                Text("Best from here: all night").font(.dsFootnote)
+                Text("computed").font(.dsData)
+            }
+        }
     }
 }

@@ -34,6 +34,7 @@ struct TonightScreen: View {
     @ViewBuilder
     private func content(now: Date) -> some View {
         let night = state.night(at: now)
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                 if let place = state.place {
@@ -45,7 +46,9 @@ struct TonightScreen: View {
                         relative: model.relativeLabel(night: night, tonight: tonight, place: place),
                         choose: choose,
                         openCalendar: { showCalendar = true })
-                    answer(place: place, night: night, now: now)
+                    answer(place: place, night: night, now: now, scrollToPlan: {
+                        withAnimation(.snappy) { proxy.scrollTo("tonight.top", anchor: .top) }
+                    })
                 } else {
                     EmptyState(
                         symbol: "location.magnifyingglass", title: "Where are you shooting?",
@@ -57,6 +60,8 @@ struct TonightScreen: View {
             .padding(.horizontal, DS.Space.screen)
             .padding(.top, DS.Space.s)
             .padding(.bottom, DS.Space.xl)
+            .id("tonight.top")
+        }
         }
         .refreshable {
             guard let place = state.place else { return }
@@ -90,7 +95,7 @@ struct TonightScreen: View {
     /// the sky facts, what else is in the sky, and the charts. Each block
     /// keeps its height while it loads, so nothing above the fold moves.
     @ViewBuilder
-    private func answer(place: Place, night: NightDate, now: Date) -> some View {
+    private func answer(place: Place, night: NightDate, now: Date, scrollToPlan: @escaping () -> Void) -> some View {
         ShotWindowSection(place: place, night: night, snapshot: model.snapshot, status: conditionsStatus,
                           refreshing: model.refreshing, now: now)
         switch model.astronomy {
@@ -118,7 +123,7 @@ struct TonightScreen: View {
                     if !showDetails { Task { showDetails = true } }
                 }
             AstronomyDetails(report: astro.report, timeZone: tz, config: model.appConfig)
-            SkyEventsSection(place: place, night: night)
+            SkyEventsSection(place: place, night: night, onPlan: scrollToPlan)
             if showDetails {
                 NightStripChart(strip: astro.strip, timeZone: tz, now: now, gcThreshold: model.appConfig?.gcMinUsefulAltitudeDeg)
                 ConditionsStripChart(
