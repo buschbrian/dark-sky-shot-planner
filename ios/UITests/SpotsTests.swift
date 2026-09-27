@@ -10,7 +10,10 @@ final class SpotsTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-resetSpots"] + (name.contains("GoNight") ? ["-stubConditions", "go"] : [])
+        // Offline UI-test mode (no network, no remembered place); stubs pick the conditions outcome.
+        let stub = name.contains("GoNight") ? ["-stubConditions", "go"]
+            : name.contains("Unavailable") ? ["-stubConditions", "unavailable"] : []
+        app.launchArguments = ["-DarkSkyUITest", "-resetSpots"] + stub
         app.launch()
         app.tabBars.buttons["Spots"].tap()
     }
