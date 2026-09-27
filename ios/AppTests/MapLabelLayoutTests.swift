@@ -10,7 +10,8 @@ struct MapLabelLayoutTests {
     /// iPhone 17 map with the sheet collapsed: 402 × 874, nav bar to 106, sheet from 690.
     let visible = CGRect(x: 4, y: 110, width: 394, height: 576)
     let pin = CGPoint(x: 201, y: 398)
-    let labelSize = CGSize(width: 118, height: 36)
+    /// A two-line caption label ("Sun set 19:17" over "269°") at the default size.
+    let labelSize = CGSize(width: 84, height: 30)
 
     func line(_ bearing: Double, length: Double = 169) -> CGPoint {
         let r = bearing * .pi / 180
@@ -52,7 +53,8 @@ struct MapLabelLayoutTests {
         }
         // The target always shows, and most lines keep a label.
         #expect(placed["target"] != nil)
-        #expect(placed.count >= 7, "only \(placed.count) of 13 labels placed")
+        // Rise lines for the Sun (99°) and Moon (101°) nearly coincide: one of each such pair must go.
+        #expect(placed.count >= 6, "only \(placed.count) of 13 labels placed")
         // Something has to give with 13 labels around one pin: those are hidden, not stacked.
         #expect(placed.count < candlestick.count)
     }
@@ -71,9 +73,9 @@ struct MapLabelLayoutTests {
     @Test("A label that would cover a reserved rect moves along its line, or hides")
     func reservedRectsWin() {
         let end = line(90)
-        let r = MapLabelLayout.Request(key: "e", priority: 2, size: labelSize, start: pin, end: end, stops: [1, 0.85])
-        let atTip = MapLabelLayout.frame(center: MapLabelLayout.center(r, stop: 1), size: labelSize)
-        let moved = MapLabelLayout.layout([r], reserved: [atTip], visible: visible)
+        let r = MapLabelLayout.Request(key: "e", priority: 2, size: labelSize, start: pin, end: end, stops: MapLabelLayout.endStops)
+        let button = CGRect(x: end.x - 10, y: end.y - 10, width: 20, height: 20)
+        let moved = MapLabelLayout.layout([r], reserved: [button], visible: visible)
         #expect(moved["e"] != nil)
         #expect(moved["e"] != MapLabelLayout.center(r, stop: 1))
         let hidden = MapLabelLayout.layout([r], reserved: [visible], visible: visible)

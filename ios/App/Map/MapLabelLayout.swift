@@ -22,7 +22,7 @@ nonisolated enum MapLabelLayout {
 
     /// Event labels start at the line's end; the target and the at-time
     /// labels start part way out, clear of the pin.
-    static let endStops: [Double] = [1, 0.85, 0.7]
+    static let endStops: [Double] = [1, 0.85, 0.7, 0.55]
     static let midStops: [Double] = [0.62, 0.8, 1, 0.48]
 
     /// The centre of every label shown. Keys that are absent are hidden.
