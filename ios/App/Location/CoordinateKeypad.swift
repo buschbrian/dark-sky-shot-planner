@@ -4,7 +4,6 @@ import SwiftUI
 /// digits, sign, point, separator and delete, all in palette colors.
 struct CoordinateKeypad: View {
     @Binding var text: String
-    @Environment(\.palette) private var palette
 
     private let rows: [[String]] = [
         ["7", "8", "9", "⌫"],
@@ -14,16 +13,14 @@ struct CoordinateKeypad: View {
     ]
 
     var body: some View {
-        Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+        Grid(horizontalSpacing: KeypadMetrics.spacing, verticalSpacing: KeypadMetrics.spacing) {
             ForEach(rows, id: \.self) { row in
                 GridRow {
                     ForEach(row, id: \.self) { key in
                         Button { press(key) } label: {
-                            Text(title(key))
-                                .font(.title3.monospacedDigit())
-                                .frame(maxWidth: .infinity, minHeight: 44)
+                            if key == "⌫" { Image(systemName: "delete.left") } else { Text(title(key)) }
                         }
-                        .buttonStyle(PaletteButtonStyle(palette: palette))
+                        .buttonStyle(KeypadKeyStyle(emphasized: key == "clear"))
                         .accessibilityLabel(spoken(key))
                     }
                 }

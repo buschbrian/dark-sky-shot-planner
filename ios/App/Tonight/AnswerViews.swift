@@ -1,31 +1,67 @@
 import SkyCore
 import SwiftUI
 
-/// The headline: minutes of moon-free astronomical darkness.
+/// The answer, first: minutes of moon-free astronomical darkness, the night
+/// as a bar, then the verdict with its limiting factor and that factor's
+/// source and age, and where the conditions came from.
 struct AnswerCard: View {
     let report: NightReport
+    let strip: NightStrip
     let timeZone: TimeZone
+    let now: Date
+    let verdict: Verdict?
+    let origin: ConditionsSourceStatus
+    let workerConfigured: Bool
+    let showFactors: () -> Void
+    let refresh: () -> Void
     @Environment(\.palette) private var palette
-    @ScaledMetric(relativeTo: .largeTitle) private var numberSize = 64
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Moon-free darkness")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondary)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(report.moonFreeMinutes)")
-                    .font(.system(size: numberSize, weight: .bold, design: .rounded).monospacedDigit())
-                    .minimumScaleFactor(0.5)
-                    .lineLimit(1)
-                Text("min").font(.title2.weight(.semibold))
+        SectionCard {
+            headline
+            NightBar(span: strip.span, darkness: strip.darkness, moonFree: strip.moonFree, timeZone: timeZone, now: now)
+                .accessibilityIdentifier("tonight.nightBar")
+            Rectangle().fill(palette.hairline).frame(height: 1).padding(.vertical, DS.Space.xs)
+            VerdictBlock(verdict: verdict, now: now, workerConfigured: workerConfigured)
+            DataStatusLine(symbol: origin.symbol, text: origin.text(now: now), tone: origin.tone)
+                .accessibilityIdentifier("tonight.conditionsOrigin")
+            // Side by side while they fit; stacked full-width at large type sizes.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DS.Space.s) { actions }
+                VStack(alignment: .leading, spacing: DS.Space.s) { actions }
             }
-            .foregroundStyle(palette.primary)
-            Text(detail)
-                .font(.body)
-                .foregroundStyle(palette.primary)
         }
-        .card(palette)
+    }
+
+    @ViewBuilder private var actions: some View {
+        Button(action: showFactors) {
+            Label("Every factor", systemImage: "list.bullet.rectangle")
+        }
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+        .disabled(verdict == nil)
+        .accessibilityHint("Shows every factor with its source and age")
+        .accessibilityIdentifier("tonight.factors")
+        Button(action: refresh) {
+            Image(systemName: "arrow.clockwise")
+        }
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+        .accessibilityLabel("Refresh conditions")
+        .accessibilityIdentifier("tonight.refresh")
+    }
+
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            HStack(spacing: DS.Space.s) {
+                RoundedRectangle(cornerRadius: 2).fill(palette.data.moonFree).frame(width: 10, height: 10)
+                Text("Moon-free darkness").eyebrow(palette)
+            }
+            DisplayNumber(value: "\(report.moonFreeMinutes)", unit: "min")
+            Text(detail)
+                .font(.dsCallout)
+                .foregroundStyle(palette.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
         .accessibilityAddTraits(.isHeader)
@@ -39,8 +75,7 @@ struct AnswerCard: View {
     private var detail: String {
         if report.noAstronomicalDarkness { return "No astronomical darkness: the sun never gets 18° below the horizon." }
         if windows.isEmpty { return "The moon is up all through astronomical darkness." }
-        let longest = report.moonFreeMinutes >= 60 ? "\(Format.duration(minutes: report.moonFreeMinutes)) · " : ""
-        return longest + windows.joined(separator: " and ")
+        return windows.joined(separator: " and ")
     }
 
     private var spoken: String {
@@ -53,7 +88,7 @@ struct AnswerCard: View {
     }
 }
 
-/// Darkness window, moon and Galactic Center, all computed on the phone.
+/// Darkness, moon and Galactic Center, all computed on the phone.
 struct AstronomyDetails: View {
     let report: NightReport
     let timeZone: TimeZone
@@ -61,35 +96,27 @@ struct AstronomyDetails: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            row("Darkness", icon: "moon.haze", darkness, id: "tonight.darkness")
-            row("Moon", icon: "moonphase.waxing.gibbous", moon, id: "tonight.moon")
-            row("Galactic Center", icon: "sparkles", galacticCenter, id: "tonight.gc")
-            Text("Computed on this phone with astronomy-engine; no network needed.")
-                .font(.footnote)
-                .foregroundStyle(palette.secondary)
+        SectionCard("Sky tonight") {
+            FactRow(icon: "moon.haze", label: "Astronomical darkness", value: darkness)
+                .accessibilityIdentifier("tonight.darkness")
+            FactRow(icon: moonSymbol, label: "Moon", value: moon)
+                .accessibilityIdentifier("tonight.moon")
+            FactRow(icon: "sparkles", label: "Galactic Center", value: galacticCenter)
+                .accessibilityIdentifier("tonight.gc")
+            ProvenanceChip(info: SourceInfo(source: "astronomy-engine", note: Voice.onDevice))
         }
-        .card(palette)
     }
 
-    private func row(_ title: String, icon: String, _ value: String, id: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(palette.secondary)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(palette.secondary)
-                Text(value).foregroundStyle(palette.primary)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(id)
+    private var moonSymbol: String {
+        let f = report.moonIllumFraction
+        if f < 0.03 { return "moonphase.new.moon" }
+        if f > 0.97 { return "moonphase.full.moon" }
+        return "moon"
     }
 
     private var darkness: String {
         guard let d = report.darkness else { return "None: the sun never gets 18° below the horizon" }
-        return "\(Format.span(d.start, d.end, timeZone)) (astronomical, sun 18° down)"
+        return Format.span(d.start, d.end, timeZone)
     }
 
     private var moon: String {

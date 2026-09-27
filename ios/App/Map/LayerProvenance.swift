@@ -24,13 +24,13 @@ extension MapData {
             var parts: [String] = []
             if let end {
                 let start = smokeAnalysis.start.map { Self.utc($0, withDate: false) + "–" } ?? ""
-                parts.append("Analysis \(start)\(Self.utc(end, withDate: true)), \(Self.age(end, now: now)) old")
+                parts.append("Analysis \(start)\(Self.utc(end, withDate: true)), \(Voice.age(of: end, now: now))")
             } else {
                 parts.append("No analysis time")
             }
             parts.append(HMSSmoke.note)
             if smoke == nil { parts.append("Not downloaded yet") } else if failed.contains("hms/smoke.geojson") {
-                parts.append("Offline: showing the copy from \(fetched["hms/smoke.geojson"].map { Self.age($0, now: now) } ?? "?") ago")
+                parts.append("Offline: \(Voice.lastGood), fetched \(fetched["hms/smoke.geojson"].map { Voice.ago($0, now: now) } ?? "at an unknown time")")
             }
             return LayerProvenance(
                 source: HMSSmoke.source, license: "Public domain (NOAA)", freshness: smoke == nil ? .unavailable : fresh,
@@ -40,7 +40,7 @@ extension MapData {
             let fresh = Self.freshnessConfig.flatMap { try? $0.conditionsWindow() }?.freshness(since: newest, now: now) ?? .unavailable
             var parts: [String] = []
             if let first = irFrames.first, let newest {
-                parts.append("\(irFrames.count) frames \(Self.utc(first, withDate: false))–\(Self.utc(newest, withDate: true)); newest \(Self.age(newest, now: now)) old (valid times from DescribeDomains).")
+                parts.append("\(irFrames.count) frames \(Self.utc(first, withDate: false))–\(Self.utc(newest, withDate: true)); newest \(Voice.age(of: newest, now: now)) (valid times from DescribeDomains).")
             } else {
                 parts.append("No valid frame times yet.")
             }
@@ -80,7 +80,7 @@ extension MapData {
         }
         if let caveat = origin.caveat { parts.append(caveat) }
         if manifest == nil { parts.append("Manifest not downloaded yet.") }
-        if let t = fetched["\(p.dir)/manifest.json"] { parts.append("Checked \(Self.age(t, now: now)) ago.") }
+        if let t = fetched["\(p.dir)/manifest.json"] { parts.append("Checked \(Voice.ago(t, now: now)).") }
         return LayerProvenance(
             source: manifest?.source_name ?? "Pages site data/out/\(p.dir)", license: manifest?.license ?? "—",
             freshness: fresh, detail: parts.joined(separator: " "), origin: origin)
@@ -97,10 +97,4 @@ extension MapData {
         return "\(hm) \(month) \(c.day!)"
     }
 
-    static func age(_ date: Date, now: Date) -> String {
-        let s = max(0, now.timeIntervalSince(date))
-        if s < 3600 { return "\(Int(s / 60)) min" }
-        if s < 2 * 86_400 { return "\(Int(s / 3600)) h" }
-        return "\(Int(s / 86_400)) d"
-    }
 }

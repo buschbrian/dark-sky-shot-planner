@@ -14,7 +14,7 @@ final class WeekToolsTests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment = env
         // The shared UI-test mode: no network, throwaway conditions cache, no remembered place.
-        app.launchArguments = ["-DarkSkyUITest"] + arguments
+        app.launchArguments = ["-DarkSkyUITest", "-FieldMode", "NO"] + arguments
         app.launch()
         return app
     }

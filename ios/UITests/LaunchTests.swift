@@ -5,6 +5,7 @@ final class LaunchTests: XCTestCase {
     @MainActor
     func testLaunchesToTabs() {
         let app = XCUIApplication()
+        app.launchArguments = ["-FieldMode", "NO"]
         app.launch()
         for tab in ["Tonight", "Map", "Sky", "Spots", "Tools"] {
             XCTAssertTrue(app.tabBars.buttons[tab].waitForExistence(timeout: 10), "missing tab \(tab)")

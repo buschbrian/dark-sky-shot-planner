@@ -4,47 +4,14 @@ import SwiftUI
 
 /// Text for Week numbers. Missing values read "unavailable", never 0.
 enum WeekFormat {
-    static func age(_ interval: TimeInterval) -> String {
-        let minutes = Int((interval / 60).rounded(.down))
-        if minutes < 1 { return "just now" }
-        if minutes < 60 { return "\(minutes) min ago" }
-        let hours = minutes / 60
-        if hours < 48 { return "\(hours) h ago" }
-        return "\(hours / 24) days ago"
-    }
-
     /// A model run time in UTC, forecasters' style: "18Z", or "Fri 18Z" when older than a day.
-    static func run(_ run: Date, now: Date) -> String {
-        var hour = Date.FormatStyle().hour(.twoDigits(amPM: .omitted))
-        hour.timeZone = TimeZone(identifier: "UTC")!
-        let z = "\(run.formatted(hour))Z"
-        guard now.timeIntervalSince(run) > 86_400 else { return z }
-        var day = Date.FormatStyle().weekday(.abbreviated)
-        day.timeZone = TimeZone(identifier: "UTC")!
-        return "\(run.formatted(day)) \(z)"
-    }
+    static func run(_ run: Date, now: Date) -> String { Voice.run(run, now: now) }
 
     static func minutes(_ m: Int) -> String {
         m < 60 ? "\(m) min" : "\(m / 60) h \(m % 60) min"
     }
 
     static func percent(_ v: Double) -> String { "\(Int(v.rounded()))%" }
-
-    static func level(_ level: VerdictLevel) -> String {
-        switch level {
-        case .go: "Go"
-        case .marginal: "Marginal"
-        case .noGo: "No-go"
-        }
-    }
-
-    static func color(_ level: VerdictLevel, _ palette: Palette) -> Color {
-        switch level {
-        case .go: palette.good
-        case .marginal: palette.marginal
-        case .noGo: palette.poor
-        }
-    }
 
     /// A factor's value with its unit, e.g. "38%", "0.14", "25 km/h".
     static func value(_ v: Double, unit: String) -> String {

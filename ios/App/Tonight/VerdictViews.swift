@@ -2,98 +2,46 @@ import SkyCore
 import SwiftUI
 
 /// Go / marginal / no-go, always with the limiting factor, its value, source
-/// and age (PLAN.md §Verdict), and where the conditions came from.
-struct VerdictCard: View {
+/// and age (PLAN.md §Verdict).
+struct VerdictBlock: View {
     let verdict: Verdict?
-    let conditions: TonightModel.ConditionsState
-    let refreshing: Bool
     let now: Date
-    let showFactors: () -> Void
-    let refresh: () -> Void
+    let workerConfigured: Bool
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             if let verdict {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(verdict.level.word)
-                            .font(.title.bold())
-                            .foregroundStyle(verdict.level.color(palette))
-                        if !flagText(verdict).isEmpty {
-                            Text(flagText(verdict))
-                                .font(.subheadline)
-                                .foregroundStyle(palette.secondary)
-                        }
+                HStack(spacing: DS.Space.s) {
+                    StatusBadge(level: StatusLevel(verdict.level), qualifier: qualifier(verdict), large: true)
+                    if verdict.flags.contains(.auroraPossible) {
+                        Label("Aurora possible", systemImage: "sparkles")
+                            .font(.dsFootnote.weight(.semibold))
+                            .foregroundStyle(palette.primary)
                     }
-                    Text(limitingLine(verdict))
-                        .foregroundStyle(palette.primary)
-                    Text(provenanceLine(verdict.limiting, now: now))
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondary)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("tonight.verdict")
+                Text(FactorText.limiting(verdict, workerConfigured: workerConfigured))
+                    .font(.dsBody)
+                    .foregroundStyle(palette.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ProvenanceChip(info: FactorText.source(verdict.limiting), now: now)
             } else {
+                StatusBadge(level: .unavailable, large: true)
                 Text("No verdict: the thresholds file could not be read.")
-                    .foregroundStyle(palette.poor)
-            }
-            Text(originLine)
-                .font(.footnote)
-                .foregroundStyle(palette.secondary)
-                .accessibilityIdentifier("tonight.conditionsOrigin")
-            HStack {
-                Button("Every factor", action: showFactors)
-                    .buttonStyle(PaletteButtonStyle(palette: palette))
-                    .disabled(verdict == nil)
-                    .accessibilityHint("Shows every factor with its source and age")
-                    .accessibilityIdentifier("tonight.factors")
-                Button("Refresh", action: refresh)
-                    .buttonStyle(PaletteButtonStyle(palette: palette))
-                    .accessibilityHint("Fetches conditions again")
+                    .font(.dsBody)
+                    .foregroundStyle(palette.primary)
+                ProvenanceChip(info: SourceInfo(source: "conditions-thresholds.json", freshness: .unavailable))
             }
         }
-        .card(palette)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("tonight.verdict")
     }
 
-    private func flagText(_ v: Verdict) -> String {
-        var flags: [String] = []
-        if v.flags.contains(.incompleteData) { flags.append("incomplete data") }
-        if v.flags.contains(.staleData) { flags.append("stale data") }
-        if v.flags.contains(.auroraPossible) { flags.append("aurora possible") }
-        return flags.joined(separator: " · ")
-    }
-
-    private func limitingLine(_ v: Verdict) -> String {
-        let f = v.limiting
-        switch v.cause {
-        case .rating:
-            return "\(v.level == .go ? "Closest to its limit" : "Limited by") \(f.factor.label): \(FactorText.value(f))"
-        case .incompleteData:
-            return "\(f.factor.label) is unavailable\(FactorText.reason(f).map { " (\($0))" } ?? "")"
-        case .staleData:
-            return "\(f.factor.label) data is stale: \(FactorText.value(f))"
-        }
-    }
-
-    private var originLine: String {
-        switch conditions {
-        case .idle, .loading:
-            return "Conditions: fetching…"
-        case .none(let reason):
-            return "Conditions: \(reason)"
-        case .loaded(let s, let cached):
-            let age = Format.age(now.timeIntervalSince(s.fetchedUTC)).replacingOccurrences(of: " old", with: " ago")
-            if cached {
-                return refreshing
-                    ? "Conditions: saved copy from \(age), refreshing…"
-                    : "Conditions: offline, showing the copy fetched \(age)"
-            }
-            if s.response.isDirectFallback {
-                return "Conditions: Worker unreachable, so clouds come straight from Open-Meteo; the other factors are unavailable"
-            }
-            return "Conditions: from the conditions Worker, fetched \(Format.clock(s.fetchedUTC, .current))"
-        }
+    private func qualifier(_ v: Verdict) -> String? {
+        if v.flags.contains(.incompleteData) { return "incomplete data" }
+        if v.flags.contains(.staleData) { return "stale data" }
+        return nil
     }
 }
 
@@ -101,47 +49,41 @@ struct VerdictCard: View {
 struct FactorsSheet: View {
     let verdict: Verdict
     let now: Date
+    let workerConfigured: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.palette) private var palette
-    @Environment(AppState.self) private var state
 
-    private var ordered: [FactorAssessment] {
-        verdict.factors.filter(\.gatesVerdict) + verdict.factors.filter { !$0.gatesVerdict }
-    }
+    private var gating: [FactorAssessment] { verdict.factors.filter(\.gatesVerdict) }
+    private var advisories: [FactorAssessment] { verdict.factors.filter { !$0.gatesVerdict } }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("\(verdict.level.word): the worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
-                        .font(.footnote)
+                VStack(alignment: .leading, spacing: DS.Space.cardGap) {
+                    StatusBadge(level: StatusLevel(verdict.level), large: true)
+                    Text("The worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
+                        .font(.dsFootnote)
                         .foregroundStyle(palette.secondary)
-                    ForEach(ordered, id: \.key) { factor in
-                        FactorRow(factor: factor, isLimiting: factor.key == verdict.limiting.key, now: now)
-                    }
+                    group("Gates the verdict", gating)
+                    if !advisories.isEmpty { group("Advisory", advisories) }
                 }
-                .padding()
+                .padding(DS.Space.screen)
             }
             .background(palette.background)
-            .navigationTitle("Every factor")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Every factor").font(.headline).foregroundStyle(palette.primary)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(palette.accent)
-                        .accessibilityIdentifier("factors.done")
-                }
-                .sharedBackgroundVisibility(state.fieldMode ? .hidden : .automatic)
+            .sheetChrome("Every factor", confirm: SheetAction(title: "Done", id: "factors.done") { dismiss() })
+        }
+        .presentationDragIndicator(.hidden)
+        .sheetPresentation(palette)
+    }
+
+    private func group(_ title: String, _ factors: [FactorAssessment]) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            Text(title).eyebrow(palette).padding(.top, DS.Space.s)
+            ForEach(factors, id: \.key) { factor in
+                FactorRow(factor: factor, isLimiting: factor.key == verdict.limiting.key, now: now,
+                          workerConfigured: workerConfigured)
             }
         }
-        .presentationBackground(palette.background)
-        .presentationDragIndicator(.hidden)
-        .fieldSafe(state.fieldMode)
     }
 }
 
@@ -149,40 +91,42 @@ private struct FactorRow: View {
     let factor: FactorAssessment
     let isLimiting: Bool
     let now: Date
+    let workerConfigured: Bool
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 Text(factor.factor.label)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.dsCallout.weight(.semibold))
                     .foregroundStyle(palette.primary)
                 Spacer()
-                Text(ratingText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(palette.color(factor.rating))
+                HStack(spacing: DS.Space.xs) {
+                    Image(systemName: ratingSymbol).imageScale(.small)
+                    Text(ratingText)
+                }
+                .font(.dsFootnote.weight(.semibold))
+                .foregroundStyle(palette.color(factor.rating))
             }
-            Text(FactorText.value(factor))
-                .foregroundStyle(factor.isUnavailable ? palette.secondary : palette.primary)
-            if let reason = FactorText.reason(factor) {
-                Text(reason).font(.footnote).foregroundStyle(palette.secondary)
+            if factor.value == nil {
+                UnavailableValue(reason: FactorText.reason(factor, workerConfigured: workerConfigured))
+            } else {
+                Text(FactorText.value(factor))
+                    .font(.dsMetric)
+                    .foregroundStyle(palette.primary)
             }
-            Text(provenanceLine(factor, now: now))
-                .font(.footnote)
-                .foregroundStyle(palette.secondary)
+            ProvenanceChip(info: FactorText.source(factor), now: now)
             if factor.readings.count > 1 || factor.readings.contains(where: \.isLastGood) {
                 Text(FactorText.perModel(factor))
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondary)
+                    .font(.dsData)
+                    .foregroundStyle(palette.tertiary)
             }
-            Text(factor.gatesVerdict ? "Gates the verdict" : "Advisory")
-                .font(.caption)
-                .foregroundStyle(palette.secondary)
         }
-        .padding(12)
+        .padding(DS.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(isLimiting ? palette.accent : .clear, lineWidth: 1.5))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: DS.Radius.control + 2, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.control + 2, style: .continuous)
+            .strokeBorder(isLimiting ? palette.accent : .clear, lineWidth: DS.Stroke.focus))
         .accessibilityElement(children: .combine)
         .accessibilityHint(isLimiting ? "Limiting factor" : "")
     }
@@ -191,7 +135,17 @@ private struct FactorRow: View {
         switch factor.status {
         case .rated(let r): r.word
         case .shownOnly: "not rated"
-        case .unavailable: "unavailable"
+        case .unavailable: Voice.unavailable
+        }
+    }
+
+    private var ratingSymbol: String {
+        switch factor.status {
+        case .rated(.good): StatusLevel.go.symbol
+        case .rated(.marginal): StatusLevel.marginal.symbol
+        case .rated(.poor): StatusLevel.noGo.symbol
+        case .shownOnly: "info.circle"
+        case .unavailable: "circle.dashed"
         }
     }
 }
@@ -199,7 +153,7 @@ private struct FactorRow: View {
 enum FactorText {
     /// The value with its unit and, when models disagree, their spread.
     static func value(_ f: FactorAssessment) -> String {
-        guard let v = f.value else { return "unavailable" }
+        guard let v = f.value else { return Voice.unavailable }
         var s = Format.value(v, unit: f.factor.unit)
         if let band = f.band, band.upperBound - band.lowerBound > 1e-9 {
             s += " (models \(Format.value(band.lowerBound, unit: f.factor.unit)) to \(Format.value(band.upperBound, unit: f.factor.unit)))"
@@ -207,28 +161,36 @@ enum FactorText {
         return s
     }
 
-    static func reason(_ f: FactorAssessment) -> String? {
-        if case .unavailable(let reason) = f.status { reason } else { nil }
+    static func reason(_ f: FactorAssessment, workerConfigured: Bool) -> String? {
+        if case .unavailable(let reason) = f.status { Voice.reason(reason, workerConfigured: workerConfigured) } else { nil }
+    }
+
+    /// The limiting factor, always next to the verdict (ios/AGENTS.md).
+    static func limiting(_ v: Verdict, workerConfigured: Bool) -> String {
+        let f = v.limiting
+        switch v.cause {
+        case .rating:
+            return "\(v.level == .go ? "Closest to its limit" : "Limited by") \(f.factor.label): \(value(f))"
+        case .incompleteData:
+            return "\(f.factor.label) is unavailable\(reason(f, workerConfigured: workerConfigured).map { " (\($0))" } ?? "")"
+        case .staleData:
+            return "\(f.factor.label) is stale: \(value(f))"
+        }
+    }
+
+    static func source(_ f: FactorAssessment) -> SourceInfo {
+        guard let p = f.provenance else { return SourceInfo(source: "no source", freshness: .unavailable) }
+        return SourceInfo(p, lastGood: f.readings.contains(where: \.isLastGood) && f.value != nil && f.isUnavailable)
     }
 
     static func perModel(_ f: FactorAssessment) -> String {
         f.readings.map { r in
             let name = Format.model(r.model) ?? "value"
             if let v = r.value, case .unavailable = r.status {
-                return "\(name) \(Format.value(v, unit: f.factor.unit)) (not used)"
+                return "\(name) \(Format.value(v, unit: f.factor.unit)) (\(r.isLastGood ? Voice.lastGood : "not used"))"
             }
             if let v = r.value { return "\(name) \(Format.value(v, unit: f.factor.unit))" }
-            return "\(name) unavailable"
+            return "\(name) \(Voice.unavailable)"
         }.joined(separator: " · ")
     }
-}
-
-/// "HRRR via Open-Meteo · 2 h old · fresh"; on-device values say so.
-func provenanceLine(_ f: FactorAssessment, now: Date) -> String {
-    guard let p = f.provenance else { return "Source: none · unavailable" }
-    if p.source.contains("on device") { return "Source: computed on this phone" }
-    var parts = ["Source: " + (Format.model(p.model).map { "\($0) via \(p.source)" } ?? p.source)]
-    if let asOf = p.asOfUTC { parts.append(Format.age(now.timeIntervalSince(asOf))) }
-    parts.append(p.freshness.label)
-    return parts.joined(separator: " · ")
 }

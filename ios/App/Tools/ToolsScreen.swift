@@ -31,15 +31,29 @@ struct ToolsScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: DS.Space.cardGap) {
                     gearSection
                     calculatorSection
                     CaptureToolsRow().padding(.top, 8)
+                    NavigationLink(value: AboutRoute()) {
+                        Disclosure {
+                            Label("About and sync", systemImage: "info.circle")
+                                .font(.dsCallout).foregroundStyle(palette.primary)
+                        }
+                        .frame(minHeight: DS.minTarget)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressDimStyle())
+                    .padding(.top, DS.Space.l)
+                    .accessibilityIdentifier("tools.about")
                 }
-                .padding()
+                .padding(.horizontal, DS.Space.screen)
+                .padding(.top, DS.Space.s)
+                .padding(.bottom, DS.Space.xl)
             }
             .background(palette.background)
-            .paletteChrome("Tools")
+            .screenChrome("Tools")
+            .navigationDestination(for: AboutRoute.self) { _ in AboutScreen() }
             .navigationDestination(for: Calculator.self) { calc in
                 if let selected, let kit = try? GearKit(selected) {
                     CalculatorView(calculator: calc, kit: kit, inputs: inputs)
@@ -60,29 +74,23 @@ struct ToolsScreen: View {
     private var editingAllowed: Bool { !state.fieldMode }
 
     @ViewBuilder private var gearSection: some View {
-        Text("Camera and lens").font(.headline).foregroundStyle(palette.primary).accessibilityAddTraits(.isHeader)
+        Text("Camera and lens").eyebrow(palette).padding(.top, DS.Space.xs)
         if gear.isEmpty {
-            Card {
-                Text("No gear yet").font(.headline).foregroundStyle(palette.primary)
+            SectionCard {
+                Text("No gear yet").font(.dsHeadline).foregroundStyle(palette.primary)
                 Text("Add your camera's sensor size and resolution and your lens's focal length and widest aperture, from the manual or spec sheet. The calculators use them.")
-                    .font(.subheadline).foregroundStyle(palette.secondary)
+                    .font(.dsCallout).foregroundStyle(palette.secondary)
             }
         }
         ForEach(gear) { item in gearRow(item) }
         if editingAllowed {
             Button { editing = .new } label: {
-                Label("Add camera and lens", systemImage: "plus")
-                    .font(.headline)
-                    .foregroundStyle(palette.accent)
-                    .frame(maxWidth: .infinity)
-                    .padding(12)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                Label("Add camera and lens", systemImage: "plus").frame(maxWidth: .infinity)
             }
-            .buttonStyle(PressDimStyle())
+            .buttonStyle(ActionButtonStyle(.secondary))
             .accessibilityIdentifier("tools.addGear")
         } else {
-            Text("Adding and editing gear is off in field mode: the system keyboard cannot be dimmed red.")
-                .font(.footnote).foregroundStyle(palette.secondary)
+            DataStatusLine(symbol: "keyboard", text: "Adding and editing gear is off in field mode: the system keyboard can't be drawn red.")
         }
     }
 
@@ -95,14 +103,14 @@ struct ToolsScreen: View {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(isSelected ? palette.accent : palette.secondary)
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.name).font(.headline).foregroundStyle(palette.primary)
+                    VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                        Text(item.name).font(.dsHeadline).foregroundStyle(palette.primary)
                         if let kit {
-                            Text(kit.lensSummary).font(.subheadline).foregroundStyle(palette.primary)
-                            Text(kit.cameraSummary).font(.caption).foregroundStyle(palette.secondary)
+                            Text(kit.lensSummary).font(.dsCallout).foregroundStyle(palette.primary)
+                            Text(kit.cameraSummary).font(.dsData).foregroundStyle(palette.secondary)
                         } else {
                             Text("This profile could not be read. Edit or delete it.")
-                                .font(.caption).foregroundStyle(palette.secondary)
+                                .font(.dsFootnote).foregroundStyle(palette.secondary)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,43 +121,47 @@ struct ToolsScreen: View {
             .accessibilityHint("Uses this gear in the calculators")
             if editingAllowed {
                 Button { editing = .existing(item) } label: {
-                    Image(systemName: "pencil").foregroundStyle(palette.accent).padding(4)
+                    Image(systemName: "pencil")
                 }
-                .buttonStyle(PressDimStyle())
+                .buttonStyle(ActionButtonStyle(.quiet))
                 .accessibilityLabel("Edit \(item.name)")
             }
         }
-        .padding(14)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
+        .padding(DS.Space.card)
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
+            .strokeBorder(isSelected && gear.count > 1 ? palette.accent : .clear, lineWidth: DS.Stroke.focus))
     }
 
     @ViewBuilder private var calculatorSection: some View {
-        Text("Calculators").font(.headline).foregroundStyle(palette.primary)
-            .accessibilityAddTraits(.isHeader).padding(.top, 8)
+        Text("Calculators").eyebrow(palette).padding(.top, DS.Space.m)
         if let selected, let kit = try? GearKit(selected) {
-            Text("Using \(kit.name)").font(.footnote).foregroundStyle(palette.secondary)
+            Text("Using \(kit.name)").font(.dsFootnote).foregroundStyle(palette.secondary)
             ForEach(Calculator.allCases) { calc in
                 NavigationLink(value: calc) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: DS.Space.m) {
                         Image(systemName: calc.symbol).foregroundStyle(palette.accent).frame(width: 28)
                             .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(calc.title).font(.headline).foregroundStyle(palette.primary)
-                            Text(calc.subtitle).font(.caption).foregroundStyle(palette.secondary)
+                        VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                            Text(calc.title).font(.dsHeadline).foregroundStyle(palette.primary)
+                            Text(calc.subtitle).font(.dsFootnote).foregroundStyle(palette.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.right").foregroundStyle(palette.secondary).accessibilityHidden(true)
+                        Image(systemName: "chevron.forward").font(.dsFootnote.weight(.semibold))
+                            .foregroundStyle(palette.tertiary).accessibilityHidden(true)
                     }
                     .multilineTextAlignment(.leading)
-                    .padding(14)
-                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(DS.Space.card)
+                    .background(palette.surface, in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
                 }
                 .buttonStyle(PressDimStyle())
                 .accessibilityIdentifier("tools.calc.\(calc.rawValue)")
             }
         } else {
-            Text("Add or pick a camera and lens to use the calculators.")
-                .font(.subheadline).foregroundStyle(palette.secondary)
+            // Not an error: the calculators need a camera and lens to work from.
+            DataStatusLine(symbol: "camera.aperture",
+                           text: gear.isEmpty ? "The calculators appear here once a camera and lens are saved."
+                                              : "Pick a camera and lens above to use the calculators.")
         }
     }
 

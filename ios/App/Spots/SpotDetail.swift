@@ -27,12 +27,12 @@ struct SpotDetail: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(String(format: "%.5f, %.5f", spot.latitude, spot.longitude))
-                        .font(.callout.monospacedDigit())
-                    Text(spot.timeZoneID).font(.footnote).foregroundStyle(palette.secondary)
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                    Text("\(String(format: "%.5f, %.5f", spot.latitude, spot.longitude)) · \(Format.zone(spot.place.timeZone))")
+                        .font(.dsData)
+                        .foregroundStyle(palette.secondary)
                     if !spot.notes.isEmpty {
-                        Text(spot.notes).font(.callout).padding(.top, 4)
+                        Text(spot.notes).font(.dsCallout).foregroundStyle(palette.primary).padding(.top, DS.Space.xs)
                     }
                 }
                 Button {
@@ -46,11 +46,12 @@ struct SpotDetail: View {
                 Toggle(isOn: Binding(get: { spot.isPinned }, set: pin)) {
                     Label("Show in widget", systemImage: "rectangle.on.rectangle")
                 }
-                .toggleStyle(PaletteToggleStyle(palette: palette))
+                .toggleStyle(PaletteToggleStyle())
                 .accessibilityIdentifier("pin-spot")
                 if spot.isPinned, widgetShared == false {
-                    Text("The widget cannot read shared data on this build (App Group unavailable), so it will ask you to pin a spot.")
-                        .font(.footnote).foregroundStyle(palette.poor)
+                    DataStatusLine(symbol: "exclamationmark.triangle",
+                                   text: "The widget can't read shared data in this build (App Group not set up), so it will ask you to pin a spot.",
+                                   tone: .caution)
                 }
             }
             .paletteRow(palette)
@@ -69,13 +70,8 @@ struct SpotDetail: View {
             .paletteRow(palette)
         }
         .paletteList()
-        .paletteTitle(spot.name, palette)
-        .paletteBackButton(palette, dismiss: dismiss)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Edit") { editing = true }.accessibilityIdentifier("edit-spot")
-            }
-            .sharedBackgroundVisibility(palette.toolbarGlass)
+        .screenChrome(spot.name, pushed: true) {
+            Button("Edit") { editing = true }.accessibilityIdentifier("edit-spot")
         }
         .sheet(isPresented: $editing) { SpotEditor(spot: spot) }
         .task(id: "\(spot.latitude),\(spot.longitude),\(spot.timeZoneID)") {
@@ -93,19 +89,21 @@ struct SpotDetail: View {
                 let night = week.nights.first { $0.night == selectedNight } ?? week.nights.first
                 if let night { NightDetail(night: night, timeZone: spot.place.timeZone, terrainAware: week.terrainAware) }
             } else {
-                Text(checking ? "Checking the week…" : "Not checked yet").foregroundStyle(palette.secondary)
+                Text(checking ? "Checking the week…" : "Not checked yet").font(.dsCallout).foregroundStyle(palette.secondary)
             }
-            Button(checking ? "Checking…" : "Re-check now") { Task { await check() } }
-                .disabled(checking)
-                .accessibilityIdentifier("recheck-spot")
+            Button { Task { await check() } } label: {
+                Label(checking ? "Checking…" : "Re-check now", systemImage: "arrow.clockwise")
+            }
+            .disabled(checking)
+            .accessibilityIdentifier("recheck-spot")
         } header: {
             SectionHeader("This week")
         } footer: {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
                 CheckStatus(spot: spot).accessibilityIdentifier("week-checked")
-                Text("Moon-free minutes: astronomy-engine on this phone\(spot.week?.terrainAware == true ? ", above this spot's skyline" : ", flat horizon"). Verdict: the worst gating factor over moon-free darkness.")
+                Text("Moon-free minutes: astronomy-engine on this phone\(spot.week?.terrainAware == true ? ", above this spot's skyline" : ", flat horizon (\(Voice.estimated))"). Verdict: the worst gating factor over moon-free darkness.")
             }
-            .font(.caption)
+            .font(.dsFootnote)
             .foregroundStyle(palette.secondary)
         }
         .paletteRow(palette)
@@ -141,54 +139,62 @@ struct NightDetail: View {
     let timeZone: TimeZone
     let terrainAware: Bool
 
+    @ViewBuilder private var minutesLine: some View {
+        if terrainAware, let sky = night.skylineMoonFreeMinutes {
+            minutes(sky, "min above the skyline")
+            // The comparison only when the skyline changes something.
+            if let flat = night.moonFreeMinutes, flat != sky {
+                Text("flat horizon \(flat) min (\(sky - flat > 0 ? "+" : "")\(sky - flat))")
+                    .font(.dsData).foregroundStyle(palette.secondary)
+            }
+        } else if let flat = night.moonFreeMinutes {
+            minutes(flat, "min moon-free, flat horizon")
+        } else {
+            UnavailableValue(reason: "moon-free minutes")
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
             HStack {
                 Text(night.date.map { SpotRefresh.weekdayLabel($0, timeZone: timeZone) } ?? night.night)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.dsHeadline)
+                    .foregroundStyle(palette.primary)
                 Spacer()
-                Text(night.verdict?.headline ?? "Verdict unavailable")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(palette.color(night.verdict?.level))
+                let level = StatusLevel(night.verdict?.level, moonFreeMinutes: night.headlineMinutes)
+                StatusBadge(level: level, qualifier: level == .moonUp ? nil : qualifier)
                     .accessibilityIdentifier("night-verdict")
             }
             if let v = night.verdict {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Limiting: \(v.limitingLine)").font(.footnote)
-                    HStack(spacing: 4) {
-                        Text(v.limitingSource)
-                        if let asOf = v.limitingAsOf {
-                            Text("·")
-                            AgeText(date: asOf)
-                        }
-                        Text("· \(v.freshness.label)")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(palette.secondary)
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
+                    Text("\(v.level == .go ? "Closest to its limit" : "Limited by") \(v.limitingLine)")
+                        .font(.dsCallout)
+                        .foregroundStyle(palette.primary)
+                    ProvenanceChip(info: SourceInfo(source: v.limitingSource, asOf: v.limitingAsOf, freshness: v.freshness))
                 }
             }
-            HStack(alignment: .firstTextBaseline) {
-                if terrainAware, let sky = night.skylineMoonFreeMinutes {
-                    minutes(sky, "min above the skyline")
-                    if let flat = night.moonFreeMinutes {
-                        Text("flat horizon \(flat) min (\(sky - flat >= 0 ? "+" : "")\(sky - flat))")
-                            .font(.caption).foregroundStyle(palette.secondary)
-                    }
-                } else if let flat = night.moonFreeMinutes {
-                    minutes(flat, "min moon-free (flat horizon)")
-                } else {
-                    Text("Moon-free minutes unavailable").font(.footnote).foregroundStyle(palette.secondary)
-                }
+            // One line while it fits; the flat-horizon comparison goes under it at large sizes.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) { minutesLine }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) { minutesLine }
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("night-minutes")
         }
     }
 
+    var qualifier: String? {
+        switch night.verdict?.cause {
+        case .incompleteData: "incomplete data"
+        case .staleData: "stale data"
+        default: nil
+        }
+    }
+
     func minutes(_ n: Int, _ label: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("\(n)").font(.title2.monospacedDigit().weight(.semibold))
-            Text(label).font(.footnote)
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+            Text("\(n)").font(.dsMetric).foregroundStyle(palette.primary)
+            Text(label).font(.dsFootnote).foregroundStyle(palette.secondary)
         }
     }
 }
@@ -215,20 +221,20 @@ struct HorizonSection: View {
                 let measured = atCandlestick && computed ? MeasuredHorizons.candlestickProfile() : nil
                 SkylineChart(profile: profile, reference: measured)
                     .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Text(String(format: "Skyline %.1f° to %.1f°", profile.minAltitudeDeg, profile.maxAltitudeDeg))
-                        .font(.footnote)
-                    if let source = spot.horizonSource { Text(source).font(.caption).foregroundStyle(palette.secondary) }
+                        .font(.dsCallout)
+                    if let source = spot.horizonSource { Text(source).font(.dsData).foregroundStyle(palette.secondary) }
                     if let measured {
                         let c = MeasuredHorizons.compare(profile, to: measured)
                         Text(String(format: "Against the measured profile (dashed): RMS %.3f°, mean %+.2f°", c.rms, c.mean))
-                            .font(.caption)
+                            .font(.dsData)
                             .accessibilityIdentifier("horizon-rms")
                     }
                 }
             } else {
-                Text("No horizon profile: moon-free minutes assume a flat horizon.")
-                    .font(.footnote).foregroundStyle(palette.secondary)
+                Text("No horizon profile: moon-free minutes are \(Voice.estimated) with a flat horizon.")
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
             }
 
             if let phase {
@@ -263,7 +269,7 @@ struct HorizonSection: View {
         } header: {
             SectionHeader("Horizon")
         } footer: {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
                 Text("Computing downloads about 36 AWS Terrain Tiles (z12, ~5 MB) around this spot's 0.05° cell and traces terrain within 16 km, with earth curvature and refraction. The profile is saved with the spot, so it works offline.")
                 if computed || phase != nil {
                     Text(TerrainHorizon.attribution)

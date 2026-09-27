@@ -7,46 +7,57 @@ import SwiftUI
 struct NightScrubber: View {
     let window: TimeWindow
     let darkness: TimeWindow?
+    var moonFree: [TimeWindow] = []
     let timeZone: TimeZone
     @Binding var time: Date
 
     @Environment(\.palette) private var palette
+    @Environment(\.dynamicTypeSize) private var typeSize
     static let step: TimeInterval = 5 * 60
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                PaletteButton(systemImage: "minus", label: "10 minutes earlier") { nudge(-600) }
+        VStack(spacing: DS.Space.s) {
+            HStack(alignment: .center) {
+                Button { nudge(-600) } label: { Image(systemName: "minus") }
+                    .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                    .accessibilityLabel("10 minutes earlier")
                 Spacer()
-                Text(MapPlanner.clock(time, timeZone: timeZone))
-                    .font(.system(.title, design: .rounded, weight: .bold).monospacedDigit())
-                    .foregroundStyle(palette.primary)
-                Text(timeZone.abbreviation(for: time) ?? "")
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+                    Text(MapPlanner.clock(time, timeZone: timeZone))
+                        .font(.system(.title, weight: .medium).monospacedDigit())
+                        .foregroundStyle(palette.primary)
+                    Text(timeZone.abbreviation(for: time) ?? "")
+                        .font(.dsData)
+                        .foregroundStyle(palette.secondary)
+                }
+                .accessibilityHidden(true)
                 Spacer()
-                PaletteButton(systemImage: "plus", label: "10 minutes later") { nudge(600) }
+                Button { nudge(600) } label: { Image(systemName: "plus") }
+                    .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+                    .accessibilityLabel("10 minutes later")
             }
             GeometryReader { geo in
                 let w = geo.size.width
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 5).fill(palette.surface).frame(height: 24)
-                    if let d = darkness {
-                        Rectangle().fill(palette.accent.opacity(0.35))
-                            .frame(width: max(0, x(d.end, w) - x(d.start, w)), height: 24)
-                            .offset(x: x(d.start, w))
-                    }
+                    NightBar(span: window, darkness: darkness, moonFree: moonFree, timeZone: timeZone,
+                             showsTimes: false, height: 14)
+                        .frame(width: w)
                     ForEach(hourTicks, id: \.self) { t in
-                        Rectangle().fill(palette.secondary).frame(width: 1, height: 10).offset(x: x(t, w), y: 14)
-                        if hour(t) % 2 == 0 {
-                            Text(String(format: "%02d", hour(t)))
-                                .font(.caption2.monospacedDigit())
+                        Rectangle().fill(palette.tertiary).frame(width: 1, height: 5).offset(x: x(t, w), y: 17)
+                        if hour(t) % (typeSize.isAccessibilitySize ? 4 : 2) == 0 {
+                            Text(t.formatted(Date.FormatStyle(timeZone: timeZone).hour(.defaultDigits(amPM: .narrow))))
+                                .font(.dsData)
                                 .foregroundStyle(palette.secondary)
+                                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                                 .fixedSize()
-                                .offset(x: x(t, w) - 7, y: 27)
+                                .frame(width: 40)
+                                .offset(x: x(t, w) - 20, y: 23)
                         }
                     }
-                    Capsule().fill(palette.accent).frame(width: 6, height: 34).offset(x: x(time, w) - 3, y: -5)
+                    Capsule().fill(palette.primary)
+                        .frame(width: 4, height: 26)
+                        .overlay(Capsule().strokeBorder(palette.background, lineWidth: 1))
+                        .offset(x: x(time, w) - 2, y: -6)
                 }
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { v in
@@ -54,7 +65,7 @@ struct NightScrubber: View {
                     set(window.start.addingTimeInterval(f * window.duration))
                 })
             }
-            .frame(height: 42)
+            .frame(height: 40)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Planner time")
             .accessibilityValue(MapPlanner.clock(time, timeZone: timeZone))
@@ -83,80 +94,6 @@ struct NightScrubber: View {
 
     private func set(_ t: Date) {
         time = TimeScrubber.snap(t, across: window, step: Self.step)
-    }
-}
-
-/// A switch drawn from the palette (the system one has a white knob and grey track).
-struct MapToggleStyle: ToggleStyle {
-    @Environment(\.palette) private var palette
-
-    func makeBody(configuration: Configuration) -> some View {
-        Button { configuration.isOn.toggle() } label: {
-            HStack(alignment: .top, spacing: 12) {
-                configuration.label.frame(maxWidth: .infinity, alignment: .leading)
-                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                    Capsule().fill(configuration.isOn ? palette.accent.opacity(0.55) : palette.surface)
-                        .overlay(Capsule().stroke(palette.secondary, lineWidth: 1))
-                    Circle().fill(configuration.isOn ? palette.accent : palette.secondary).padding(3)
-                }
-                .frame(width: 46, height: 26)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityValue(configuration.isOn ? "On" : "Off")
-        .accessibilityAddTraits(.isToggle)
-    }
-}
-
-struct PaletteButton: View {
-    var title: String?
-    var systemImage: String?
-    var label: String?
-    var action: () -> Void
-
-    @Environment(\.palette) private var palette
-
-    init(_ title: String? = nil, systemImage: String? = nil, label: String? = nil, action: @escaping () -> Void) {
-        self.title = title
-        self.systemImage = systemImage
-        self.label = label
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemImage { Image(systemName: systemImage) }
-                if let title { Text(title) }
-            }
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(palette.accent)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(palette.accent.opacity(0.6), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label ?? title ?? "")
-    }
-}
-
-/// Section chrome for the panel under the map.
-struct MapSection<Content: View>: View {
-    let title: String
-    @ViewBuilder var content: Content
-    @Environment(\.palette) private var palette
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(palette.secondary)
-            content
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

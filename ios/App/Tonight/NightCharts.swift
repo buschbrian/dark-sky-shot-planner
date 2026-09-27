@@ -2,9 +2,9 @@ import Charts
 import SkyCore
 import SwiftUI
 
-/// Sun, moon and GC altitude over the night, astronomical darkness shaded and
-/// the moon-free band along the bottom. Every color comes from the palette;
-/// series differ by dash pattern as well as color, so field mode stays readable.
+/// Sun, moon and GC altitude over the night: astronomical darkness shaded, the
+/// moon-free windows as a band along the bottom. Series differ by dash as well
+/// as color (`DSChart.Body`), so field mode stays readable.
 struct NightStripChart: View {
     let strip: NightStrip
     let timeZone: TimeZone
@@ -16,20 +16,15 @@ struct NightStripChart: View {
     private static let ceiling = 90.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Night strip")
-                .font(.headline)
-                .foregroundStyle(palette.primary)
-                .accessibilityAddTraits(.isHeader)
+        SectionCard("Altitude tonight") {
             chart
-                .frame(height: 200)
+                .frame(height: 190)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Night strip")
+                .accessibilityLabel("Altitude tonight")
                 .accessibilityValue(summary)
                 .accessibilityIdentifier("tonight.nightStrip")
-            legend
+            key
         }
-        .card(palette)
     }
 
     private var chart: some View {
@@ -38,91 +33,69 @@ struct NightStripChart: View {
                 RectangleMark(
                     xStart: .value("Time", d.start), xEnd: .value("Time", d.end),
                     yStart: .value("Altitude", Self.floor), yEnd: .value("Altitude", Self.ceiling))
-                    .foregroundStyle(palette.background.opacity(0.9))
+                    .foregroundStyle(palette.data.darkness)
             }
             ForEach(Array(strip.moonFree.enumerated()), id: \.offset) { _, w in
                 RectangleMark(
                     xStart: .value("Time", w.start), xEnd: .value("Time", w.end),
                     yStart: .value("Altitude", Self.floor), yEnd: .value("Altitude", Self.floor + 5))
-                    .foregroundStyle(palette.good)
+                    .foregroundStyle(palette.data.moonFree)
             }
             RuleMark(y: .value("Horizon", 0))
                 .foregroundStyle(palette.secondary.opacity(0.6))
                 .lineStyle(StrokeStyle(lineWidth: 1))
             if let gcThreshold {
                 RuleMark(y: .value("GC useful", gcThreshold))
-                    .foregroundStyle(palette.secondary.opacity(0.35))
+                    .foregroundStyle(palette.data.galacticCenter.opacity(0.45))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 4]))
             }
-            series("Sun", strip.sun, color: palette.marginal, dash: [6, 3])
-            series("Moon", strip.moon, color: palette.primary, dash: [])
-            series("Galactic Center", strip.galacticCenter, color: palette.accent, dash: [1.5, 3])
+            series(.sun, strip.sun)
+            series(.moon, strip.moon)
+            series(.galacticCenter, strip.galacticCenter)
             if now >= strip.span.start && now <= strip.span.end {
                 RuleMark(x: .value("Now", now))
-                    .foregroundStyle(palette.accent.opacity(0.7))
+                    .foregroundStyle(palette.primary.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
         }
         .chartXScale(domain: strip.span.start...strip.span.end)
         .chartYScale(domain: Self.floor...Self.ceiling)
         .chartLegend(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 2)) { _ in
-                AxisGridLine().foregroundStyle(palette.secondary.opacity(0.2))
-                AxisValueLabel(format: .dateTime.hour(), centered: false).foregroundStyle(palette.secondary)
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 30, 60, 90]) { value in
-                AxisGridLine().foregroundStyle(palette.secondary.opacity(0.2))
-                AxisValueLabel { Text("\(value.as(Int.self) ?? 0)°") }.foregroundStyle(palette.secondary)
-            }
-        }
-        .chartPlotStyle { $0.background(palette.surface.opacity(0.4)).clipped() }
+        .chartXAxis { DSChart.hourAxis(palette) }
+        .chartYAxis { DSChart.degreeAxis(palette, values: [0, 30, 60, 90]) }
+        .chartPlotStyle { $0.background(palette.data.twilight.opacity(0.35)).clipped() }
         .environment(\.timeZone, timeZone)
     }
 
-    private func series(_ name: String, _ samples: [SkySample], color: Color, dash: [CGFloat]) -> some ChartContent {
+    private func series(_ body: DSChart.Body, _ samples: [SkySample]) -> some ChartContent {
         ForEach(samples, id: \.date) { s in
             LineMark(
                 x: .value("Time", s.date),
                 y: .value("Altitude", max(s.position.altitudeDeg, Self.floor - 1)),
-                series: .value("Body", name))
-                .foregroundStyle(color)
-                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: dash))
+                series: .value("Body", body.rawValue))
+                .foregroundStyle(body.color(palette))
+                .lineStyle(body.line)
                 .interpolationMethod(.monotone)
         }
     }
 
-    private var legend: some View {
+    private var key: some View {
         ViewThatFits {
-            HStack(spacing: 12) { legendItems }
-            VStack(alignment: .leading, spacing: 4) { legendItems }
+            HStack(spacing: DS.Space.m) { keyItems }
+            VStack(alignment: .leading, spacing: DS.Space.xs) { keyItems }
         }
         .font(.caption)
         .foregroundStyle(palette.secondary)
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder private var legendItems: some View {
-        swatch("Sun", palette.marginal, dash: [6, 3])
-        swatch("Moon", palette.primary, dash: [])
-        swatch("GC", palette.accent, dash: [1.5, 3])
-        HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 2).fill(palette.good).frame(width: 16, height: 6)
+    @ViewBuilder private var keyItems: some View {
+        SeriesKey(.moon)
+        SeriesKey(.galacticCenter)
+        SeriesKey(.sun)
+        HStack(spacing: DS.Space.xs) {
+            RoundedRectangle(cornerRadius: 2).fill(palette.data.moonFree).frame(width: 16, height: 6)
             Text("Moon-free")
-        }
-    }
-
-    private func swatch(_ name: String, _ color: Color, dash: [CGFloat]) -> some View {
-        HStack(spacing: 4) {
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: 4))
-                p.addLine(to: CGPoint(x: 18, y: 4))
-            }
-            .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: dash))
-            .frame(width: 18, height: 8)
-            Text(name)
         }
     }
 
@@ -149,8 +122,8 @@ struct NightStripChart: View {
 }
 
 /// Hour-by-hour conditions under the night strip: cloud low/mid/high per model,
-/// AOD, transparency, wind gust and dew spread. Darker cells are worse; an
-/// hour with no value is left empty and a row with no data says "unavailable".
+/// AOD, transparency, wind gust and dew spread. Brighter cells are worse; an
+/// hour with no value is left empty and a row with no data reads unavailable.
 struct ConditionsStripChart: View {
     let rows: [StripRow]
     let span: TimeWindow
@@ -161,36 +134,34 @@ struct ConditionsStripChart: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Conditions by hour")
-                .font(.headline)
-                .foregroundStyle(palette.primary)
-                .accessibilityAddTraits(.isHeader)
+        SectionCard("Conditions by hour") {
             chart
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Conditions by hour")
                 .accessibilityValue(summary)
                 .accessibilityIdentifier("tonight.conditionsStrip")
-            Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. A row marked – is unavailable, never clear.")
-                .font(.caption)
-                .foregroundStyle(palette.secondary)
-            Text(sources)
-                .font(.caption)
-                .foregroundStyle(palette.secondary)
+            if sources.isEmpty {
+                ProvenanceChip(info: SourceInfo(source: loading ? "checking" : "no source", freshness: .unavailable), now: now)
+            } else {
+                ForEach(sources, id: \.self) { ProvenanceChip(info: $0, now: now) }
+            }
+            MoreInfo(title: "How to read this") {
+                Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. The shaded band is astronomical darkness.")
+                Text("A row marked – is unavailable: no value, never clear. Empty cells are hours a model does not cover.")
+            }
         }
-        .card(palette)
     }
 
     @ScaledMetric(relativeTo: .caption2) private var rowHeight = 18.0
     private static let axisHeight = 24.0
 
     private var chart: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .top, spacing: DS.Space.s) {
             VStack(alignment: .trailing, spacing: 0) {
                 ForEach(rows) { row in
                     Text(row.unavailableReason == nil ? row.title : "\(row.title) –")
                         .font(.caption2)
-                        .foregroundStyle(row.unavailableReason == nil ? palette.primary : palette.secondary)
+                        .foregroundStyle(row.unavailableReason == nil ? palette.primary : palette.tertiary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(height: rowHeight)
@@ -209,7 +180,7 @@ struct ConditionsStripChart: View {
                 RectangleMark(
                     xStart: .value("Time", d.start), xEnd: .value("Time", d.end),
                     yStart: .value("Row", 0.0), yEnd: .value("Row", Double(rows.count)))
-                    .foregroundStyle(palette.background.opacity(0.6))
+                    .foregroundStyle(palette.data.darkness)
             }
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                 let top = Double(rows.count - index)
@@ -219,28 +190,23 @@ struct ConditionsStripChart: View {
                         xEnd: .value("Time", min(p.t.addingTimeInterval(1800), span.end)),
                         yStart: .value("Row", top - 0.9),
                         yEnd: .value("Row", top - 0.1))
-                        .foregroundStyle(palette.primary.opacity(0.08 + 0.87 * badness(row, p.v!)))
+                        .foregroundStyle(palette.data.cell.opacity(0.08 + 0.87 * badness(row, p.v!)))
                 }
             }
             if now >= span.start && now <= span.end {
-                RuleMark(x: .value("Now", now)).foregroundStyle(palette.accent.opacity(0.7))
+                RuleMark(x: .value("Now", now)).foregroundStyle(palette.primary.opacity(0.7))
             }
         }
         .chartXScale(domain: span.start...span.end)
         .chartYScale(domain: 0...Double(max(rows.count, 1)))
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 2)) { _ in
-                AxisGridLine().foregroundStyle(palette.secondary.opacity(0.2))
-                AxisValueLabel(format: .dateTime.hour()).foregroundStyle(palette.secondary)
-            }
-        }
-        .chartPlotStyle { $0.clipped() }
+        .chartXAxis { DSChart.hourAxis(palette) }
+        .chartPlotStyle { $0.background(palette.data.twilight.opacity(0.35)).clipped() }
         .environment(\.timeZone, timeZone)
         .overlay {
             if loading && rows.allSatisfy({ $0.points.isEmpty }) {
-                Text("Fetching conditions…").font(.caption).foregroundStyle(palette.secondary)
+                Text("Checking conditions…").font(.caption).foregroundStyle(palette.secondary)
             }
         }
     }
@@ -257,18 +223,14 @@ struct ConditionsStripChart: View {
         return min(max(x, 0), 1)
     }
 
-    private var sources: String {
+    /// One chip per source: its models and the oldest input's age.
+    private var sources: [SourceInfo] {
         let groups = Dictionary(grouping: rows.filter { $0.unavailableReason == nil }, by: \.source)
-        guard !groups.isEmpty else {
-            return loading ? "Sources: fetching…" : "Sources: none available"
-        }
-        return "Sources: " + groups.keys.sorted().map { source in
+        return groups.keys.sorted().map { source in
             let rs = groups[source]!
             let models = Set(rs.compactMap(\.model)).map(StripRow.modelLabel).sorted().joined(separator: ", ")
-            let oldest = rs.compactMap(\.asOfUTC).min()
-            let age = oldest.map { " · " + Format.age(now.timeIntervalSince($0)) } ?? ""
-            return "\(source) (\(models))\(age)"
-        }.joined(separator: "; ")
+            return SourceInfo(source: source, model: models.isEmpty ? nil : models, asOf: rs.compactMap(\.asOfUTC).min())
+        }
     }
 
     private var summary: String {

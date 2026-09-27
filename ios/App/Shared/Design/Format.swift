@@ -1,43 +1,8 @@
 import SkyCore
 import SwiftUI
 
-extension View {
-    /// Field-mode belt and braces for Tonight's views: multiplying by pure red
-    /// turns any stray system white into red and any blue into black. The
-    /// status bar and home indicator are hidden (they cannot be recolored).
-    func fieldSafe(_ on: Bool) -> some View {
-        colorMultiply(on ? Color(red: 1, green: 0, blue: 0) : .white)
-            .statusBarHidden(on)
-            .persistentSystemOverlays(on ? .hidden : .automatic)
-    }
-
-    func card(_ palette: Palette) -> some View {
-        padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-/// A button drawn only with palette colors (no system tint fill or white label).
-struct PaletteButtonStyle: ButtonStyle {
-    let palette: Palette
-    var prominent = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.semibold))
-            .foregroundStyle(prominent ? palette.onAccent : palette.primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(minHeight: 44)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(prominent ? palette.accent : palette.surface)
-                    .opacity(configuration.isPressed ? 0.6 : 1))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(palette.accent.opacity(prominent ? 0 : 0.5)))
-    }
-}
-
+/// Text for numbers, times and places, shared by every screen. Missing values
+/// never come through here as 0: callers show `UnavailableValue` instead.
 enum Format {
     static func clock(_ date: Date, _ tz: TimeZone) -> String {
         date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: tz))
@@ -47,20 +12,15 @@ enum Format {
         "\(clock(start, tz))–\(clock(end, tz))"
     }
 
+    /// "45 min", "3 h", "3 h 12 min".
     static func duration(minutes: Int) -> String {
         let h = minutes / 60, m = minutes % 60
         if h == 0 { return "\(m) min" }
         return m == 0 ? "\(h) h" : "\(h) h \(m) min"
     }
 
-    /// "just now", "12 min", "3 h", "2 d".
-    static func age(_ seconds: TimeInterval) -> String {
-        let s = max(0, seconds)
-        if s < 60 { return "just now" }
-        if s < 3600 { return "\(Int(s / 60)) min old" }
-        if s < 2 * 86_400 { return "\(Int(s / 3600)) h old" }
-        return "\(Int(s / 86_400)) d old"
-    }
+    /// Data age: "just now", "12 min old", "3 h old" (see `Voice`).
+    static func age(_ seconds: TimeInterval) -> String { Voice.age(seconds) }
 
     /// A reading with its unit; the unit text comes from the data.
     static func value(_ v: Double, unit: String) -> String {
@@ -98,6 +58,11 @@ enum Format {
     static func model(_ id: String?) -> String? {
         id.map(StripRow.modelLabel)
     }
+
+    /// "MDT", or the zone ID when it has no abbreviation.
+    static func zone(_ tz: TimeZone, at date: Date = .now) -> String {
+        tz.abbreviation(for: date) ?? tz.identifier
+    }
 }
 
 extension Rating {
@@ -111,27 +76,12 @@ extension Rating {
 }
 
 extension VerdictLevel {
-    var word: String {
-        switch self {
-        case .go: "Go"
-        case .marginal: "Marginal"
-        case .noGo: "No-go"
-        }
-    }
+    var word: String { StatusLevel(self).word }
 
-    func color(_ p: Palette) -> Color {
-        switch self {
-        case .go: p.good
-        case .marginal: p.marginal
-        case .noGo: p.poor
-        }
-    }
+    func color(_ p: Palette) -> Color { StatusLevel(self).color(p) }
 }
 
 extension Palette {
-    /// Text on an accent fill: black on field red, the primary text color otherwise.
-    var onAccent: Color { self == .field ? background : primary }
-
     func color(_ rating: Rating?) -> Color {
         switch rating {
         case .good: good
@@ -140,4 +90,6 @@ extension Palette {
         case nil: secondary
         }
     }
+
+    func color(_ level: VerdictLevel?) -> Color { StatusLevel(level).color(self) }
 }

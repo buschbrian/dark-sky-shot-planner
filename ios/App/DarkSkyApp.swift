@@ -1,3 +1,4 @@
+import SkyCore
 import SwiftData
 import SwiftUI
 
@@ -34,54 +35,134 @@ enum AppTab: Hashable {
 
 struct RootView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = AppTab.tonight
+    @State private var brightness = FieldBrightness()
 
     var body: some View {
         let palette = state.fieldMode ? Palette.field : Palette.standard
         TabView(selection: $tab) {
-            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab() }
-            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen() }
-            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) {
-                SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider)
-            }
-            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen() }
-            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen() }
+            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider).fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldDock(state.fieldMode, tab: $tab) }
         }
+        .environment(brightness)
         .tint(palette.accent)
         .environment(\.palette, palette)
         .preferredColorScheme(palette.colorScheme)
         // Field mode's guarantee: whatever a view or system control draws,
         // multiplying by pure red leaves no green or blue light.
-        .colorMultiply(state.fieldMode ? Color(red: 1, green: 0, blue: 0) : .white)
+        .colorMultiply(state.fieldMode ? Color.red(1) : .white)
         // The status bar and home indicator are drawn outside the window, so
         // the multiply can't reach them: hide them instead.
         .statusBarHidden(state.fieldMode)
         .persistentSystemOverlays(state.fieldMode ? .hidden : .automatic)
+        .background(palette.background.ignoresSafeArea())
+        // Brightness the app changed goes back when field mode ends, the app
+        // leaves the foreground or quits (a quit passes through background).
+        .onAppear { brightness.sync(fieldMode: state.fieldMode, active: scenePhase == .active) }
+        .onChange(of: state.fieldMode) { _, on in brightness.sync(fieldMode: on, active: scenePhase == .active) }
+        .onChange(of: scenePhase) { _, phase in brightness.sync(fieldMode: state.fieldMode, active: phase == .active) }
+        #if DEBUG
+        .onAppear { DebugLaunch.apply(to: state, tab: &tab) }
+        .overlay {
+            if DebugLaunch.showsGallery {
+                DesignGallery()
+                    .environment(\.palette, palette)
+                    .colorMultiply(state.fieldMode ? Color.red(1) : .white)
+            }
+        }
+        #endif
     }
 }
 
-/// Tonight and the 7-night outlook answer the same question for the same spot,
-/// so they share a tab; the iPhone tab bar holds five before "More".
+#if DEBUG
+/// Screenshot hooks (Debug only): `-DSTab week|map|sky|spots|tools|gallery`
+/// opens that tab (or the design gallery), and `DS_PLACE` (see `WeekDebug`)
+/// sets the place for every tab.
+enum DebugLaunch {
+    static let showsGallery = UserDefaults.standard.string(forKey: "DSTab") == "gallery"
+
+    static func apply(to state: AppState, tab: inout AppTab) {
+        WeekDebug.applyLaunchPlace(to: state)
+        switch UserDefaults.standard.string(forKey: "DSTab") {
+        case "week": state.nightScope = .week
+        case "map": tab = .map
+        case "sky": tab = .sky
+        case "spots": tab = .spots
+        case "tools": tab = .tools
+        default: break
+        }
+    }
+}
+#endif
+
+/// Tonight and the 7-night outlook answer the same question for the same
+/// place, so they share a tab (the iPhone tab bar holds five before "More"),
+/// one header and one location sheet. The scope picker takes the title slot.
 struct NightTab: View {
     enum Scope: String, CaseIterable { case tonight = "Tonight", week = "Week" }
 
     @Environment(\.palette) private var palette
     @Environment(AppState.self) private var state
+    @State private var showLocation = false
+
+    private var uiTesting: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-DarkSkyUITest") || args.contains("-DarkSkyUITestLive")
+    }
 
     var body: some View {
         @Bindable var state = state
-        VStack(spacing: 0) {
-            Picker("Scope", selection: $state.nightScope) {
-                ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
+        NavigationStack {
+            Group {
+                switch state.nightScope {
+                case .tonight: TonightScreen(chooseLocation: { showLocation = true })
+                case .week: WeekScreen(chooseLocation: { showLocation = true })
+                }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.top, 8)
-            switch state.nightScope {
-            case .tonight: TonightScreen()
-            case .week: WeekScreen()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.background)
+            .screenChrome(state.nightScope.rawValue) {
+                Button { showLocation = true } label: {
+                    Label("Location", systemImage: "mappin.and.ellipse")
+                }
+                .foregroundStyle(palette.primary)
+                .accessibilityIdentifier("tonight.location")
+            } principal: {
+                if palette.isField {
+                    ScopeSwitch(scope: $state.nightScope)
+                } else {
+                    Picker("Scope", selection: $state.nightScope) {
+                        ForEach(Scope.allCases, id: \.self) { Text($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
+                }
             }
         }
-        .background(palette.background)
+        .sheet(isPresented: $showLocation) {
+            LocationSheet(onChoose: choose)
+        }
+        .onAppear(perform: restore)
+    }
+
+    private func choose(_ choice: LocationChoice) {
+        state.place = choice.place
+        if let night = choice.night {
+            state.chosenNight = night == NightDate.containing(.now, in: choice.place.timeZone) ? nil : night
+        }
+        RememberedPlace(place: choice.place, zoneIsDeviceGuess: choice.zoneIsDeviceGuess).save()
+    }
+
+    /// A relaunch opens where the owner left off; UI tests always start empty.
+    private func restore() {
+        if uiTesting {
+            UserDefaults.standard.removeObject(forKey: RememberedPlace.key)
+            return
+        }
+        if state.place == nil, let r = RememberedPlace.load() { state.place = r.place }
     }
 }

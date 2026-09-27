@@ -7,6 +7,7 @@ import SwiftUI
 /// computed on the phone and shows at once; conditions arrive from
 /// `ConditionsProviding` and read "unavailable" when it has none.
 struct WeekScreen: View {
+    let chooseLocation: () -> Void
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
     @Environment(\.conditions) private var conditions
@@ -14,25 +15,15 @@ struct WeekScreen: View {
     @State private var refresh = 0
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let place = state.place {
-                    WeekList(place: place, provider: provider, refresh: refresh)
-                } else {
-                    NoPlacePrompt()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.background)
-            .paletteChrome("Week") {
-                if state.place != nil {
-                    Button { refresh += 1 } label: {
-                        Label("Refresh conditions", systemImage: "arrow.clockwise")
-                    }
-                    .tint(palette.accent)
-                }
+        Group {
+            if let place = state.place {
+                WeekList(place: place, provider: provider, refresh: $refresh, chooseLocation: chooseLocation)
+            } else {
+                NoPlacePrompt(chooseLocation: chooseLocation)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(palette.background)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refresh += 1 }
         }
@@ -149,7 +140,8 @@ final class WeekLoader {
 private struct WeekList: View {
     let place: Place
     let provider: any ConditionsProviding
-    let refresh: Int
+    @Binding var refresh: Int
+    let chooseLocation: () -> Void
 
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
@@ -162,12 +154,14 @@ private struct WeekList: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
+            VStack(alignment: .leading, spacing: DS.Space.cardGap) {
+                PlaceHeader(place: place, change: chooseLocation)
+                statusLine
                 if let failure = loader.failure {
-                    Card {
-                        Text("The week could not be computed for this place.").foregroundStyle(palette.primary)
-                        Text(failure).font(.caption).foregroundStyle(palette.secondary)
+                    SectionCard {
+                        StatusBadge(level: .unavailable)
+                        Text("The week could not be computed for this place.").font(.dsBody).foregroundStyle(palette.primary)
+                        Text(failure).font(.dsData).foregroundStyle(palette.tertiary)
                     }
                 }
                 ForEach(Array(loader.nights.enumerated()), id: \.element.id) { index, night in
@@ -180,9 +174,11 @@ private struct WeekList: View {
                 }
                 if !loader.nights.isEmpty { sources }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
+            .padding(.horizontal, DS.Space.screen)
+            .padding(.top, DS.Space.s)
+            .padding(.bottom, DS.Space.xl)
         }
+        .refreshable { refresh += 1 }
         .task(id: LoadKey(place: place, refresh: refresh)) {
             await loader.load(place: place, provider: provider)
             while !Task.isCancelled {
@@ -198,45 +194,54 @@ private struct WeekList: View {
         state.nightScope = .tonight
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(place.name).font(.title2.bold()).foregroundStyle(palette.primary)
-                .accessibilityAddTraits(.isHeader)
-            Text("Next \(WeekOutlook.defaultNightCount) nights. Tap a night to open it in Tonight.")
-                .font(.subheadline).foregroundStyle(palette.secondary)
-            Text(status).font(.footnote).foregroundStyle(palette.secondary)
+    private var statusLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
+            Image(systemName: statusSymbol)
+                .foregroundStyle(statusCaution ? palette.marginal : palette.secondary)
+                .accessibilityHidden(true)
+            Text(status)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("week.status")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .font(.dsFootnote)
+        .foregroundStyle(palette.secondary)
+    }
+
+    private var statusCaution: Bool {
+        loader.phase == .done && (loader.conditions.oldestReceipt == nil
+            || loader.conditions.answeredBlocks < loader.conditions.blocks.count)
+    }
+
+    private var statusSymbol: String {
+        switch loader.phase {
+        case .computing, .fetching: "arrow.triangle.2.circlepath"
+        case .done: loader.conditions.oldestReceipt == nil ? "wifi.slash" : "antenna.radiowaves.left.and.right"
+        }
     }
 
     private var status: String {
         switch loader.phase {
-        case .computing: return "Computing the nights on this phone…"
+        case .computing: return "Working out the nights on this phone…"
         case .fetching:
-            guard let receipt = loader.conditions.oldestReceipt else { return "Astronomy ready. Checking conditions…" }
-            return "Conditions received \(WeekFormat.age(loader.computedAt.timeIntervalSince(receipt))). Checking for a newer run…"
+            guard let receipt = loader.conditions.oldestReceipt else { return "Next 7 nights. Checking conditions…" }
+            return "Conditions received \(Voice.ago(loader.computedAt.timeIntervalSince(receipt))). Checking for a newer run…"
         case .done:
             let c = loader.conditions
             guard let receipt = c.oldestReceipt else {
-                return "Conditions unavailable (offline, or none cached yet). Astronomy is computed on this phone."
+                return "Conditions unavailable (offline, and nothing cached yet). Moon-free minutes are computed on this phone."
             }
             let answered = c.answeredBlocks == c.blocks.count
-                ? "" : " for \(c.answeredBlocks) of \(c.blocks.count) forecast windows"
-            return "Conditions received \(WeekFormat.age(loader.computedAt.timeIntervalSince(receipt)))\(answered)."
+                ? "" : " for \(c.answeredBlocks) of \(c.blocks.count) forecast windows; later nights read unavailable"
+            return "Conditions received \(Voice.ago(loader.computedAt.timeIntervalSince(receipt)))\(answered)."
         }
     }
 
     private var sources: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Sources").font(.footnote.bold())
+        MoreInfo(title: "How the week is worked out", id: "week.sources") {
             Text("Moon-free minutes: astronomy-engine, computed on this phone for \(place.name).")
-            Text("Cloud: mean over each night's moon-free darkness, one value per forecast model, shown as a range. Ages count from the older of model run and fetch.")
-            Text("Verdict: worst gating factor, thresholds from conditions-thresholds.json. Aurora: planetary Kp against the NOAA G-scale latitudes; it never changes the verdict.")
+            Text("Cloud: the mean over each night's moon-free darkness, one value per forecast model, shown as a range. Ages count from the older of model run and fetch.")
+            Text("Verdict: the worst gating factor, thresholds from conditions-thresholds.json. Aurora: planetary Kp against the NOAA G-scale latitudes; it never changes the verdict.")
         }
-        .font(.footnote)
-        .foregroundStyle(palette.secondary)
-        .padding(.top, 4)
     }
 }
 
@@ -248,43 +253,71 @@ struct WeekRowView: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        Card {
+        SectionCard {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center) {
                     title
-                    Spacer(minLength: 8)
+                    Spacer(minLength: DS.Space.s)
                     badge
                 }
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     title
                     badge
                 }
             }
-            Text(limitingText).font(.subheadline).foregroundStyle(palette.primary)
-            line("moon.stars", moonText, detail: nil)
-            line("cloud", cloudText, detail: cloudDetail)
-            line("sparkles", WeekFormat.aurora(night.aurora.outlook), detail: auroraDetail)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+                    minutes
+                    Spacer(minLength: DS.Space.s)
+                    moon
+                }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    minutes
+                    moon
+                }
+            }
+            NightBar(span: NightStrip.span(for: night.outlook.report, evening: night.outlook.evening),
+                     darkness: night.outlook.darkness, moonFree: night.outlook.moonFreeDarkness,
+                     timeZone: place.timeZone, showsTimes: false, height: 8)
+            Text(limitingText).font(.dsCallout).foregroundStyle(palette.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            line("cloud", cloudText, source: cloudSource)
+            line("sparkles", WeekFormat.aurora(night.aurora.outlook), source: auroraSource)
         }
         .multilineTextAlignment(.leading)
     }
 
     private var title: some View {
         Text(WeekFormat.nightTitle(night.outlook, place: place, isTonight: isTonight))
-            .font(.headline).foregroundStyle(palette.primary)
+            .font(.dsHeadline).foregroundStyle(palette.primary)
     }
 
     @ViewBuilder private var badge: some View {
         switch night.verdict {
         case .success(let v):
-            let color = WeekFormat.color(v.level, palette)
-            Text(WeekFormat.level(v.level))
-                .font(.subheadline.bold())
-                .foregroundStyle(color)
-                .padding(.horizontal, 10).padding(.vertical, 3)
-                .overlay(Capsule().stroke(color, lineWidth: 1.5))
-        case .failure:
-            Text("Verdict unavailable").font(.subheadline.bold()).foregroundStyle(palette.secondary)
+            StatusBadge(level: StatusLevel(v.level, moonFreeMinutes: night.outlook.report.noAstronomicalDarkness ? nil : night.outlook.moonFreeMinutes))
+        case .failure: StatusBadge(level: .unavailable, qualifier: "no verdict")
         }
+    }
+
+    private var minutes: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+            Text(minutesText).font(.dsMetric).foregroundStyle(palette.primary)
+            Text(minutesUnit).font(.dsCallout).foregroundStyle(palette.secondary)
+        }
+    }
+
+    private var moon: some View {
+        Text("moon \(WeekFormat.percent(night.outlook.report.moonIllumFraction * 100)) lit")
+            .font(.dsFootnote).foregroundStyle(palette.secondary)
+    }
+
+    private var minutesText: String {
+        night.outlook.report.noAstronomicalDarkness ? "–" : "\(night.outlook.moonFreeMinutes)"
+    }
+
+    private var minutesUnit: String {
+        night.outlook.report.noAstronomicalDarkness ? "no astronomical darkness" : "min moon-free"
     }
 
     private var limitingText: String {
@@ -292,13 +325,6 @@ struct WeekRowView: View {
         case .success(let v): WeekFormat.limiting(v)
         case .failure: "No gating factors in the thresholds file."
         }
-    }
-
-    private var moonText: String {
-        let report = night.outlook.report
-        let moon = "moon \(WeekFormat.percent(report.moonIllumFraction * 100)) lit"
-        if report.noAstronomicalDarkness { return "No astronomical darkness · \(moon)" }
-        return "\(WeekFormat.minutes(night.outlook.moonFreeMinutes)) moon-free · \(moon)"
     }
 
     private var cloudText: String {
@@ -312,80 +338,70 @@ struct WeekRowView: View {
                 : "Cloud mean \(WeekFormat.percent(range.lowerBound))–\(WeekFormat.percent(range.upperBound))"
             text += models.count == 1 ? " (\(models[0].model) only)" : " across \(models.count) models"
             if partial { text += ", part of the night only" }
+            if !night.cloud.missingModels.isEmpty {
+                text += "; \(night.cloud.missingModels.joined(separator: ", ")) \(Voice.unavailable)"
+            }
             return text
         }
     }
 
-    private var cloudDetail: String? {
+    private var cloudSource: SourceInfo? {
         let c = night.cloud
         guard case .band = c.state(moonFreeMinutes: night.outlook.moonFreeMinutes) else { return nil }
-        var parts = c.usable.compactMap { m in
-            m.mean.mean.map { v in
-                "\(m.model) \(WeekFormat.percent(v))" + (m.runUTC.map { " (\(WeekFormat.run($0, now: now)) run)" } ?? "")
-            }
-        }
-        if !c.missingModels.isEmpty { parts.append("\(c.missingModels.joined(separator: ", ")) unavailable") }
-        var provenance = c.source ?? "source unknown"
-        if let asOf = c.asOfUTC { provenance += " · oldest input \(WeekFormat.age(now.timeIntervalSince(asOf)))" }
-        provenance += " · \(c.freshness.label)"
-        return parts.joined(separator: ", ") + "\n" + provenance
+        let runs = c.usable.compactMap(\.runUTC)
+        return SourceInfo(source: c.source ?? "source unknown", run: runs.min(), asOf: c.asOfUTC, freshness: c.freshness)
     }
 
-    private var auroraDetail: String? {
+    private var auroraSource: SourceInfo? {
         guard let asOf = night.aurora.asOfUTC else { return nil }
-        return "\(night.aurora.source) · \(WeekFormat.age(now.timeIntervalSince(asOf))) · \(night.auroraFreshness.label)"
+        return SourceInfo(source: night.aurora.source, asOf: asOf, freshness: night.auroraFreshness)
     }
 
-    private func line(_ symbol: String, _ text: String, detail: String?) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text).font(.subheadline).foregroundStyle(palette.primary)
-                if let detail {
-                    Text(detail).font(.caption).foregroundStyle(palette.secondary)
-                }
+    private func line(_ symbol: String, _ text: String, source: SourceInfo?) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
+            Image(systemName: symbol)
+                .font(.dsFootnote)
+                .foregroundStyle(palette.secondary)
+                .frame(width: 18)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                Text(text).font(.dsCallout).foregroundStyle(palette.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let source { ProvenanceChip(info: source, now: now) }
             }
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(palette.secondary).accessibilityHidden(true)
         }
     }
 }
 
 private struct NoPlacePrompt: View {
+    let chooseLocation: () -> Void
     @Environment(AppState.self) private var state
     @Environment(\.palette) private var palette
     @Query(sort: \Spot.name) private var spots: [Spot]
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.largeTitle)
-                    .foregroundStyle(palette.secondary)
-                    .accessibilityHidden(true)
-                Text("Choose a place first")
-                    .font(.title2.bold())
-                    .foregroundStyle(palette.primary)
-                    .accessibilityAddTraits(.isHeader)
-                Text(spots.isEmpty
-                     ? "The week outlook is for one place. Save a spot in the Spots tab, and its next seven nights appear here."
-                     : "The week outlook is for one place. Pick a saved spot:")
-                    .font(.body)
-                    .foregroundStyle(palette.secondary)
-                    .multilineTextAlignment(.center)
-                ForEach(spots) { spot in
-                    Button { state.place = spot.place } label: {
-                        Text(spot.name)
-                            .font(.headline)
-                            .foregroundStyle(palette.accent)
-                            .frame(maxWidth: .infinity)
-                            .padding(12)
-                            .background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+            VStack(spacing: DS.Space.m) {
+                EmptyState(
+                    symbol: "calendar", title: "Choose a place first",
+                    message: "The week outlook is for one place: its next seven nights, each with a verdict and the reason for it.",
+                    actionTitle: "Choose a location", actionID: "week.chooseLocation", action: chooseLocation)
+                if !spots.isEmpty {
+                    SectionCard("Saved spots") {
+                        ForEach(spots) { spot in
+                            Button { state.place = spot.place } label: {
+                                Disclosure {
+                                    Text(spot.name).font(.dsBody).foregroundStyle(palette.primary)
+                                }
+                                .frame(minHeight: DS.minTarget)
+                            }
+                            .buttonStyle(PressDimStyle())
+                        }
                     }
-                    .buttonStyle(PressDimStyle())
                 }
             }
-            .padding(24)
-            .frame(maxWidth: .infinity)
+            .padding(DS.Space.screen)
+            .padding(.top, DS.Space.xl)
         }
         .accessibilityIdentifier("week.noPlace")
     }
