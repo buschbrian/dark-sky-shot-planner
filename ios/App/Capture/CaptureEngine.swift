@@ -38,6 +38,8 @@ nonisolated struct CaptureCameraInfo: Sendable, Equatable {
     let apertureControl: Bool
     let photoDimensions: [CMVideoDimensions]
     let proRaw: OSType?
+    /// The RAW format is Apple ProRAW (a demosaiced linear DNG), not Bayer RAW.
+    let rawIsProRAW: Bool
     let shutterSoundSuppression: Bool
     let customLensPosition: Bool
 
@@ -246,6 +248,7 @@ nonisolated final class CaptureEngine: NSObject, @unchecked Sendable {
             minISO: format.minISO, maxISO: format.maxISO,
             apertures: apertures, apertureControl: apertureControl,
             photoDimensions: dims, proRaw: proRaw,
+            rawIsProRAW: proRaw.map { AVCapturePhotoOutput.isAppleProRAWPixelFormat($0) } ?? false,
             shutterSoundSuppression: photoOutput.isShutterSoundSuppressionSupported,
             customLensPosition: device.isLockingFocusWithCustomLensPositionSupported)
     }

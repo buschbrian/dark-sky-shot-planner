@@ -166,10 +166,34 @@ nonisolated enum CaptureDebug {
         model.subExposure = camera.maxExposure
         model.fileFormat = .raw
         say("selftest: plan \(model.frameCount) frames x \(model.subExposure) s, ISO \(Int(model.iso)), f/\(model.aperture ?? 0), \(model.frameDimensions.map { "\($0.width)x\($0.height)" } ?? "?"), storage \(model.plan.map { CaptureModel.bytes($0.storedBytes) } ?? "?"), free \(CaptureModel.bytes(model.freeBytes)), battery \(model.batteryLevel), thermal \(CameraProbe.thermalName(model.thermal))")
+        say("selftest: exposure label '\(CaptureWording.exposurePerFrame(chosen: model.subExposure, maximum: camera.maxExposure))'; lowered '\(CaptureWording.exposurePerFrame(chosen: 0.5, maximum: camera.maxExposure))'")
+        say("selftest: resolution choices \(model.resolutionChoices.map { "\($0.title) \($0.width)x\($0.height) ~\(CaptureModel.bytes(model.frameBytes($0)))/frame" }); RAW named '\(model.rawTitle)'")
+        if let preset = model.preset {
+            say("selftest: recommended preset \(preset.exposure) s, ISO \(Int(preset.iso)), f/\(preset.aperture ?? 0), SNR gain \(preset.snrGain), timer \(preset.selfTimer) s, raw \(preset.raw)")
+        }
         model.start()
         await waitIdle(model, timeout: 300)
         for line in model.log { say("selftest log: \(line)") }
         say("selftest: phase \(model.phase)")
+        if let o = model.outcome {
+            say("selftest: outcome \(o.kind.rawValue): planned \(o.planned), saved \(o.saved), used \(o.used), aligned \(o.aligned.map(String.init) ?? "n/a"), rejected \(o.rejected), unaligned \(o.unalignedReason ?? "no"), total exposure \(o.integration) s")
+        }
+        if let d = model.durations {
+            say("selftest: durations per frame \(d.perFrame) s, integration \(d.integration) s, sequence \(d.sequence) s, NPF \(d.starTrailLimit.map { String(format: "%.2f", $0) } ?? "n/a") s")
+        }
+        if let stack = model.lastStack {
+            let t = Date()
+            let preview = StretchedPreview.make(url: stack, maxPixel: 1400)
+            say(String(format: "selftest: result preview %@ in %.2f s", preview.map { "\($0.width)x\($0.height)" } ?? "failed", Date().timeIntervalSince(t)))
+        }
+        if UserDefaults.standard.bool(forKey: "CaptureSelfTestNoPhotos") {
+            say("selftest: Photos step skipped (-CaptureSelfTestNoPhotos); files stay in Captures/\(model.lastFolder?.lastPathComponent ?? "?")")
+            model.leave(.leftScreen)
+            try? await Task.sleep(for: .seconds(1.5))
+            say("selftest: after leave, camera running \(model.engine.isRunning), idle timer disabled \(UIApplication.shared.isIdleTimerDisabled)")
+            UIApplication.shared.isIdleTimerDisabled = true
+            return
+        }
         if let npf = model.npfSeconds, let gear = model.phoneGear {
             say(String(format: "selftest: phone gear focal %.2f mm, pitch %.3f um, crop %.2f, NPF(k=1) %.2f s",
                        gear.lens.focalLengthMM, gear.camera.pixelPitchUM, gear.camera.cropFactor, npf))
@@ -320,5 +344,40 @@ nonisolated enum CaptureDebug {
 
 private extension Double {
     var nonZeroDouble: Double? { self == 0 ? nil : self }
+}
+#endif
+
+#if DEBUG
+/// The demo's pictures: one synthetic star field (SkyCore's test renderer)
+/// as the "preview", the magnifier crop, and a real 16-bit linear TIFF
+/// written by `StackBuilder` for the results view to load. Made once, in
+/// the temporary folder, never in Captures.
+final class CaptureDemoImages: @unchecked Sendable {
+    static let shared = CaptureDemoImages()
+
+    let preview: CGImage?
+    let crop: ImagePlane
+    let folder: URL
+    let stack: URL
+
+    private init() {
+        let w = 600, h = 800
+        let stars = SyntheticStarField.stars(count: 900, width: w, height: h, seed: 7, minFlux: 4_000, maxFlux: 900_000)
+        let raster = SyntheticStarField.render(stars, width: w, height: h, channels: 3, psfSigma: 1.1,
+                                               background: 1_500, noiseSigma: 120, seed: 11)
+        folder = URL.temporaryDirectory.appending(path: "capture-demo")
+        stack = folder.appending(path: "stack.tif")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let builder = StackBuilder(frames: [], mode: .sigmaClippedMean, output: stack, workDirectory: folder)
+        var report = StackBuilder.Report(mode: .sigmaClippedMean)
+        report.used = 37
+        report.frames = 40
+        try? builder.write(raster, report: report)
+        preview = StretchedPreview.make(url: stack, maxPixel: 800)
+        let few = SyntheticStarField.stars(count: 6, width: 256, height: 256, seed: 5, minFlux: 20_000, maxFlux: 300_000)
+        let centre = SyntheticStarField.render(few, width: 256, height: 256, channels: 1, psfSigma: 1.6,
+                                               background: 1_500, noiseSigma: 120, seed: 3)
+        crop = ImagePlane.luminance(centre)
+    }
 }
 #endif
