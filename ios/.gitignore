@@ -7,6 +7,7 @@ DerivedData/
 .build/
 .swiftpm/
 build/
+build-*/
 xcuserdata/
 *.xcuserstate
 *.xcresult
