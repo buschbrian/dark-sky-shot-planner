@@ -383,7 +383,7 @@ struct MapScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DS.Space.screen)
-        .padding(.bottom, DS.Space.s)
+        .padding(.bottom, DS.Space.xs)
         // The peek sits over the map, so it caps its type like the map's other
         // overlays (DESIGN rule 7); the panel above it follows Dynamic Type in full.
         .dynamicTypeSize(...DynamicTypeSize.xLarge)

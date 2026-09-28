@@ -52,6 +52,10 @@ struct MapSheet<Peek: View, Content: View>: View {
             .fixedSize(horizontal: false, vertical: true)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { peekHeight = $0.rounded(.up) }
             .contentShape(Rectangle())
+            // The whole peek is the tap target (well over 44 pt), so the grabber can stay slim.
+            .onTapGesture {
+                if detent == .peek { withAnimation(.snappy(duration: 0.25)) { detent = .half } }
+            }
             .gesture(dragGesture(rest: rest))
             Rectangle().fill(palette.hairline).frame(height: 1)
             ScrollView {
@@ -90,7 +94,7 @@ struct MapSheet<Peek: View, Content: View>: View {
         } label: {
             Capsule().fill(palette.tertiary)
                 .frame(width: 40, height: 5)
-                .frame(maxWidth: .infinity, minHeight: 22)
+                .frame(maxWidth: .infinity, minHeight: 14)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressDimStyle())
