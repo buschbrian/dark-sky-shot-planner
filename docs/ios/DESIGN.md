@@ -74,7 +74,7 @@ the moon is a neutral silver and always the solid line.
 | `screenChrome(title) { actions }` | Every tab screen's header: title (or a control via `principal:`), optional `leading:` context action, actions, then the field-mode toggle, always last on the right. `pushed: true` for pushed pages. |
 | `sheetChrome(title, cancel:, confirm:, fieldToggle:)` + `.sheetPresentation(palette)` | Every sheet. `fieldToggle: true` for a sheet someone works in (the gear editor); fields that need the system keyboard go read-only in field mode and say why. |
 | `floatingSurface(palette, shape:)` | Anything floating over a map or camera. |
-| `FieldDock`, `BrightnessControl` | Field mode's palette tab bar with the one-hand brightness slider (shell only). |
+| `FieldDock`, `BrightnessControl` | Field mode's palette tab bar with the one-hand brightness slider (shell only). `RootView` stacks it below the `TabView`, so every screen, pushed ones included, ends at its top: screens add no dock clearance of their own. Labels stay on one line (shrink to fit; Large Content Viewer on long press). |
 | `AboutScreen` | Settings that belong to no one tab (iCloud sync, not built yet), pushed from the bottom of Tools. |
 
 ## Status voice (`Voice.swift`)
