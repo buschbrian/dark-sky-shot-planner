@@ -24,7 +24,8 @@ final class MapEngineTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = (reset ? ["-resetMapState"] : []) + ["-MapCamera", "\(Self.candlestick),\(zoom)"] + extra
         app.launch()
-        app.tabBars.buttons["Map"].tap()
+        // Field mode swaps the system tab bar for the red dock.
+        if extra.contains("YES") { app.buttons["fieldDock.map"].tap() } else { app.tabBars.buttons["Map"].tap() }
         XCTAssertTrue(app.otherElements["map.view"].waitForExistence(timeout: 15), "map view missing")
         return app
     }
