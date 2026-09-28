@@ -74,8 +74,8 @@ final class FieldDockInsetTests: XCTestCase {
             } else {
                 // At Accessibility L the controls have scrolled off the top; bring the last one back.
                 let loose = app.buttons["tools.k.3 loose"]
-                for _ in 0..<8 where !(loose.frame.minY > 0) {
-                    drag(app, from: 0.3, to: 0.6)
+                for _ in 0..<10 where !loose.isHittable {
+                    drag(app, from: 0.4, to: 0.55)
                 }
                 try assertClearOfDock(app, "npf-\(size)", last: loose)
             }
