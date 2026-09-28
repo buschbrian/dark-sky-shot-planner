@@ -26,12 +26,6 @@ struct CaptureScreen: View {
     @AppStorage("capture.focus") private var storedFocus = 1.0
     @AppStorage("capture.timer") private var storedTimer = 5
     @AppStorage("capture.guideSeen") private var guideSeen = false
-    /// The field dock's tab label (caption2) grows with Dynamic Type.
-    @ScaledMetric(relativeTo: .caption2) private var dockLabelLine: CGFloat = 13.5
-
-    /// FieldDock: 8 top padding + 32 brightness + 8 spacing + a tab row of
-    /// max(44, 20 pt icon + 2 + caption2 line).
-    private var fieldDockClearance: CGFloat { 48 + max(DS.minTarget, 26 + dockLabelLine) }
 
     var body: some View {
         ScrollView {
@@ -69,11 +63,9 @@ struct CaptureScreen: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.camera != nil {
+                // In field mode the shell stacks the dock below the tab view,
+                // so this bar already ends at the dock's top.
                 CaptureControlBar(model: model) { showResult = true }
-                    // Field mode's dock is a safe-area inset on the Tools
-                    // stack that does not reach this pushed screen, so the
-                    // bar clears it itself (measured: 92 pt at default size).
-                    .padding(.bottom, palette.isField ? fieldDockClearance : 0)
                     .background(palette.background)
             }
         }

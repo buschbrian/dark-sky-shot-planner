@@ -42,12 +42,13 @@ struct RootView: View {
     var body: some View {
         let palette = state.fieldMode ? Palette.field : Palette.standard
         TabView(selection: $tab) {
-            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider).fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldDock(state.fieldMode, tab: $tab) }
+            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldTabBarHidden(state.fieldMode) }
+            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldTabBarHidden(state.fieldMode) }
+            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider).fieldTabBarHidden(state.fieldMode) }
+            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldTabBarHidden(state.fieldMode) }
+            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldTabBarHidden(state.fieldMode) }
         }
+        .fieldDock(state.fieldMode, tab: $tab)
         .environment(brightness)
         .tint(palette.accent)
         .environment(\.palette, palette)

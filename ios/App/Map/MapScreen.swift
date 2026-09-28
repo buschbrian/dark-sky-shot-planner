@@ -34,7 +34,6 @@ struct MapScreen: View {
     @State var detent = MapSheetDetent.peek
     @State var peekHeight: CGFloat = 110
     @State var obstructions: [String: CGRect] = [:]
-    @State var outerBottomInset: CGFloat = 0
     @State var hiddenLabels: [String] = []
     @State var shownLabelFrames: [CGRect] = []
     /// A long-press drops a candidate; nothing changes until "Plan here" (review B-9).
@@ -62,12 +61,11 @@ struct MapScreen: View {
 
     var body: some View {
         NavigationStack {
+            // In field mode the shell stacks the dock below the tab view, so
+            // this geometry already ends at the dock's top.
             GeometryReader { geo in
-                // The field dock is a safe-area inset outside this stack, which
-                // the stack doesn't pass on: keep the sheet above it by hand.
-                let dock = max(0, outerBottomInset - geo.safeAreaInsets.bottom)
                 ZStack(alignment: .top) {
-                    mapArea(insets: mapInsets(geo, dock: dock))
+                    mapArea(insets: mapInsets(geo))
                         .ignoresSafeArea()
                     topScrim(geo.safeAreaInsets.top)
                     VStack(spacing: 0) {
@@ -77,14 +75,13 @@ struct MapScreen: View {
                         }
                         Spacer(minLength: 0)
                         if detent != .full { bottomOverlays }
-                        MapSheet(detent: $detent, peekHeight: $peekHeight, available: geo.size.height - dock) {
+                        MapSheet(detent: $detent, peekHeight: $peekHeight, available: geo.size.height) {
                             peek
                         } content: {
                             panel
                         }
                         .layoutPriority(1)
                     }
-                    .padding(.bottom, dock)
                 }
                 .onPreferenceChange(MapObstructionKey.self) { obstructions = $0 }
             }
@@ -94,7 +91,6 @@ struct MapScreen: View {
             // legible), so the collapsed sheet leaves most of the screen to it.
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         }
-        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { outerBottomInset = $0 }
         .onAppear {
             if MapTiming.tabAppeared == nil { MapTiming.tabAppeared = CACurrentMediaTime() }
             state.restoreRememberedPlace()
@@ -125,9 +121,9 @@ struct MapScreen: View {
     // MARK: Map
 
     /// The map keeps its centre and lines clear of the bar and the resting sheet.
-    private func mapInsets(_ geo: GeometryProxy, dock: CGFloat) -> UIEdgeInsets {
-        let rest = MapSheet<EmptyView, EmptyView>.height(min(detent, .half), peek: peekHeight, available: geo.size.height - dock)
-        return UIEdgeInsets(top: geo.safeAreaInsets.top, left: 0, bottom: geo.safeAreaInsets.bottom + dock + rest, right: 0)
+    private func mapInsets(_ geo: GeometryProxy) -> UIEdgeInsets {
+        let rest = MapSheet<EmptyView, EmptyView>.height(min(detent, .half), peek: peekHeight, available: geo.size.height)
+        return UIEdgeInsets(top: geo.safeAreaInsets.top, left: 0, bottom: geo.safeAreaInsets.bottom + rest, right: 0)
     }
 
     @ViewBuilder private func mapArea(insets: UIEdgeInsets) -> some View {

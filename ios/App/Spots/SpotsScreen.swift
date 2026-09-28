@@ -54,6 +54,12 @@ struct SpotsScreen: View {
         guard ProcessInfo.processInfo.arguments.contains("-resetSpots"), !Self.didReset else { return }
         Self.didReset = true
         for spot in spots { context.delete(spot) }
+        // `-seedSpots N`: N plain spots, for tests that need a full list.
+        let seeded = UserDefaults.standard.integer(forKey: "seedSpots")
+        for i in stride(from: 1, through: seeded, by: 1) {
+            context.insert(Spot(name: "Seeded spot \(i)", latitude: 38.15 + Double(i) / 100, longitude: -109.75,
+                                timeZoneID: "America/Denver"))
+        }
         try? context.save()
         WidgetBridge.publish(nil)
     }

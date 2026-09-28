@@ -23,14 +23,46 @@ struct FieldDock: View {
         .padding(.top, DS.Space.s)
         .background(palette.background)
         .overlay(alignment: .top) { Rectangle().fill(palette.hairline).frame(height: 1) }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("fieldDock")
     }
 
     private func item(_ value: AppTab, _ title: String, _ symbol: String) -> some View {
+        FieldDockItem(tab: $tab, value: value, title: title, symbol: symbol)
+    }
+}
+
+/// One tab. The label stays on one line at every text size: it shrinks to
+/// fit its fifth of the width, and a long press shows it full size in the
+/// Large Content Viewer, as the system tab bar does.
+private struct FieldDockItem: View {
+    @Binding var tab: AppTab
+    let value: AppTab
+    let title: String
+    let symbol: String
+    @Environment(\.palette) private var palette
+    #if DEBUG
+    @State private var labelHeight: CGFloat = 0
+    @State private var lineHeight: CGFloat = 0
+    #endif
+
+    var body: some View {
         let on = tab == value
-        return Button { tab = value } label: {
+        Button { tab = value } label: {
             VStack(spacing: DS.Space.xxs) {
                 Image(systemName: symbol).font(.system(size: 20, weight: on ? .semibold : .regular))
-                Text(title).font(.caption2.weight(on ? .semibold : .regular))
+                Text(title)
+                    .font(.caption2.weight(on ? .semibold : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    #if DEBUG
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { labelHeight = $0 }
+                    .background {
+                        // One line of the same style, for FieldDockInsetTests.
+                        Text("Tg").font(.caption2.weight(on ? .semibold : .regular)).fixedSize().hidden()
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lineHeight = $0 }
+                    }
+                    #endif
             }
             .foregroundStyle(on ? palette.accent : palette.tertiary)
             .frame(maxWidth: .infinity, minHeight: DS.minTarget)
@@ -39,7 +71,20 @@ struct FieldDock: View {
         .buttonStyle(PressDimStyle())
         .accessibilityLabel(title)
         .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+        .accessibilityShowsLargeContentViewer {
+            Image(systemName: symbol)
+            Text(title)
+        }
         .accessibilityIdentifier("fieldDock.\(title.lowercased())")
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            Color.clear.frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityElement()
+                .accessibilityIdentifier("fieldDock.\(title.lowercased()).label")
+                .accessibilityValue(String(format: "%.1f %.1f", labelHeight, lineHeight))
+        }
+        #endif
     }
 }
 
@@ -111,11 +156,24 @@ struct ScopeSwitch: View {
 }
 
 extension View {
-    /// Hides the system tab bar in field mode and puts the palette dock in its place.
-    func fieldDock(_ on: Bool, tab: Binding<AppTab>) -> some View {
+    /// Field mode: hides this tab's system tab bar (`fieldDock` draws the replacement).
+    func fieldTabBarHidden(_ on: Bool) -> some View {
         toolbarVisibility(on ? .hidden : .automatic, for: .tabBar)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if on { FieldDock(tab: tab) }
-            }
+    }
+
+    /// Field mode: the dock goes under the whole tab view, not over it.
+    ///
+    /// A `safeAreaInset` on each tab's root does not reach the pages of the
+    /// tab's NavigationStack: each page is hosted in its own UIKit controller
+    /// that takes its safe area from UIKit, which never saw the SwiftUI inset
+    /// (the root and pushed screens scrolled their last rows under the dock).
+    /// Stacking the dock below the tab view ends the tab view's frame at the
+    /// dock's top, so every screen, pushed or not, lays out above the dock at
+    /// whatever height the dock has, with no number to keep in sync.
+    func fieldDock(_ on: Bool, tab: Binding<AppTab>) -> some View {
+        VStack(spacing: 0) {
+            self
+            if on { FieldDock(tab: tab) }
+        }
     }
 }
