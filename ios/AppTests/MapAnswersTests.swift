@@ -7,6 +7,7 @@ import SkyCore
 /// text is the only answer the app reads from a Pages layer (nothing outside
 /// `ios/App/Map` reads light pollution or PAD-US), and it is given only when
 /// `data-status.json` says the layer is real.
+@MainActor
 struct MapAnswersTests {
     let key = ManagerTaxonomy.bundled.entries.first?.key ?? "BLM"
 
