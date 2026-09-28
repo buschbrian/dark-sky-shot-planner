@@ -103,6 +103,7 @@ struct CaptureGuideSheet: View {
             }
             SectionCard("2. Focus on a star") {
                 Text("Make the star as small and sharp as possible.").font(.dsHeadline).foregroundStyle(palette.primary)
+                    .accessibilityIdentifier("capture.guide.focus")
                 Text("Aim at a bright star or a distant light. Watch the magnifier and step the focus farther or nearer until the star is the smallest point you can get; the star size readout is lowest there. Focus stays locked for the whole sequence.")
                     .font(.dsFootnote).foregroundStyle(palette.secondary).fixedSize(horizontal: false, vertical: true)
                 MoreInfo(title: "About the star size readout") {

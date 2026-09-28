@@ -152,9 +152,10 @@ final class CaptureScreenTests: XCTestCase {
                 XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", term)).firstMatch.exists, term)
             }
             try shot(app, "capture-guide-darksky-\(m)", field: field)
-            let focus = app.staticTexts["Make the star as small and sharp as possible."]
+            let focus = app.staticTexts["capture.guide.focus"]
             focus.swipeUpUntilVisible(in: app)
             XCTAssertTrue(focus.exists)
+            XCTAssertEqual(focus.label, "Make the star as small and sharp as possible.")
             try shot(app, "capture-guide-darksky-2-\(m)", field: field)
             let preset = app.buttons["capture.guide.usePreset"]
             preset.swipeDownUntilVisible(in: app)
