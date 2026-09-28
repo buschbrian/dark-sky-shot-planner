@@ -526,6 +526,24 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-27: **Map layout (review B-6/B-9, product review §3–§4)**, merged
+  at 87549d7. The map fills the tab under a bottom sheet (peek/half/full);
+  the peek holds place, basemap, the shot-plan target line and one
+  sample-data note. The target line is the default; Sun/Moon/GC lines sit
+  behind a Compare toggle and are thinner. `CelestialStyle`
+  (`Shared/Design`) gives each body one colour and dash. Labels are laid
+  out by priority without overlap (`MapLabelLayout`, unit-tested). A
+  long-press proposes a pin ("Plan here" / "Cancel", then Undo); every
+  place change goes through `AppState.choose` and survives relaunch.
+  Centre on pin. HMS "No smoke polygons … (checked N min ago)". The land
+  manager answer is withheld unless `data-status.json` says real
+  (`MapAnswersTests`). Simulator (iPhone 17): map share with the sheet
+  collapsed 81.8/76.9 % (standard/field) at default text; tab to first
+  frame 392 ms. `MapEngineTests` (opt-in) 5/5. Owner checks: sheet feel,
+  accidental long-press while panning, the 12 s Undo bar, relaunch on the
+  planned pin, target-line brightness and label legibility in red mode.
+  Charts and Sky markers still need to adopt `CelestialStyle`.
+
 - 2026-09-27: **Capture UX (product review §6–§7)**, merged at 6df5573.
   A fixed bottom bar holds Start, "Stop and stack" and Cancel (frames are
   always kept), with progress and heat; settings turn read-only during a
