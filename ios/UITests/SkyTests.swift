@@ -8,13 +8,13 @@ final class SkyTests: XCTestCase {
     }
 
     @MainActor
-    private func openSky(_ arguments: [String]) -> XCUIApplication {
+    private func openSky(_ arguments: [String], field: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
-        // Start in the standard palette: field mode now survives relaunch and
-        // replaces the system tab bar with the red dock.
-        app.launchArguments += ["-DarkSkyUITest", "-FieldMode", "NO"] + arguments
+        // Field mode survives relaunch and replaces the system tab bar with
+        // the red dock, so set it explicitly and use the matching tab control.
+        app.launchArguments += ["-DarkSkyUITest", "-FieldMode", field ? "YES" : "NO"] + arguments
         app.launch()
-        app.tabBars.buttons["Sky"].tap()
+        if field { app.buttons["fieldDock.sky"].tap() } else { app.tabBars.buttons["Sky"].tap() }
         return app
     }
 
@@ -266,9 +266,8 @@ final class SkyTests: XCTestCase {
         ]
         for (name, time, look) in scenes {
             for field in [false, true] {
-                var args = ["-SkyDemoTime", time, "-SkyDemoLook", look]
-                if field { args += ["-FieldMode", "YES"] }
-                let app = openSky(args)
+                let args = ["-SkyDemoTime", time, "-SkyDemoLook", look]
+                let app = openSky(args, field: field)
                 XCTAssertTrue(element(app, "sky.overlay").waitForExistence(timeout: 15))
                 attachScreenshot("sky-sim-\(name)-\(field ? "field" : "normal")")
                 app.terminate()
