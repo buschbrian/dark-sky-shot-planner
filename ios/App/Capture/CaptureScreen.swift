@@ -445,7 +445,7 @@ struct CaptureScreen: View {
 
     private func trailDesignText(_ s: StarTrailSequence, _ pole: CGPoint?) -> String {
         let plan = trailPlan ?? PhoneTrailPlan(design: s, maxExposure: model.camera?.maxExposure ?? 1)
-        var text = "Sky: \(CaptureWording.duration(s.duration)), \(s.frames) × \(CaptureWording.duration(s.exposure)) every \(CaptureWording.duration(s.interval)) (a dedicated camera's frames). Here: \(Int(plan.minutes)) min of back-to-back \(CaptureWording.duration(plan.interval)) frames, so the trails have no gaps."
+        var text = "Sky: \(Int((s.duration / 60).rounded())) min, \(s.frames) × \(CaptureWording.duration(s.exposure)) every \(CaptureWording.duration(s.interval)) (a dedicated camera's frames). Here: \(Int(plan.minutes)) min of back-to-back \(CaptureWording.duration(plan.interval)) frames, so the trails have no gaps."
         if plan.clamped { text += " The design's \(Int(plan.designMinutes.rounded())) min is longer than this screen's 120 min limit." }
         if s.start > .now { text += " Planned start: \(s.start.formatted(date: .omitted, time: .shortened))." }
         if let pole {
