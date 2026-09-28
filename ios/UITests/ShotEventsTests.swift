@@ -158,9 +158,10 @@ final class ShotEventsTests: XCTestCase {
         XCTAssertTrue(waitFor(el("shot.target"), labelContains: "Jupiter"), el("shot.target").label)
 
         app.segmentedControls.buttons["Week"].tap()
-        let badge = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier == 'skyEvents.badge' AND label CONTAINS 'Jupiter at opposition'")).firstMatch
-        badge.swipeUpUntilVisible(in: app)
-        XCTAssertTrue(badge.waitForExistence(timeout: 20), "a Week row carries the event badge")
+        // The row is one button; the badge speaks inside its label.
+        let row = app.buttons["week.row.2027-02-10"]
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.swipeUpUntilVisible(in: app)
+        XCTAssertTrue(waitFor(row, labelContains: "Sky event: Jupiter at opposition"), "Week badge: \(row.label)")
     }
 }

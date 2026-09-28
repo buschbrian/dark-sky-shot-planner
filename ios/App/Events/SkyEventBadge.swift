@@ -4,7 +4,9 @@ import SwiftUI
 /// A compact badge for a Week row: the most significant sky event on that
 /// night ("Orionids peak", "Total lunar eclipse"), plus "+1" when there is
 /// more. Draws nothing when the night has no notable event. Self-contained:
-/// every row shares one agenda through `SkyEventsStore`.
+/// every row shares one agenda through `SkyEventsStore`. While the run is not
+/// loaded the badge draws nothing, so its `.task` never runs: the list that
+/// holds the badges starts the load (`WeekList`).
 struct SkyEventBadge: View {
     let place: Place
     let night: NightDate

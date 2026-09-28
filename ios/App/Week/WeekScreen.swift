@@ -183,6 +183,13 @@ private struct WeekList: View {
             .padding(.bottom, DS.Space.xl)
         }
         .refreshable { refresh += 1 }
+        // The rows' event badges share one agenda run from the first listed
+        // night. A badge with nothing to show draws no view, so its own task
+        // cannot start the load; the list does.
+        .task(id: loader.nights.first?.id) {
+            guard let first = loader.nights.first?.id else { return }
+            await SkyEventsStore.shared.load(place: place, night: first)
+        }
         .task(id: LoadKey(place: place, refresh: refresh)) {
             await loader.load(place: place, provider: provider)
             while !Task.isCancelled {
