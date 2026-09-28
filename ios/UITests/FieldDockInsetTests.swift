@@ -64,11 +64,21 @@ final class FieldDockInsetTests: XCTestCase {
             calc.tap()
             XCTAssertTrue(el(app, "tools.result.npf").waitForExistence(timeout: 5))
             scrollToBottom(app)
-            try assertClearOfDock(app, "npf-\(size)")
-            // The last line on the page (the gear provenance) is not under the dock either.
+            // The page ends in text (credit, gear provenance): the last line is
+            // above the dock, and the lowest control still on screen takes a tap.
             let chip = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'your gear profile'")).firstMatch
             XCTAssertTrue(chip.exists, "npf-\(size): provenance line")
-            XCTAssertLessThanOrEqual(chip.frame.maxY, dockTop(app) + 0.5, "npf-\(size): the last line ends above the dock")
+            try assertClearOfDock(app, "npf-last-line-\(size)", last: chip)
+            if let control = try lowestControl(app, onScreen: true) {
+                try assertClearOfDock(app, "npf-\(size)", last: control)
+            } else {
+                // At Accessibility L the controls have scrolled off the top; bring the last one back.
+                let loose = app.buttons["tools.k.3 loose"]
+                for _ in 0..<8 where !(loose.frame.minY > 0) {
+                    drag(app, from: 0.3, to: 0.6)
+                }
+                try assertClearOfDock(app, "npf-\(size)", last: loose)
+            }
             try shot(app, "dock-npf-\(size)")
             app.terminate()
         }
@@ -116,6 +126,20 @@ final class FieldDockInsetTests: XCTestCase {
             scrollToBottom(app)
             try assertClearOfDock(app, "tonight-\(size)")
             try shot(app, "dock-tonight-\(size)")
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testMapSheetSitsOnTheDock() throws {
+        for size in Size.allCases {
+            let app = launch(size, tab: "map", extra: ["-resetMapState"])
+            let sheet = app.otherElements["map.sheet"]
+            XCTAssertTrue(sheet.waitForExistence(timeout: 15))
+            let grabber = app.buttons["map.sheet.grabber"]
+            try assertClearOfDock(app, "map-grabber-\(size)", last: grabber)
+            // Within a point: the sheet's frame rounds its measured peek up.
+            XCTAssertEqual(sheet.frame.maxY, dockTop(app), accuracy: 1, "map-\(size): the sheet sits on the dock, not under it")
             app.terminate()
         }
     }
@@ -186,12 +210,13 @@ final class FieldDockInsetTests: XCTestCase {
 
     /// The control with the greatest maxY outside the dock, the navigation bar and the hidden tab bar.
     @MainActor
-    private func lowestControl(_ app: XCUIApplication) throws -> XCUIElement? {
+    private func lowestControl(_ app: XCUIApplication, onScreen: Bool = false) throws -> XCUIElement? {
         let root = try app.snapshot()
         var best: (any XCUIElementSnapshot)?
         func walk(_ s: any XCUIElementSnapshot) {
             if s.identifier == "fieldDock" || s.elementType == .navigationBar || s.elementType == .tabBar { return }
             if Self.controlTypes.contains(s.elementType), s.frame.height > 0, s.frame.width > 0,
+               !onScreen || (s.frame.minY >= 0 && s.frame.minY < root.frame.maxY),
                s.frame.maxY > (best?.frame.maxY ?? -.infinity) {
                 best = s
             }
@@ -210,12 +235,17 @@ final class FieldDockInsetTests: XCTestCase {
     private func scrollToBottom(_ app: XCUIApplication) {
         var last = CGFloat.infinity
         for _ in 0..<16 {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.72))
-                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.22)))
+            drag(app, from: 0.72, to: 0.22)
             let y = (try? lowestControl(app))??.frame.maxY ?? 0
             if abs(y - last) < 1 { return }
             last = y
         }
+    }
+
+    @MainActor
+    private func drag(_ app: XCUIApplication, from: CGFloat, to: CGFloat) {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: from))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: to)))
     }
 
     /// Standard mode, the gear editor, the in-app keypad: the calculator needs a profile.
