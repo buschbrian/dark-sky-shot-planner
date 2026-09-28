@@ -80,7 +80,8 @@ exported from the web planner.
   path; a results view with "Save image" first; star trails that follow
   the design from Sky. Tested indoors on the phone only.
 - **Field mode**: red over the whole window, remembered across relaunch,
-  with a brightness slider in thumb reach. A design system (`DESIGN.md`)
+  with a brightness slider in thumb reach; the red dock now sits below
+  every screen instead of covering its bottom rows. A design system (`DESIGN.md`)
   under every screen.
 - **Refresh**: Tonight, Week and Spots refresh when the Worker says new
   model data is due, not on a fixed timer.
@@ -119,7 +120,6 @@ record in `PLAN.md` §Log and flip the "Field-tested" cell in
 
 | Item | Done when |
 |---|---|
-| Field dock covering screen bottoms (in progress) | `FieldDockInsetTests` shows the last control on Tools, NPF, Capture, Spots and Tonight above the dock at default and large text; the 3 Capture field-mode UI tests pass on iPhone 17 |
 | "Show on map" should set the map's target and time | A UI test: Show on map from Tonight lands on the map with that target's line at the planned time |
 | Sky warning when you are away from the planning site | A UI test with a simulated location 50 km from the planned place shows the mismatch notice |
 | Gear preset picker, including "This iPhone" | A UI test picks a camera and lens from the presets and the NPF result changes to match |

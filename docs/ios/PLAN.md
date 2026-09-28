@@ -526,6 +526,19 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-27: **Field dock is real bottom space everywhere**, merged at
+  de27908. `.safeAreaInset` on each tab's root never reached
+  NavigationStack pages, so on iPhone 17 the last rows of Tools, Tonight,
+  Spots, NPF and Capture's entry sat under the red dock, and at
+  Accessibility L taps landed on it. `RootView` now stacks `FieldDock`
+  below the `TabView`, so every screen, pushed ones included, ends at the
+  dock's top; Capture's and Map's hand-tuned clearances are gone. Dock
+  labels stay on one line (shrink to fit, Large Content Viewer); the dock
+  is 17 % of the screen at Accessibility L. New `FieldDockInsetTests`
+  (Tools, NPF, Capture, Spots, Tonight, Map sheet; default and
+  Accessibility L). Branch suite on iPhone 17: 586 passed, 0 failed,
+  7 skipped.
+
 - 2026-09-27: **Shot window and events on Tonight (review B-3, product
   review §1, §2, §5)**, merged at cbc9ef0. The shot window is Tonight's
   first block: target (default Galactic Center, remembered), usable window
