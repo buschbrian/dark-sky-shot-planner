@@ -8,16 +8,62 @@ struct MapSnapshot: Equatable {
     var styleURL: URL?
     var colors: MapColors
     var pin: GeoCoordinate?
-    /// Rise/transit/set: rebuilt only when the pin, night or zoom changes.
+    /// A long-pressed point awaiting "Plan here" (review B-9).
+    var candidate: GeoCoordinate?
+    /// Rise/transit/set (Compare view): rebuilt only when the pin, night or zoom changes.
     var eventLines: [MapLineFeature]
-    /// The scrubber's lines: the only source updated per scrubber tick.
+    /// The scrubber's Sun/Moon/GC lines (Compare view).
     var atTimeLines: [MapLineFeature]
-    /// One per line, events first, then at-time.
-    var labels: [String]
+    /// The shot plan's target at the scrubber's time: the map's main line.
+    var target: MapTargetLine?
+    var labels: [MapLabel]
     var visible: Set<MapLayer>
     var smoke: Data?
     var irFrames: [Date]
     var irIndex: Int
+    /// The bar above and the resting sheet below: the camera centres between them.
+    var insets: UIEdgeInsets
+    /// Window-coordinate frames of what floats over the map (badge, buttons, banners).
+    var obstructions: [CGRect]
+}
+
+struct MapTargetLine: Equatable {
+    let name: String
+    let body: CelestialBody
+    let position: HorizontalPosition
+    /// Pin first.
+    let coordinates: [GeoCoordinate]
+    let label: String
+}
+
+/// One line label: the line on the ground and how eager it is to be shown.
+struct MapLabel: Equatable {
+    let key: String
+    let text: String
+    let body: CelestialBody
+    let priority: Int
+    let start: GeoCoordinate
+    let end: GeoCoordinate
+    let emphasized: Bool
+    let stops: [Double]
+
+    init(key: String, text: String, body: CelestialBody, priority: Int, start: GeoCoordinate, end: GeoCoordinate,
+         emphasized: Bool, stops: [Double]) {
+        self.key = key
+        self.text = text
+        self.body = body
+        self.priority = priority
+        self.start = start
+        self.end = end
+        self.emphasized = emphasized
+        self.stops = stops
+    }
+
+    init(_ f: MapLineFeature, text: String, priority: Int, stops: [Double]) {
+        self.init(key: "\(f.line.object.rawValue).\(f.line.event.rawValue)", text: text, body: CelestialBody(f.line.object),
+                  priority: priority, start: f.coordinates[0], end: f.coordinates[f.coordinates.count - 1],
+                  emphasized: false, stops: stops)
+    }
 }
 
 /// Tab-appear to first map frame, for the owner's speed check.
@@ -37,12 +83,16 @@ struct PlannerMapView: UIViewRepresentable {
     var snapshot: MapSnapshot
     /// Basemap choice, camera and location, shared with the controls outside the map.
     var controller: MapController
-    var onDropPin: (CLLocationCoordinate2D) -> Void
+    /// A long-press: a candidate point, never a place change by itself.
+    var onLongPress: (CLLocationCoordinate2D) -> Void
     var onCamera: (_ zoom: Double, _ shortSidePoints: Double) -> Void
     var onInspect: ([MapInspection]) -> Void
     /// PAD-US manager keys under the pin, from the rendered tiles; nil when the pin is off screen.
     var onPinLand: ([String]?) -> Void
     var onTiming: (String) -> Void = { _ in }
+    /// Line labels left off the map so none overlap (keys), and the window
+    /// frames of those shown (the UI tests' overlap check).
+    var onLabels: (_ hidden: [String], _ shown: [CGRect]) -> Void = { _, _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -56,6 +106,8 @@ struct PlannerMapView: UIViewRepresentable {
         map.prefetchesTiles = true
         map.tileCacheEnabled = true
         map.compassViewPosition = .topRight
+        map.scaleBarPosition = .bottomLeft
+        map.automaticallyAdjustsContentInset = false
         map.backgroundColor = snapshot.colors.background
         map.tintColor = snapshot.colors.accent
         // The puck shows without asking only when location is already allowed;
@@ -98,6 +150,8 @@ struct PlannerMapView: UIViewRepresentable {
         private var styleReady = false
         private var labelAnnotations: [LabelAnnotation] = []
         private var pinAnnotation: PinAnnotation?
+        private var candidateAnnotation: CandidateAnnotation?
+        private var reported: ([String], [CGRect])?
         private var irTimes: [Date] = []
         private var firstFrameMs: Int?
         private var fullRenderMs: Int?
@@ -117,6 +171,16 @@ struct PlannerMapView: UIViewRepresentable {
                 map.tintColor = s.colors.accent
                 if let u = map.userLocation { (map.view(for: u) as? UserPuckView)?.colors = s.colors }
             }
+            if map.contentInset != s.insets {
+                map.setContentInset(s.insets, animated: applied != nil, completionHandler: nil)
+            }
+            // MapLibre adds the view's safe area to the content inset for its
+            // ornaments, counting it twice here: keep the scale bar just above
+            // the credit and the compass under the bar.
+            let scale = CGPoint(x: 8, y: 40 - map.safeAreaInsets.bottom)
+            if map.scaleBarMargins != scale { map.scaleBarMargins = scale }
+            let compass = CGPoint(x: 8, y: 8 - map.safeAreaInsets.top)
+            if map.compassViewMargins != compass { map.compassViewMargins = compass }
             if s.pin != lastPin {
                 if let pin = s.pin, pin != droppedPin {
                     let c = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
@@ -135,6 +199,9 @@ struct PlannerMapView: UIViewRepresentable {
             }
             if force || old?.atTimeLines != s.atTimeLines {
                 (style.source(withIdentifier: "planner-now") as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: s.atTimeLines.map(polyline))
+            }
+            if force || old?.target != s.target || old?.colors != s.colors {
+                applyTarget(s, style: style)
             }
             if force || old?.smoke != s.smoke {
                 (style.source(withIdentifier: "smoke") as? MLNShapeSource)?.shape = s.smoke.flatMap {
@@ -194,26 +261,40 @@ struct PlannerMapView: UIViewRepresentable {
             edge.lineOpacity = NSExpression(forConstantValue: 0.7)
             insert(edge)
 
-            let dashes: [SkyObject: [Double]] = [.moon: [3, 1.5], .galacticCenter: [1, 1.2]]
-            for (id, width) in [("planner-events", 3.0), ("planner-now", 5.0)] {
+            // Thin lines with a narrow halo, so roads and terrain still read
+            // beneath them; the target's line is the one drawn heavier.
+            for (id, width) in [("planner-events", 1.75), ("planner-now", 2.25)] {
                 let source = MLNShapeSource(identifier: id, shape: nil, options: nil)
                 style.addSource(source)
                 let halo = MLNLineStyleLayer(identifier: "\(id)-halo", source: source)
                 halo.lineColor = NSExpression(forConstantValue: colors.background)
-                halo.lineWidth = NSExpression(forConstantValue: width + 4)
-                halo.lineOpacity = NSExpression(forConstantValue: 0.75)
+                halo.lineWidth = NSExpression(forConstantValue: width + 2)
+                halo.lineOpacity = NSExpression(forConstantValue: 0.5)
                 halo.lineCap = NSExpression(forConstantValue: "round")
                 style.addLayer(halo)
                 for object in AzimuthLines.mapObjects {
+                    let body = CelestialBody(object)
                     let l = MLNLineStyleLayer(identifier: "\(id)-\(object.rawValue)", source: source)
                     l.predicate = NSPredicate(format: "object == %@", object.rawValue)
-                    l.lineColor = NSExpression(forConstantValue: colors.line(for: object))
+                    l.lineColor = NSExpression(forConstantValue: colors.line(for: body))
                     l.lineWidth = NSExpression(forConstantValue: width)
-                    l.lineOpacity = NSExpression(mglJSONObject: ["case", ["==", ["get", "below"], true], 0.45, 1.0])
-                    if let d = dashes[object] { l.lineDashPattern = NSExpression(forConstantValue: d) }
+                    l.lineOpacity = NSExpression(mglJSONObject: ["case", ["==", ["get", "below"], true], 0.4, 0.9])
+                    if let d = CelestialStyle.mapDash(body, width: width) { l.lineDashPattern = NSExpression(forConstantValue: d) }
                     style.addLayer(l)
                 }
             }
+            let target = MLNShapeSource(identifier: "planner-target", shape: nil, options: nil)
+            style.addSource(target)
+            let targetHalo = MLNLineStyleLayer(identifier: "planner-target-halo", source: target)
+            targetHalo.lineColor = NSExpression(forConstantValue: colors.background)
+            targetHalo.lineWidth = NSExpression(forConstantValue: Self.targetWidth + 2.5)
+            targetHalo.lineOpacity = NSExpression(forConstantValue: 0.6)
+            targetHalo.lineCap = NSExpression(forConstantValue: "round")
+            style.addLayer(targetHalo)
+            let targetLine = MLNLineStyleLayer(identifier: "planner-target-line", source: target)
+            targetLine.lineWidth = NSExpression(forConstantValue: Self.targetWidth)
+            targetLine.lineCap = NSExpression(forConstantValue: "round")
+            style.addLayer(targetLine)
             irTimes = []
             styleReady = true
             applied = nil
@@ -221,6 +302,19 @@ struct PlannerMapView: UIViewRepresentable {
         }
 
         static func irId(_ t: Date) -> String { "ir-\(Int(t.timeIntervalSince1970))" }
+        static let targetWidth = 3.5
+
+        private func applyTarget(_ s: MapSnapshot, style: MLNStyle) {
+            let source = style.source(withIdentifier: "planner-target") as? MLNShapeSource
+            guard let t = s.target else { source?.shape = nil; return }
+            var coords = t.coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+            source?.shape = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+            if let l = style.layer(withIdentifier: "planner-target-line") as? MLNLineStyleLayer {
+                l.lineColor = NSExpression(forConstantValue: s.colors.line(for: t.body))
+                l.lineOpacity = NSExpression(forConstantValue: t.position.altitudeDeg < 0 ? 0.5 : 1)
+                l.lineDashPattern = CelestialStyle.mapDash(t.body, width: Self.targetWidth).map { NSExpression(forConstantValue: $0) }
+            }
+        }
 
         /// Keeps one raster source per GIBS frame time: frames that aged out are
         /// removed, new ones added, the rest (and their loaded tiles) kept.
@@ -269,56 +363,91 @@ struct PlannerMapView: UIViewRepresentable {
                 pinAnnotation = nil
             }
 
-            let wanted = zip(s.eventLines + s.atTimeLines, s.labels).map { f, text in
-                (key: "\(f.line.object.rawValue).\(f.line.event.rawValue)", f: f, text: text)
+            if let c = s.candidate {
+                let coord = CLLocationCoordinate2D(latitude: c.latitude, longitude: c.longitude)
+                if let a = candidateAnnotation { a.coordinate = coord } else {
+                    let a = CandidateAnnotation()
+                    a.coordinate = coord
+                    candidateAnnotation = a
+                    map.addAnnotation(a)
+                }
+                (map.view(for: candidateAnnotation!) as? CandidateView)?.configure(s.colors)
+            } else if let a = candidateAnnotation {
+                map.removeAnnotation(a)
+                candidateAnnotation = nil
             }
-            let keys = Set(wanted.map(\.key))
+
+            let keys = Set(s.labels.map(\.key))
             let stale = labelAnnotations.filter { !keys.contains($0.key) }
             if !stale.isEmpty { map.removeAnnotations(stale) }
             labelAnnotations.removeAll { !keys.contains($0.key) }
-            for w in wanted {
-                // Inside the line, at-time labels nearer the pin, so labels stay on screen and overlap less.
-                let frac = w.f.line.event == .atTime ? 0.5 : 0.92
-                let v = w.f.coordinates[Int((Double(w.f.coordinates.count - 1) * frac).rounded())]
-                let c = CLLocationCoordinate2D(latitude: v.latitude, longitude: v.longitude)
-                let color = s.colors.line(for: w.f.line.object)
-                if let a = labelAnnotations.first(where: { $0.key == w.key }) {
+            for l in s.labels {
+                let c = CLLocationCoordinate2D(latitude: l.end.latitude, longitude: l.end.longitude)
+                if let a = labelAnnotations.first(where: { $0.key == l.key }) {
                     a.coordinate = c
-                    a.title = w.text
-                    a.emphasized = w.f.line.event == .atTime
-                    (map.view(for: a) as? LabelView)?.configure(text: w.text, emphasized: a.emphasized, lineColor: color, colors: s.colors)
+                    a.title = l.text
+                    a.label = l
+                    (map.view(for: a) as? LabelView)?.configure(l, colors: s.colors)
                 } else {
                     let a = LabelAnnotation()
-                    a.key = w.key
+                    a.key = l.key
+                    a.label = l
                     a.coordinate = c
-                    a.title = w.text
-                    a.emphasized = w.f.line.event == .atTime
+                    a.title = l.text
                     labelAnnotations.append(a)
                     map.addAnnotation(a)
                 }
             }
         }
 
-        /// Line labels are views, so MapLibre can't place them around each
-        /// other: hide any that would cover a higher-priority label (the
-        /// at-time ones first), the pin, or the map's buttons. Hidden labels
-        /// are still listed in the panel.
-        fileprivate func declutter() {
+        /// Places line labels with `MapLabelLayout`: at their line's end (the
+        /// target and at-time ones part way out), never over each other, the
+        /// pin, the puck, the badge, the buttons, the banner or the scale bar.
+        /// Labels that fit nowhere are hidden; the sheet lists every line.
+        fileprivate func declutter(report: Bool = true) {
             guard let map else { return }
-            let reserved = MapOverlayControls.reservedSize
-            var taken = [CGRect(x: map.bounds.maxX - reserved.width, y: map.bounds.maxY - reserved.height,
-                                width: reserved.width, height: reserved.height)]
-            for a in [pinAnnotation as MLNAnnotation?, map.userLocation].compactMap({ $0 }) {
-                if let v = map.view(for: a) { taken.append(v.convert(v.bounds, to: map).insetBy(dx: -4, dy: -4)) }
+            let s = parent.snapshot
+            var reserved = s.obstructions.map { map.convert($0, from: nil).insetBy(dx: -4, dy: -4) }
+            for a in [pinAnnotation as MLNAnnotation?, candidateAnnotation, map.userLocation].compactMap({ $0 }) {
+                if let v = map.view(for: a), v.superview != nil { reserved.append(v.convert(v.bounds, to: map).insetBy(dx: -4, dy: -4)) }
             }
-            let ordered = labelAnnotations.filter(\.emphasized) + labelAnnotations.filter { !$0.emphasized }
-            for a in ordered {
-                guard let v = map.view(for: a) else { continue }
-                let f = v.convert(v.bounds, to: map).insetBy(dx: -2, dy: -2)
-                let hide = !map.bounds.intersects(f) || taken.contains { $0.intersects(f) }
-                v.alpha = hide ? 0 : 1
-                v.accessibilityElementsHidden = hide
-                if !hide { taken.append(f) }
+            if !map.scaleBar.isHidden, map.scaleBar.alpha > 0 { reserved.append(map.scaleBar.frame) }
+            if map.compassView.alpha > 0, !map.compassView.isHidden { reserved.append(map.compassView.frame) }
+            let visible = map.bounds.inset(by: s.insets).insetBy(dx: 4, dy: 4)
+            var views: [String: (LabelView, CGPoint)] = [:]
+            var requests: [MapLabelLayout.Request] = []
+            for a in labelAnnotations {
+                guard let l = a.label, let v = map.view(for: a) as? LabelView else { continue }
+                let anchor = map.convert(a.coordinate, toPointTo: map)
+                views[l.key] = (v, anchor)
+                requests.append(.init(
+                    key: l.key, priority: l.priority, size: v.bounds.size,
+                    start: map.convert(CLLocationCoordinate2D(latitude: l.start.latitude, longitude: l.start.longitude), toPointTo: map),
+                    end: anchor, stops: l.stops))
+            }
+            let placed = MapLabelLayout.layout(requests, reserved: reserved, visible: visible)
+            var shown: [CGRect] = []
+            for (key, (v, anchor)) in views {
+                if let c = placed[key] {
+                    v.centerOffset = CGVector(dx: c.x - anchor.x, dy: c.y - anchor.y)
+                    v.alpha = 1
+                    v.isHidden = false
+                    v.isAccessibilityElement = true
+                    let size = v.bounds.size
+                    shown.append(map.convert(MapLabelLayout.frame(center: c, size: size), to: nil).integral)
+                } else {
+                    v.alpha = 0
+                    v.isHidden = true
+                    v.isAccessibilityElement = false
+                }
+            }
+            // Reported once the map settles, not on every frame of a pan.
+            guard report else { return }
+            let hidden = requests.map(\.key).filter { placed[$0] == nil }.sorted()
+            shown.sort { ($0.minY, $0.minX) < ($1.minY, $1.minX) }
+            if reported?.0 != hidden || reported?.1 != shown {
+                reported = (hidden, shown)
+                DispatchQueue.main.async { [weak self] in self?.parent.onLabels(hidden, shown) }
             }
         }
 
@@ -328,7 +457,7 @@ struct PlannerMapView: UIViewRepresentable {
             guard g.state == .began, let map else { return }
             let c = map.convert(g.location(in: map), toCoordinateFrom: map)
             droppedPin = GeoCoordinate(latitude: c.latitude, longitude: c.longitude)
-            parent.onDropPin(c)
+            parent.onLongPress(c)
         }
 
         @objc func tap(_ g: UITapGestureRecognizer) {
@@ -364,7 +493,8 @@ struct PlannerMapView: UIViewRepresentable {
 
         fileprivate func reportCamera() {
             guard let map else { return }
-            parent.onCamera(map.zoomLevel, Double(min(map.bounds.width, map.bounds.height)))
+            let seen = map.bounds.inset(by: map.contentInset)
+            parent.onCamera(map.zoomLevel, Double(max(120, min(seen.width, seen.height))))
             let b = map.visibleCoordinateBounds
             parent.controller.report(camera: MapController.Camera(
                 center: map.centerCoordinate, zoom: map.zoomLevel,
@@ -416,7 +546,7 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
 
     @objc(mapViewRegionIsChanging:)
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
-        declutter()
+        declutter(report: false)
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
@@ -445,10 +575,16 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
             v.configure(colors)
             return v
         }
-        if let a = annotation as? LabelAnnotation {
+        if annotation is CandidateAnnotation {
+            let v = mapView.dequeueReusableAnnotationView(withIdentifier: "candidate") as? CandidateView ?? CandidateView(reuseIdentifier: "candidate")
+            v.configure(colors)
+            return v
+        }
+        if let a = annotation as? LabelAnnotation, let l = a.label {
             let v = mapView.dequeueReusableAnnotationView(withIdentifier: "label") as? LabelView ?? LabelView(reuseIdentifier: "label")
-            let object = SkyObject(rawValue: String(a.key.split(separator: ".").first ?? "")) ?? .moon
-            v.configure(text: a.title ?? "", emphasized: a.emphasized, lineColor: colors.line(for: object), colors: colors)
+            v.configure(l, colors: colors)
+            v.alpha = 0
+            DispatchQueue.main.async { [weak self] in self?.declutter() }
             return v
         }
         return nil
@@ -459,9 +595,11 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
 
 nonisolated final class PinAnnotation: MLNPointAnnotation {}
 
+nonisolated final class CandidateAnnotation: MLNPointAnnotation {}
+
 nonisolated final class LabelAnnotation: MLNPointAnnotation {
     var key = ""
-    var emphasized = false
+    nonisolated(unsafe) var label: MapLabel?
 }
 
 final class PinView: MLNAnnotationView {
@@ -472,6 +610,7 @@ final class PinView: MLNAnnotationView {
         layer.borderWidth = 3
         isAccessibilityElement = true
         accessibilityLabel = "Planner pin"
+        accessibilityIdentifier = "map.pin"
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -482,8 +621,35 @@ final class PinView: MLNAnnotationView {
     }
 }
 
+/// A long-pressed point waiting for "Plan here": a dashed ring, so it never
+/// reads as the planning pin.
+final class CandidateView: MLNAnnotationView {
+    private let ring = CAShapeLayer()
+
+    override init(reuseIdentifier: String?) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 30, height: 30)
+        ring.path = UIBezierPath(ovalIn: bounds.insetBy(dx: 2, dy: 2)).cgPath
+        ring.lineWidth = 2.5
+        ring.lineDashPattern = [4, 3]
+        layer.addSublayer(ring)
+        isAccessibilityElement = true
+        accessibilityLabel = "Candidate point"
+        accessibilityIdentifier = "map.candidatePin"
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    func configure(_ colors: MapColors) {
+        ring.strokeColor = colors.accent.cgColor
+        ring.fillColor = colors.background.withAlphaComponent(0.35).cgColor
+    }
+}
+
 final class LabelView: MLNAnnotationView {
     private let label = UILabel()
+    /// Map labels cap at extra large (DESIGN rule 7); the sheet lists them at any size.
+    static let maxCategory = UIContentSizeCategory.extraLarge
 
     override init(reuseIdentifier: String?) {
         super.init(reuseIdentifier: reuseIdentifier)
@@ -493,24 +659,32 @@ final class LabelView: MLNAnnotationView {
         layer.cornerRadius = 6
         layer.borderWidth = 1.5
         isUserInteractionEnabled = false
+        accessibilityIdentifier = "map.label"
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    func configure(text: String, emphasized: Bool, lineColor: UIColor, colors: MapColors) {
+    static func font(emphasized: Bool, category: UIContentSizeCategory) -> UIFont {
+        let capped = category > maxCategory ? maxCategory : category
+        let traits = UITraitCollection(preferredContentSizeCategory: capped)
+        let base = UIFont.preferredFont(forTextStyle: emphasized ? .subheadline : .caption1, compatibleWith: traits)
+        return UIFont.monospacedDigitSystemFont(ofSize: base.pointSize, weight: emphasized ? .bold : .semibold)
+    }
+
+    func configure(_ l: MapLabel, colors: MapColors) {
         // "Sun set 19:17 · 269°" → two short lines.
-        var parts = text.components(separatedBy: " · ")
-        let head = parts.isEmpty ? text : parts.removeFirst()
+        var parts = l.text.components(separatedBy: " · ")
+        let head = parts.isEmpty ? l.text : parts.removeFirst()
         label.text = parts.isEmpty ? head : head + "\n" + parts.joined(separator: " · ")
-        let base = UIFont.preferredFont(forTextStyle: emphasized ? .subheadline : .footnote)
-        label.font = UIFont.monospacedDigitSystemFont(ofSize: base.pointSize, weight: emphasized ? .bold : .semibold)
+        label.font = Self.font(emphasized: l.emphasized, category: traitCollection.preferredContentSizeCategory)
         label.textColor = colors.primary
-        backgroundColor = colors.background.withAlphaComponent(0.85)
-        layer.borderColor = lineColor.cgColor
+        backgroundColor = colors.background.withAlphaComponent(0.82)
+        layer.borderColor = colors.line(for: l.body).cgColor
+        layer.borderWidth = l.emphasized ? 2 : 1
         label.sizeToFit()
-        let size = CGSize(width: label.bounds.width + 12, height: label.bounds.height + 6)
-        frame.size = size
-        label.frame = CGRect(x: 6, y: 3, width: label.bounds.width, height: label.bounds.height)
-        accessibilityLabel = text
+        let size = CGSize(width: label.bounds.width + 10, height: label.bounds.height + 4)
+        bounds.size = size
+        label.frame = CGRect(x: 5, y: 2, width: label.bounds.width, height: label.bounds.height)
+        accessibilityLabel = l.text
     }
 }

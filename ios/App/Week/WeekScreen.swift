@@ -384,7 +384,7 @@ private struct NoPlacePrompt: View {
                 if !spots.isEmpty {
                     SectionCard("Saved spots") {
                         ForEach(spots) { spot in
-                            Button { state.place = spot.place } label: {
+                            Button { state.choose(spot: spot) } label: {
                                 Disclosure {
                                     Text(spot.name).font(.dsBody).foregroundStyle(palette.primary)
                                 }

@@ -109,11 +109,6 @@ struct NightTab: View {
     @Environment(AppState.self) private var state
     @State private var showLocation = false
 
-    private var uiTesting: Bool {
-        let args = ProcessInfo.processInfo.arguments
-        return args.contains("-DarkSkyUITest") || args.contains("-DarkSkyUITestLive")
-    }
-
     var body: some View {
         @Bindable var state = state
         NavigationStack {
@@ -149,20 +144,8 @@ struct NightTab: View {
         .onAppear(perform: restore)
     }
 
-    private func choose(_ choice: LocationChoice) {
-        state.place = choice.place
-        if let night = choice.night {
-            state.chosenNight = night == NightDate.containing(.now, in: choice.place.timeZone) ? nil : night
-        }
-        RememberedPlace(place: choice.place, zoneIsDeviceGuess: choice.zoneIsDeviceGuess).save()
-    }
+    private func choose(_ choice: LocationChoice) { state.choose(choice) }
 
     /// A relaunch opens where the owner left off; UI tests always start empty.
-    private func restore() {
-        if uiTesting {
-            UserDefaults.standard.removeObject(forKey: RememberedPlace.key)
-            return
-        }
-        if state.place == nil, let r = RememberedPlace.load() { state.place = r.place }
-    }
+    private func restore() { state.restoreRememberedPlace() }
 }

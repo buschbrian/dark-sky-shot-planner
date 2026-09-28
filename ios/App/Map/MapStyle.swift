@@ -33,16 +33,15 @@ struct MapColors: Equatable {
         accent = ui(p.accent)
         good = ui(p.good)
         marginal = ui(p.marginal)
+        bodies = Dictionary(uniqueKeysWithValues: CelestialBody.allCases.map { ($0, ui(CelestialStyle.color($0, p))) })
         self.field = field
     }
 
-    func line(for object: SkyObject) -> UIColor {
-        switch object {
-        case .sun: marginal
-        case .galacticCenter: accent
-        default: primary
-        }
-    }
+    /// Each sky body's line color (`CelestialStyle`), never a status or action color.
+    let bodies: [CelestialBody: UIColor]
+
+    func line(for body: CelestialBody) -> UIColor { bodies[body] ?? primary }
+    func line(for object: SkyObject) -> UIColor { line(for: CelestialBody(object)) }
 }
 
 extension UIColor {
