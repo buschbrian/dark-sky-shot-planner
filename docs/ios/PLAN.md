@@ -526,6 +526,24 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-27: **Shot window and events on Tonight (review B-3, product
+  review §1, §2, §5)**, merged at cbc9ef0. The shot window is Tonight's
+  first block: target (default Galactic Center, remembered), usable window
+  in the site's zone, terrain clearance (a saved spot's skyline within
+  50 m, otherwise a labelled flat-horizon estimate), limiting factor, then
+  Save plan (on the phone; no list yet), Show on map and Find in sky.
+  **Verdict scope decision:** the verdict describes the selected window
+  (`ShotWindow.nightForVerdict(window:)`, test `perWindowVerdict`); other
+  windows are selectable. Moon-limited nights read "Moon up" on Tonight,
+  Week and Spots, with "No moon-free Milky Way window" and "Find the next
+  suitable night". Sky events on Tonight with "Plan this"; Week badges.
+  Tonight, Week and Spots refresh on the Worker's `nextRefresh` (Spots
+  background refresh clamped to 15 min–3 h, `RefreshTimingTests`).
+  Reserved heights while loading; "Conditions by hour" is four factor
+  rows. Branch suite on DS-tonight: 551 passed, 0 failed, 8 skipped;
+  field scan 21/21 clean. Open: the Map does not yet read
+  `AppState.planFocus` (Show on map switches tab and night only).
+
 - 2026-09-27: **Map layout (review B-6/B-9, product review §3–§4)**, merged
   at 87549d7. The map fills the tab under a bottom sheet (peek/half/full);
   the peek holds place, basemap, the shot-plan target line and one
