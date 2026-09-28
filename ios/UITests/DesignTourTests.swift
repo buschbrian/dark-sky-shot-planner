@@ -236,7 +236,13 @@ final class DesignTourTests: XCTestCase {
         // StatusBadge stacks its qualifier at accessibility sizes: one element, "No-go, incomplete data".
         let badge = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label MATCHES %@", "^(Go|Marginal|No-go|Unavailable), .+")).firstMatch
-        for _ in 0..<4 where !(badge.exists && badge.isHittable) { app.swipeUp(velocity: .slow) }
+        // A moon-up night has no qualifier (it reads "Moon up"), so step to a night with one.
+        for _ in 0..<8 {
+            for _ in 0..<5 where !(badge.exists && badge.isHittable) { app.swipeUp(velocity: .slow) }
+            if badge.exists { break }
+            for _ in 0..<8 { app.swipeDown() }
+            el(app, "tonight.nextNight").tap()
+        }
         XCTAssertTrue(badge.exists, "stacked status badge at AX-XL")
         XCTAssertLessThanOrEqual(badge.frame.maxX, app.frame.maxX + 1, "badge fits the width")
         try shot(app, "ax-tonight-2", field: false)
