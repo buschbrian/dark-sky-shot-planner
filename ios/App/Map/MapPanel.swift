@@ -103,6 +103,11 @@ extension MapScreen {
 
     private var placeSection: some View {
         SectionCard("Place") {
+            if let place = state.place {
+                Text(placeDetail(place))
+                    .font(.dsData).foregroundStyle(palette.secondary)
+                    .accessibilityIdentifier("map.placeDetail")
+            }
             if state.place != nil, visible.contains(.land), let land = MapAnswers.landManager(origin: data.origin(.land), keysAtPin: pinLand) {
                 Text(land).font(.dsFootnote).foregroundStyle(palette.primary)
                     .accessibilityIdentifier("map.landAtPin")

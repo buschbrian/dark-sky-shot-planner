@@ -36,6 +36,7 @@ struct MapScreen: View {
     @State var obstructions: [String: CGRect] = [:]
     @State var outerBottomInset: CGFloat = 0
     @State var hiddenLabels: [String] = []
+    @State var shownLabelFrames: [CGRect] = []
     /// A long-press drops a candidate; nothing changes until "Plan here" (review B-9).
     @State var candidate: GeoCoordinate?
     @State var resolving = false
@@ -147,7 +148,10 @@ struct MapScreen: View {
                 onInspect: { inspection = $0 },
                 onPinLand: { pinLand = $0 },
                 onTiming: { timing = $0 },
-                onLabelsHidden: { hiddenLabels = $0 })
+                onLabels: { hidden, shown in
+                    hiddenLabels = hidden
+                    shownLabelFrames = shown
+                })
             .overlay {
                 // Field mode: multiply everything the map draws by pure red, so
                 // no basemap, raster or label pixel keeps any green or blue.
@@ -160,6 +164,14 @@ struct MapScreen: View {
                     .accessibilityElement()
                     .accessibilityIdentifier("map.timing")
                     .accessibilityLabel(timing)
+            }
+            .background {
+                // Where the declutter put each shown label, for the UI tests.
+                Color.clear
+                    .accessibilityElement()
+                    .accessibilityIdentifier("map.labelFrames")
+                    .accessibilityLabel(shownLabelFrames.map { String(format: "%.0f,%.0f,%.0f,%.0f", $0.minX, $0.minY, $0.width, $0.height) }
+                        .joined(separator: ";"))
             }
         } else {
             palette.background
@@ -333,15 +345,12 @@ struct MapScreen: View {
             if let place = state.place {
                 HStack(alignment: .firstTextBaseline, spacing: DS.Space.s) {
                     Text(place.name).font(.dsHeadline).foregroundStyle(palette.primary).lineLimit(1)
+                        // Coordinates, zone and night are in the Place card; VoiceOver hears them here.
+                        .accessibilityLabel("\(place.name), \(placeDetail(place))")
+                        .accessibilityIdentifier("map.placeLabel")
                     Spacer(minLength: DS.Space.s)
                     basemapName
                 }
-                Text("\(CoordinateText.format(latitude: place.latitude, longitude: place.longitude)) · \(Format.zone(place.timeZone)) · night of \(Format.nightTitle(state.night()))")
-                    .font(.dsData)
-                    .foregroundStyle(palette.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .accessibilityIdentifier("map.placeLabel")
                 if let t = targetLine {
                     HStack(spacing: DS.Space.s) {
                         LineSwatch(object: t.body, emphasized: true)
@@ -367,16 +376,21 @@ struct MapScreen: View {
                 Label(notice, systemImage: "exclamationmark.triangle")
                     .font(.dsFootnote)
                     .foregroundStyle(palette.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .accessibilityIdentifier("map.sampleNotice")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DS.Space.screen)
-        .padding(.bottom, DS.Space.m)
-        // The peek sits over the map, so it caps its type (DESIGN rule 7); the
-        // panel above it follows Dynamic Type in full.
-        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        .padding(.bottom, DS.Space.s)
+        // The peek sits over the map, so it caps its type like the map's other
+        // overlays (DESIGN rule 7); the panel above it follows Dynamic Type in full.
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+    }
+
+    func placeDetail(_ place: Place) -> String {
+        "\(CoordinateText.format(latitude: place.latitude, longitude: place.longitude)) · \(Format.zone(place.timeZone)) · night of \(Format.nightTitle(state.night()))"
     }
 
     private var basemapName: some View {

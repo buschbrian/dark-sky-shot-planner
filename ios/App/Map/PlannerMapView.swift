@@ -90,8 +90,9 @@ struct PlannerMapView: UIViewRepresentable {
     /// PAD-US manager keys under the pin, from the rendered tiles; nil when the pin is off screen.
     var onPinLand: ([String]?) -> Void
     var onTiming: (String) -> Void = { _ in }
-    /// Keys of line labels left off the map so none overlap.
-    var onLabelsHidden: ([String]) -> Void = { _ in }
+    /// Line labels left off the map so none overlap (keys), and the window
+    /// frames of those shown (the UI tests' overlap check).
+    var onLabels: (_ hidden: [String], _ shown: [CGRect]) -> Void = { _, _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -150,7 +151,7 @@ struct PlannerMapView: UIViewRepresentable {
         private var labelAnnotations: [LabelAnnotation] = []
         private var pinAnnotation: PinAnnotation?
         private var candidateAnnotation: CandidateAnnotation?
-        private var hiddenReported: [String]?
+        private var reported: ([String], [CGRect])?
         private var irTimes: [Date] = []
         private var firstFrameMs: Int?
         private var fullRenderMs: Int?
@@ -403,7 +404,7 @@ struct PlannerMapView: UIViewRepresentable {
         /// target and at-time ones part way out), never over each other, the
         /// pin, the puck, the badge, the buttons, the banner or the scale bar.
         /// Labels that fit nowhere are hidden; the sheet lists every line.
-        fileprivate func declutter() {
+        fileprivate func declutter(report: Bool = true) {
             guard let map else { return }
             let s = parent.snapshot
             var reserved = s.obstructions.map { map.convert($0, from: nil).insetBy(dx: -4, dy: -4) }
@@ -425,20 +426,28 @@ struct PlannerMapView: UIViewRepresentable {
                     end: anchor, stops: l.stops))
             }
             let placed = MapLabelLayout.layout(requests, reserved: reserved, visible: visible)
+            var shown: [CGRect] = []
             for (key, (v, anchor)) in views {
                 if let c = placed[key] {
                     v.centerOffset = CGVector(dx: c.x - anchor.x, dy: c.y - anchor.y)
                     v.alpha = 1
+                    v.isHidden = false
                     v.isAccessibilityElement = true
+                    let size = v.bounds.size
+                    shown.append(map.convert(MapLabelLayout.frame(center: c, size: size), to: nil).integral)
                 } else {
                     v.alpha = 0
+                    v.isHidden = true
                     v.isAccessibilityElement = false
                 }
             }
+            // Reported once the map settles, not on every frame of a pan.
+            guard report else { return }
             let hidden = requests.map(\.key).filter { placed[$0] == nil }.sorted()
-            if hidden != hiddenReported {
-                hiddenReported = hidden
-                DispatchQueue.main.async { [weak self] in self?.parent.onLabelsHidden(hidden) }
+            shown.sort { ($0.minY, $0.minX) < ($1.minY, $1.minX) }
+            if reported?.0 != hidden || reported?.1 != shown {
+                reported = (hidden, shown)
+                DispatchQueue.main.async { [weak self] in self?.parent.onLabels(hidden, shown) }
             }
         }
 
@@ -537,7 +546,7 @@ extension PlannerMapView.Coordinator: @MainActor MLNMapViewDelegate {
 
     @objc(mapViewRegionIsChanging:)
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
-        declutter()
+        declutter(report: false)
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
