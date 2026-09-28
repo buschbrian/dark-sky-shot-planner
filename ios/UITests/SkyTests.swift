@@ -14,7 +14,12 @@ final class SkyTests: XCTestCase {
         // replaces the system tab bar with the red dock.
         app.launchArguments += ["-DarkSkyUITest", "-FieldMode", "NO"] + arguments
         app.launch()
-        app.tabBars.buttons["Sky"].tap()
+        // A later "-FieldMode YES" wins: field mode has the red dock, not the tab bar.
+        if let i = arguments.lastIndex(of: "-FieldMode"), arguments.indices.contains(i + 1), arguments[i + 1] == "YES" {
+            app.buttons["fieldDock.sky"].tap()
+        } else {
+            app.tabBars.buttons["Sky"].tap()
+        }
         return app
     }
 
