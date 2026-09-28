@@ -65,9 +65,10 @@ final class TonightModel {
         "\(place.latitude),\(place.longitude),\(place.timeZoneID),\(night.iso)"
     }
 
-    func load(place: Place, night: NightDate, provider: any ConditionsProviding) async {
+    /// The night's astronomy, then its neighbours'. Conditions follow in
+    /// `follow(place:night:provider:)`, which runs while the screen is active.
+    func load(place: Place, night: NightDate) async {
         await loadAstronomy(place: place, night: night)
-        await loadConditions(place: place, night: night, provider: provider)
         await prefetchNeighbours(place: place, night: night)
     }
 
@@ -85,7 +86,8 @@ final class TonightModel {
 
     func loadAstronomy(place: Place, night: NightDate) async {
         let key = Self.key(place, night)
-        guard key != self.key || astronomy == nil else { return }
+        // Same key: either done, or another caller (`load` / `follow`) is computing it.
+        guard key != self.key else { return }
         self.key = key
         conditions = .idle
         verdict = nil
@@ -134,23 +136,46 @@ final class TonightModel {
         updateVerdict()
     }
 
-    /// Refetches only when a model has published a newer run (or the snapshot
-    /// passes `RefreshPolicy.maxAge`), checking `meta.json` just after each
-    /// run is due. Runs while the screen is visible and the app active.
-    func watchForNewRuns(place: Place, night: NightDate, provider: any ConditionsProviding) async {
-        guard let live = provider as? any LiveConditionsProviding else { return }
-        while !Task.isCancelled {
-            let latest = await live.latestRuns()
-            if Task.isCancelled { return }
-            if case .loaded = conditions, !refreshing,
-               let reason = RefreshPolicy.reason(
-                   snapshot: snapshot, latest: latest, now: .now, workerConfigured: live.workerConfigured) {
-                Perf.log.info("Refreshing conditions: \(String(describing: reason), privacy: .public)")
-                await loadConditions(place: place, night: night, provider: provider)
-            }
-            let wait = RefreshPolicy.nextCheck(latest: latest, now: .now).timeIntervalSinceNow
-            try? await Task.sleep(for: .seconds(max(wait, 1)))
+    /// Follows the conditions for this place and night: the saved copy at
+    /// once, then a fetch, then another each time the Worker expects new data
+    /// (`LiveConditionsProviding.updates`, which sleeps until the fetch's
+    /// `nextRefresh`: `ConditionsSchedule.nextFetch`). Runs while the screen
+    /// is visible and the app active; ends when that task is cancelled.
+    func follow(place: Place, night: NightDate, provider: any ConditionsProviding) async {
+        await loadAstronomy(place: place, night: night)
+        guard let live = provider as? any LiveConditionsProviding else {
+            return await loadConditions(place: place, night: night, provider: provider)
         }
+        let window = ConditionsRequest.nightWindow(night, in: place.timeZone)
+        if case .failure(let refusal) = ConditionsRequest.make(
+            latitude: place.latitude, longitude: place.longitude, window: window, now: .now) {
+            conditions = .none(reason: "No forecast for this night: \(refusal.message).")
+            updateVerdict()
+            return
+        }
+        let key = self.key
+        if case .idle = conditions { conditions = .loading }
+        refreshing = true
+        var interval: OSSignpostIntervalState? = Perf.signposter.beginInterval("Conditions fetch")
+        for await update in live.updates(for: place, window: window) {
+            guard key == self.key, !Task.isCancelled else { break }
+            if update.isSavedCopy {
+                // A copy already on screen for this night (a return to the app) is at least as new.
+                if case .loaded = conditions { continue }
+            } else {
+                if let i = interval { Perf.signposter.endInterval("Conditions fetch", i) }
+                interval = nil
+                refreshing = false
+                Perf.log.info("Conditions: \(String(describing: update.status), privacy: .public); next refresh in \(Int(update.nextRefresh.timeIntervalSinceNow), privacy: .public) s")
+            }
+            if let snapshot = update.snapshot {
+                conditions = .loaded(snapshot, status: update.status)
+            } else if !update.isSavedCopy, self.snapshot == nil {
+                conditions = .none(reason: "Offline, and nothing cached for this place and night.")
+            }
+            updateVerdict()
+        }
+        if key == self.key { refreshing = false }
     }
 
     private func prefetchNeighbours(place: Place, night: NightDate) async {

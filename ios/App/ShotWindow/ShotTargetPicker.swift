@@ -23,15 +23,14 @@ struct ShotTargetPicker: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Space.m) {
             ForEach(Self.groups) { group in
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: DS.Space.xs) {
                     Text(group.title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(palette.secondary)
+                        .eyebrow(palette)
                         .accessibilityAddTraits(.isHeader)
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: DS.Space.s) {
                             ForEach(group.targets, id: \.id) { target in
                                 chip(target)
                             }
@@ -49,23 +48,24 @@ struct ShotTargetPicker: View {
             plan.target = target
         } label: {
             Text(Self.label(target))
-                .font(.subheadline.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? palette.background : palette.primary)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 36)
-                .background(Capsule().fill(selected ? palette.accent : palette.surface))
-                .overlay(Capsule().stroke(palette.accent.opacity(selected ? 0 : 0.4)))
+                .font(.dsCallout.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? palette.onAccent : palette.primary)
+                .padding(.horizontal, DS.Space.m)
+                .frame(minHeight: DS.minTarget)
+                .background(Capsule().fill(selected ? palette.accentFill : palette.raised))
+                .overlay(Capsule().strokeBorder(selected ? palette.accentEdge : palette.hairline,
+                                                lineWidth: selected ? DS.Stroke.focus : DS.Stroke.hairline))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressDimStyle())
         .accessibilityLabel(target.name)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("shot.target.\(target.id)")
     }
 
     private var minimumAltitude: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Space.s) {
             Text(plan.minAltitudeDeg == 0 ? "Just clear the skyline" : "At least \(Int(plan.minAltitudeDeg))° up")
-                .font(.subheadline)
+                .font(.dsCallout)
                 .foregroundStyle(palette.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             step("minus", by: -1)
@@ -87,12 +87,9 @@ struct ShotTargetPicker: View {
     private func step(_ symbol: String, by delta: Int) -> some View {
         Button { move(delta) } label: {
             Image(systemName: symbol)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(palette.primary)
-                .frame(width: 44, height: 36)
-                .background(RoundedRectangle(cornerRadius: 8).fill(palette.surface))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ActionButtonStyle(.secondary, compact: true))
+        .accessibilityHidden(true)
     }
 
     private func move(_ delta: Int) {

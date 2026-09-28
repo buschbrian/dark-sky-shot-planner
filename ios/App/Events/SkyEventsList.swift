@@ -78,14 +78,14 @@ struct SkyEventCard: View {
                 Text(SkyEventsFormat.category(item.category))
                     .font(.caption).foregroundStyle(palette.secondary)
             }
-            Text(item.title).font(.headline).foregroundStyle(palette.primary)
-            Text(item.verdict).font(.subheadline).foregroundStyle(palette.primary)
+            Text(item.title).font(.dsHeadline).foregroundStyle(palette.primary)
+            Text(item.verdict).font(.dsCallout).foregroundStyle(palette.primary)
                 .fixedSize(horizontal: false, vertical: true)
             provenance
         }
-        .padding(14)
+        .padding(DS.Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 

@@ -26,6 +26,8 @@ struct SkyScreen: View {
     @State private var layers = SkyLayers()
     @State private var panel: SkyPanel?
     @State private var findTarget: SkyFindTarget?
+    /// The last `AppState.planFocus` applied (Tonight's "Find in sky").
+    @State private var appliedFocus: UUID?
     @State private var trail: StarTrailSequence?
     @State private var look = SimulatedLook.initial
     @State private var lookAtDragStart: SimulatedLook?
@@ -169,6 +171,20 @@ struct SkyScreen: View {
             controls(place: place, model: model, horizon: horizon, simulated: simulated,
                      time: scrubTime ?? (simulated != nil ? demoTime : .now))
         }
+        .task(id: state.planFocus?.id) {
+            applyPlanFocus(place: place, model: model, simulated: simulated != nil)
+        }
+    }
+
+    /// Tonight's "Find in sky": find the plan's target and preview the plan's
+    /// time (clamped to this night's span); the simulated view turns to it.
+    private func applyPlanFocus(place: Place, model: SkyModel, simulated: Bool) {
+        guard let focus = state.planFocus, focus.id != appliedFocus else { return }
+        appliedFocus = focus.id
+        findTarget = focus.target.skyFindTarget
+        let t = min(max(focus.time, model.window.start), model.window.end)
+        scrubTime = t
+        if simulated, let target = findTarget { pointSimulated(at: target, place: place, model: model, time: t) }
     }
 
     @ViewBuilder private func backdrop(simulated: Bool) -> some View {
@@ -298,6 +314,11 @@ struct SkyScreen: View {
             if let simulated {
                 SkyPill(text: "Simulated view · \(SimulatedSky.sweeps ? "sweeping around S" : look.description) · \(simulated)", color: palette.primary)
                     .accessibilityIdentifier("sky.simulated")
+            }
+            if let focus = state.planFocus, focus.id == appliedFocus, scrubTime != nil {
+                SkyPill(text: "Previewing the plan: \(focus.target.name) at \(Format.clock(scrubTime ?? focus.time, place.timeZone))",
+                        color: palette.primary)
+                    .accessibilityIdentifier("sky.planPreview")
             }
             if findTarget != nil {
                 TimelineView(.periodic(from: .now, by: 0.25)) { _ in

@@ -29,6 +29,8 @@ nonisolated struct WeekConditions: Sendable {
     var spaceWeather: SpaceWeatherResponse?
     /// Where each block's answer came from (review B-4), in block order.
     var statuses: [ConditionsStatus] = []
+    /// Each block's `nextRefresh`, in block order.
+    var nextRefreshes: [Date] = []
 
     static let none = WeekConditions(blocks: [], spaceWeather: nil)
 
@@ -64,7 +66,8 @@ nonisolated struct WeekConditions: Sendable {
             return ConditionsStatus.offlineCache(fetchedAt: shown.fetchedUTC)
         }
         return WeekConditions(
-            blocks: kept, spaceWeather: WeekPlanner.newer(spaceWeather, new.spaceWeather), statuses: statuses)
+            blocks: kept, spaceWeather: WeekPlanner.newer(spaceWeather, new.spaceWeather), statuses: statuses,
+            nextRefreshes: new.nextRefreshes)
     }
 }
 
@@ -255,7 +258,8 @@ nonisolated enum WeekPlanner {
         }
         return WeekConditions(
             blocks: Array(zip(blocks, fetches)).map { ($0, $1?.snapshot) }, spaceWeather: await sw,
-            statuses: fetches.map { $0?.status ?? .nothing })
+            statuses: fetches.map { $0?.status ?? .nothing },
+            nextRefreshes: fetches.compactMap { $0?.nextRefresh })
     }
 
     #if DEBUG

@@ -36,17 +36,17 @@ enum AppTab: Hashable {
 struct RootView: View {
     @Environment(AppState.self) private var state
     @Environment(\.scenePhase) private var scenePhase
-    @State private var tab = AppTab.tonight
     @State private var brightness = FieldBrightness()
 
     var body: some View {
+        @Bindable var state = state
         let palette = state.fieldMode ? Palette.field : Palette.standard
-        TabView(selection: $tab) {
-            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider).fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldDock(state.fieldMode, tab: $tab) }
-            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldDock(state.fieldMode, tab: $tab) }
+        TabView(selection: $state.tab) {
+            Tab("Tonight", systemImage: "moon.stars", value: AppTab.tonight) { NightTab().fieldDock(state.fieldMode, tab: $state.tab) }
+            Tab("Map", systemImage: "map", value: AppTab.map) { MapScreen().fieldDock(state.fieldMode, tab: $state.tab) }
+            Tab("Sky", systemImage: "camera.viewfinder", value: AppTab.sky) { SkyScreen().environment(\.skyRadiants, CuratedRadiants.provider).fieldDock(state.fieldMode, tab: $state.tab) }
+            Tab("Spots", systemImage: "mappin.and.ellipse", value: AppTab.spots) { SpotsScreen().fieldDock(state.fieldMode, tab: $state.tab) }
+            Tab("Tools", systemImage: "camera.aperture", value: AppTab.tools) { ToolsScreen().fieldDock(state.fieldMode, tab: $state.tab) }
         }
         .environment(brightness)
         .tint(palette.accent)
@@ -66,7 +66,7 @@ struct RootView: View {
         .onChange(of: state.fieldMode) { _, on in brightness.sync(fieldMode: on, active: scenePhase == .active) }
         .onChange(of: scenePhase) { _, phase in brightness.sync(fieldMode: state.fieldMode, active: phase == .active) }
         #if DEBUG
-        .onAppear { DebugLaunch.apply(to: state, tab: &tab) }
+        .onAppear { DebugLaunch.apply(to: state) }
         .overlay {
             if DebugLaunch.showsGallery {
                 DesignGallery()
@@ -85,14 +85,15 @@ struct RootView: View {
 enum DebugLaunch {
     static let showsGallery = UserDefaults.standard.string(forKey: "DSTab") == "gallery"
 
-    static func apply(to state: AppState, tab: inout AppTab) {
+    static func apply(to state: AppState) {
         WeekDebug.applyLaunchPlace(to: state)
+        state.prefetchSkyEvents()
         switch UserDefaults.standard.string(forKey: "DSTab") {
         case "week": state.nightScope = .week
-        case "map": tab = .map
-        case "sky": tab = .sky
-        case "spots": tab = .spots
-        case "tools": tab = .tools
+        case "map": state.tab = .map
+        case "sky": state.tab = .sky
+        case "spots": state.tab = .spots
+        case "tools": state.tab = .tools
         default: break
         }
     }
@@ -144,8 +145,15 @@ struct NightTab: View {
         .onAppear(perform: restore)
     }
 
-    private func choose(_ choice: LocationChoice) { state.choose(choice) }
+    private func choose(_ choice: LocationChoice) {
+        state.choose(choice)
+        state.prefetchSkyEvents()
+    }
 
     /// A relaunch opens where the owner left off; UI tests always start empty.
-    private func restore() { state.restoreRememberedPlace() }
+    private func restore() {
+        if !RememberedPlace.persists() { UserDefaults.standard.removeObject(forKey: ShotPlan.storageKey) }
+        state.restoreRememberedPlace()
+        state.prefetchSkyEvents()
+    }
 }

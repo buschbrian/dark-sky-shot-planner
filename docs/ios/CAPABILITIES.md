@@ -16,8 +16,8 @@ capability is broken.
 | Capability | Implemented | Reachable | Simulator-tested | Phone-tested | Field-tested | Notes |
 |---|---|---|---|---|---|---|
 | Tonight — verdict, moon-free minutes, GC window | Yes | Yes (default tab) | Yes | Yes | Unverified | `ios/App/Tonight/TonightScreen.swift`. `TonightTests.testOfflineConditionsAreUnavailableNeverGood`, `testScreenshotTour` pass (REVIEW-2026-09-27-FABLE.md §F). No dark-site verdict-vs-sky log found in PLAN.md §Log. |
-| Tonight — shot window for a specific target (`ShotWindowCard`/`ShotWindowSection`/`ShotTargetPicker`) | Yes | **No** | No | No | No | `ios/App/ShotWindow/`. Grep for these three types outside `ios/App/ShotWindow/` returns nothing — no screen instantiates them (REVIEW-2026-09-27-FABLE.md B-3, product review §1). Being wired onto Tonight now; not a user-facing capability yet. |
-| Tonight — sky events within 30 days (`SkyEventsSection`/`SkyEventsList`) | Yes | **No** | No | No | No | `ios/App/Events/`. Same dead-code pattern as the shot window: unreferenced outside `ios/App/Events/` (REVIEW-2026-09-27-FABLE.md B-3). Being wired now. |
+| Tonight — shot window for a specific target (`ShotWindowCard`/`ShotWindowSection`/`ShotTargetPicker`) | Yes | Yes (Tonight, first block under the date; compact line on a spot page) | Yes | No | No | `ios/App/ShotWindow/`. Default target the Galactic Center, remembered; a saved spot's skyline when the place is that spot, else a labelled flat-horizon estimate. Verdict for the selected window, other windows selectable; Save plan (recorded on the phone, no list yet), Show on map (switches tab and night; the Map does not read the target/time yet), Find in sky. `ShotEventsTests.testShotWindowAtCandlestickNamesClearanceAndMinutes`, `testFullMoonNightReadsTheSameEverywhere`, `DesignTourTests.testNightTabTour` (field scan). |
+| Tonight — sky events within 30 days (`SkyEventsSection`/`SkyEventsList`) | Yes | Yes (Tonight after the sky facts; Week row badges; "All sky events" pushes the list) | Yes | No | No | `ios/App/Events/`. "Plan this" sets the shot target and night. `ShotEventsTests.testEventsSectionAndWeekBadgeOnAnEventNight`, `DesignTourTests.testNightTabTour` (field scan). |
 | Tonight — "tonight" rolls to the coming night after darkness ends | Yes | Yes | Yes (SkyCore `NightDate` tests + `shared/golden/tonight.json` parity) | Yes (installed at 66e0c34) | Unverified | Fixed in 5b4a702/97fceec (review B-2): `NightDate.current`/`currentSpan` drive Tonight, Week, Map, Spots and the widget. Not yet checked after dawn at a site. |
 | Week — 7-night outlook per spot | Yes | Yes (inside the Tonight tab) | Yes | Yes | Unverified | `ios/App/Week/WeekScreen.swift`. `WeekToolsTests` pass. Uses the same coming-night rule as Tonight. |
 | Map — full-screen map, bottom sheet, target line, Compare view, scrubber | Yes | Yes | Yes (`MapTests.testCollapsedSheetLeavesTheMapMostOfTheScreen`, `testLabelsNeverOverlapAtZoom8`, `testMapLoadsAndCoordinateSetsPlaceWithoutTheMap`, `testCenterOnPinRecentres`; `DarkSkyTests/MapLabelLayoutTests`) | Unverified | Unverified | `ios/App/Map/MapScreen.swift`, `MapSheet.swift`, `MapPanel.swift`, `MapLabelLayout.swift` (local/ios-maplayout). The map fills the tab; the panel is a bottom sheet (peek / half / full) whose peek shows the place, basemap and the shot plan's target line at the scrubber time. The Sun/Moon/GC rise-transit-set fan is an optional Compare toggle. Labels are decluttered (no overlaps; hidden ones listed in the sheet) and capped at extra large. Centre on pin sits beside centre on me, bottom right. Collapsed, the map keeps 81.8 % (standard) / 76.9 % (field) of an iPhone 17 screen at default text and 81.0 % / 70.5 % at Accessibility L (the field dock alone takes ~22 % there). Tab to first frame 392 ms, fully rendered 955 ms (simulator). |
@@ -47,10 +47,11 @@ capability is broken.
 
 ## Known gaps (plain statement)
 
-- **Shot window and sky events are not on Tonight.** The code for both
-  exists (`ios/App/ShotWindow/`, `ios/App/Events/`) but no screen wires
-  them in. This is being connected now (REVIEW-2026-09-27-FABLE.md B-3,
-  product review §1).
+- **Shot window and sky events are on Tonight, but not yet everywhere.**
+  Both are reachable and simulator-tested (rows above). Still missing: the
+  Map does not read the plan's target and time (`AppState.planFocus`), a
+  saved plan has no list or Calendar export, and neither has been checked
+  on the phone or at a dark site.
 - **Light pollution and PAD-US land-ownership map layers are sample
   fixtures**, not real data, on every build until `data-refresh.yml` runs
   with a NASA Earthdata token (README "What the site shows"; product

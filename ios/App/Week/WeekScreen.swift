@@ -72,8 +72,11 @@ final class WeekLoader {
     var failure: String?
     var computedAt = Date.now
 
-    /// How often an open Week asks the provider again, to pick up a newer model run.
-    static let refreshInterval = Duration.seconds(15 * 60)
+    /// How long an open Week waits before asking again: until the soonest
+    /// block's `nextRefresh` (the Worker's expected update), not a fixed timer.
+    var nextWait: Duration {
+        .seconds(RefreshTiming.weekWait(nextRefreshes: conditions.nextRefreshes, now: .now))
+    }
     private static let config = Result { try WeekConfig.bundled() }
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DarkSky", category: "Week")
 
@@ -85,7 +88,7 @@ final class WeekLoader {
             let config = try Self.config.get()
             let observer = try place.observer()
             let zone = place.timeZone
-            let key = WeekCache.Key(place: place, first: place.tonight(at: now))
+            let key = WeekCache.Key(place: place, first: place.firstListedNight(at: now))
             if nights.isEmpty, let last = WeekCache.rows[key] {
                 nights = last.rows
                 conditions = WeekCache.conditions[key] ?? .none
@@ -164,9 +167,10 @@ private struct WeekList: View {
                         Text(failure).font(.dsData).foregroundStyle(palette.tertiary)
                     }
                 }
-                ForEach(Array(loader.nights.enumerated()), id: \.element.id) { index, night in
+                ForEach(Array(loader.nights.enumerated()), id: \.element.id) { _, night in
                     Button { open(night) } label: {
-                        WeekRowView(night: night, place: place, isTonight: index == 0, now: loader.computedAt)
+                        WeekRowView(night: night, place: place, isTonight: night.id == place.tonight(), now: loader.computedAt,
+                                    weekStart: loader.nights.first?.id)
                     }
                     .buttonStyle(PressDimStyle())
                     .accessibilityHint("Opens this night in Tonight")
@@ -179,10 +183,17 @@ private struct WeekList: View {
             .padding(.bottom, DS.Space.xl)
         }
         .refreshable { refresh += 1 }
+        // The rows' event badges share one agenda run from the first listed
+        // night. A badge with nothing to show draws no view, so its own task
+        // cannot start the load; the list does.
+        .task(id: loader.nights.first?.id) {
+            guard let first = loader.nights.first?.id else { return }
+            await SkyEventsStore.shared.load(place: place, night: first)
+        }
         .task(id: LoadKey(place: place, refresh: refresh)) {
             await loader.load(place: place, provider: provider)
             while !Task.isCancelled {
-                try? await Task.sleep(for: WeekLoader.refreshInterval)
+                try? await Task.sleep(for: loader.nextWait)
                 guard !Task.isCancelled else { break }
                 await loader.load(place: place, provider: provider)
             }
@@ -245,6 +256,8 @@ struct WeekRowView: View {
     let place: Place
     let isTonight: Bool
     let now: Date
+    /// The list's first night, so every row's event badge shares one agenda run.
+    var weekStart: NightDate?
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -260,6 +273,7 @@ struct WeekRowView: View {
                     badge
                 }
             }
+            SkyEventBadge(place: place, night: night.id, weekStart: weekStart)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
                     minutes

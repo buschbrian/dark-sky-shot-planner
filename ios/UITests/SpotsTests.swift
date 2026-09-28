@@ -72,8 +72,11 @@ final class SpotsTests: XCTestCase {
         let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
         if allow.waitForExistence(timeout: 5) { allow.tap() }
         XCTAssertTrue(el("alert-last-checked").waitForExistence(timeout: 5))
-        XCTAssertTrue(el("alert-check-now").exists)
         XCTAssertEqual(toggle.value as? String, "1")
+        // The list is lazy: the spot's shot-window line sits above, so bring "Check now" on screen first.
+        let check = el("alert-check-now")
+        check.swipeUpUntilVisible(in: app)
+        XCTAssertTrue(check.exists)
         shot("spot-alert")
     }
 

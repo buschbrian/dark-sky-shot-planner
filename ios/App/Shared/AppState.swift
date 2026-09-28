@@ -21,6 +21,21 @@ nonisolated struct Place: Hashable, Codable, Sendable {
     func tonight(at now: Date = .now) -> NightDate {
         TonightClock.shared.night(for: self, at: now)
     }
+
+    /// The first night Week and a spot's strip list: tonight, or in Debug the
+    /// launch environment's `DS_FIRST_NIGHT=YYYY-MM-DD` (UI tests that need a
+    /// known full-moon or event night whatever today is).
+    func firstListedNight(at now: Date = .now) -> NightDate {
+        Self.debugFirstNight ?? tonight(at: now)
+    }
+
+    static var debugFirstNight: NightDate? {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["DS_FIRST_NIGHT"].flatMap(NightDate.init(iso:))
+        #else
+        nil
+        #endif
+    }
 }
 
 /// Remembers each place's current night and when it stops being current, so
@@ -53,6 +68,13 @@ final class AppState {
     var chosenNight: NightDate?
     /// Which half of the Tonight tab shows; Week rows switch it to Tonight.
     var nightScope = NightTab.Scope.tonight
+    /// The selected tab, so a screen can send the owner to another one
+    /// (Tonight's "Show on map" and "Find in sky").
+    var tab = AppTab.tonight
+    /// The shot being looked at, handed from Tonight to Sky (and to Map once
+    /// the Map screen reads it): the target and the time to preview. Each
+    /// request has its own id, so asking twice for the same shot still applies.
+    var planFocus: PlanFocus?
     /// Remembered across launches (`FieldModePreference`); `-FieldMode YES|NO`
     /// at launch overrides it without being saved (UI tests, screenshots).
     var fieldMode = FieldModePreference.initial() {
@@ -63,8 +85,23 @@ final class AppState {
         chosenNight ?? tonight(at: now)
     }
 
+    /// Starts the sky-events agenda for the place and night on a background
+    /// thread, so Tonight's section and Week's badges draw with data.
+    func prefetchSkyEvents() {
+        guard let place else { return }
+        SkyEventsStore.shared.prefetch(place: place, night: night())
+    }
+
     /// The current night whatever night is chosen (`Place.tonight`).
     func tonight(at now: Date = .now) -> NightDate {
         place?.tonight(at: now) ?? NightDate.containing(now, in: .current)
     }
+}
+
+/// A target at a time on a night, for another tab to show.
+nonisolated struct PlanFocus: Equatable, Sendable {
+    let id = UUID()
+    let target: ShotTarget
+    let time: Date
+    let night: NightDate
 }

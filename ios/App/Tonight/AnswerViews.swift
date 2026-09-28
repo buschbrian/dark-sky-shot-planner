@@ -22,8 +22,10 @@ struct AnswerCard: View {
             NightBar(span: strip.span, darkness: strip.darkness, moonFree: strip.moonFree, timeZone: timeZone, now: now)
                 .accessibilityIdentifier("tonight.nightBar")
             Rectangle().fill(palette.hairline).frame(height: 1).padding(.vertical, DS.Space.xs)
-            VerdictBlock(verdict: verdict, now: now, workerConfigured: workerConfigured)
+            VerdictBlock(verdict: verdict, now: now, workerConfigured: workerConfigured,
+                         moonFreeMinutes: report.noAstronomicalDarkness ? nil : report.moonFreeMinutes)
             DataStatusLine(symbol: origin.symbol, text: origin.text(now: now), tone: origin.tone)
+                .reservingLines(2, font: .dsFootnote)
                 .accessibilityIdentifier("tonight.conditionsOrigin")
             // Side by side while they fit; stacked full-width at large type sizes.
             ViewThatFits(in: .horizontal) {

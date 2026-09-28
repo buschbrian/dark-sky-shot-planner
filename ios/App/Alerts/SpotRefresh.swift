@@ -12,8 +12,6 @@ import WidgetKit
 /// force-quit (ADR-0010), so the UI always shows when it last ran.
 enum SpotRefresh {
     static var taskIdentifier: String { (Bundle.main.bundleIdentifier ?? "darksky") + ".refresh" }
-    /// Earliest next run; iOS usually waits longer.
-    static let interval: TimeInterval = 3 * 3600
     /// Conditions requests in flight across all spots in one run.
     static let globalRequests = 3
     static let lastBackgroundRunKey = "SpotRefresh.lastBackgroundRun"
@@ -33,13 +31,15 @@ enum SpotRefresh {
     /// a new request replaces the pending one.
     static func schedule(_ container: ModelContainer) {
         let context = ModelContext(container)
-        let needed = (try? context.fetchCount(FetchDescriptor<Spot>(predicate: needsRefresh))) ?? 0
-        guard needed > 0 else {
+        let needed = (try? context.fetch(FetchDescriptor<Spot>(predicate: needsRefresh))) ?? []
+        guard !needed.isEmpty else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
             return
         }
         let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: interval)
+        // When the Worker expects new data for the soonest spot, within 15 min … 3 h (iOS usually waits longer).
+        request.earliestBeginDate = RefreshTiming.spotsEarliestBegin(
+            nextRefreshes: needed.map { $0.week?.nextRefresh }, now: .now)
         // Fails in the simulator and when Background App Refresh is off; the UI's "last checked" tells the truth.
         try? BGTaskScheduler.shared.submit(request)
     }

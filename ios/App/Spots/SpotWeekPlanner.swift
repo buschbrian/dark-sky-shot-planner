@@ -61,7 +61,8 @@ nonisolated enum SpotWeekPlanner {
     ) async -> SpotWeek {
         let observer = try? Observer(latitude: input.latitude, longitude: input.longitude)
         // After dawn the strip starts at the coming night (review B-2).
-        let first = observer.map { NightDate.current(at: now, observer: $0, timeZone: input.timeZone) }
+        let first = Place.debugFirstNight
+            ?? observer.map { NightDate.current(at: now, observer: $0, timeZone: input.timeZone) }
             ?? NightDate.containing(now, in: input.timeZone)
         let dates = (0..<nightCount).map { first.adding(days: $0) }
 
@@ -82,6 +83,7 @@ nonisolated enum SpotWeekPlanner {
         let plan = requests(needs)
         var snapshots: [Int: ConditionsSnapshot] = [:]
         var statuses: [ConditionsStatus] = []
+        var refreshes: [Date] = []
         var fetched = 0
         await withTaskGroup(of: (Request, ConditionsFetch?).self) { group in
             var next = 0
@@ -98,7 +100,10 @@ nonisolated enum SpotWeekPlanner {
             }
             for _ in 0..<min(perSpotRequests, plan.count) { enqueue() }
             for await (request, result) in group {
-                if let result { statuses.append(result.status) }
+                if let result {
+                    statuses.append(result.status)
+                    refreshes.append(result.nextRefresh)
+                }
                 if let snapshot = result?.snapshot {
                     fetched += 1
                     for i in request.nights { snapshots[i] = snapshot }
@@ -123,7 +128,8 @@ nonisolated enum SpotWeekPlanner {
         }
         return SpotWeek(checkedAt: now, terrainAware: input.horizon != nil, nights: nights,
                         requestedWindows: plan.count, fetchedWindows: fetched, interrupted: interrupted,
-                        conditionsStatus: ConditionsStatus.combined(statuses))
+                        conditionsStatus: ConditionsStatus.combined(statuses),
+                        nextRefresh: RefreshTiming.soonest(refreshes))
     }
 
     static func summary(_ v: Verdict) -> VerdictSummary {

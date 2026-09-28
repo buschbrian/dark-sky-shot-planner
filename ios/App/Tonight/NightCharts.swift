@@ -121,9 +121,12 @@ struct NightStripChart: View {
     }
 }
 
-/// Hour-by-hour conditions under the night strip: cloud low/mid/high per model,
-/// AOD, transparency, wind gust and dew spread. Brighter cells are worse; an
-/// hour with no value is left empty and a row with no data reads unavailable.
+/// Hour-by-hour conditions, one readable row per factor (review §D Tonight 6):
+/// cloud (the worst model and layer each hour), haze, wind gust and dew
+/// spread. Brighter cells are worse; the row says the worst value, when and
+/// from which model; every model's own range is one tap away. An hour with no
+/// value is left empty and a factor with no data reads unavailable. The
+/// height is the same before and after the data arrives.
 struct ConditionsStripChart: View {
     let rows: [StripRow]
     let span: TimeWindow
@@ -133,94 +136,108 @@ struct ConditionsStripChart: View {
     let loading: Bool
     @Environment(\.palette) private var palette
 
+    private var factors: [FactorStrip] { FactorStrip.rows(from: rows) }
+
     var body: some View {
         SectionCard("Conditions by hour") {
-            chart
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Conditions by hour")
-                .accessibilityValue(summary)
-                .accessibilityIdentifier("tonight.conditionsStrip")
+            VStack(alignment: .leading, spacing: DS.Space.m) {
+                let all = factors
+                ForEach(Array(all.enumerated()), id: \.element.id) { i, f in
+                    row(f, axis: i == all.count - 1)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Conditions by hour")
+            .accessibilityValue(summary)
+            .accessibilityIdentifier("tonight.conditionsStrip")
             if sources.isEmpty {
                 ProvenanceChip(info: SourceInfo(source: loading ? "checking" : "no source", freshness: .unavailable), now: now)
             } else {
                 ForEach(sources, id: \.self) { ProvenanceChip(info: $0, now: now) }
             }
-            MoreInfo(title: "How to read this") {
-                Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. The shaded band is astronomical darkness.")
-                Text("A row marked – is unavailable: no value, never clear. Empty cells are hours a model does not cover.")
+            MoreInfo(title: "Every model", id: "tonight.conditionsModels") {
+                ForEach(rows) { r in
+                    Text(modelLine(r)).font(.dsData).foregroundStyle(palette.secondary)
+                }
+                Text("Brighter cells are worse: more cloud, haze or wind, or a dew spread under 4 °C. The shaded band is astronomical darkness. Cloud shows the worst model and layer each hour, never an average.")
+                    .font(.dsFootnote).foregroundStyle(palette.secondary)
             }
         }
     }
 
-    @ScaledMetric(relativeTo: .caption2) private var rowHeight = 18.0
-    private static let axisHeight = 24.0
+    @ScaledMetric(relativeTo: .caption) private var cellHeight = 14.0
 
-    private var chart: some View {
-        HStack(alignment: .top, spacing: DS.Space.s) {
-            VStack(alignment: .trailing, spacing: 0) {
-                ForEach(rows) { row in
-                    Text(row.unavailableReason == nil ? row.title : "\(row.title) –")
-                        .font(.caption2)
-                        .foregroundStyle(row.unavailableReason == nil ? palette.primary : palette.tertiary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(height: rowHeight)
+    private func row(_ f: FactorStrip, axis: Bool) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    title(f)
+                    Spacer(minLength: DS.Space.s)
+                    detail(f)
+                }
+                VStack(alignment: .leading, spacing: DS.Space.xxs) {
+                    title(f)
+                    detail(f)
                 }
             }
-            .fixedSize()
-            grid
+            cells(f, axis: axis)
+                .frame(height: cellHeight + (axis ? 22 : 0))
         }
-        .frame(height: CGFloat(rows.count) * rowHeight + Self.axisHeight)
     }
 
-    /// Row i fills [i + 0.1, i + 0.9] on a numeric axis, first row at the top.
-    private var grid: some View {
+    private func title(_ f: FactorStrip) -> some View {
+        Text(f.kind.rawValue).font(.dsCallout.weight(.semibold)).foregroundStyle(palette.primary)
+    }
+
+    private func detail(_ f: FactorStrip) -> some View {
+        Text(worstText(f))
+            .font(.dsFootnote)
+            .foregroundStyle(f.points.isEmpty ? palette.tertiary : palette.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+
+    private func worstText(_ f: FactorStrip) -> String {
+        if f.points.isEmpty { return loading ? "checking…" : Voice.unavailable }
+        guard let w = f.worst(within: darkness ?? span) ?? f.worst(within: span) else { return "none in the night" }
+        var text = "worst \(Format.value(w.v, unit: f.unit)) at \(Format.clock(w.t, timeZone))"
+        if let m = w.model { text += " (\(StripRow.modelLabel(m)))" }
+        return text
+    }
+
+    private func cells(_ f: FactorStrip, axis: Bool) -> some View {
         Chart {
             if let d = darkness {
-                RectangleMark(
-                    xStart: .value("Time", d.start), xEnd: .value("Time", d.end),
-                    yStart: .value("Row", 0.0), yEnd: .value("Row", Double(rows.count)))
+                RectangleMark(xStart: .value("Time", d.start), xEnd: .value("Time", d.end),
+                              yStart: .value("Row", 0.0), yEnd: .value("Row", 1.0))
                     .foregroundStyle(palette.data.darkness)
             }
-            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                let top = Double(rows.count - index)
-                ForEach(row.points.filter { $0.v != nil && $0.t > span.start.addingTimeInterval(-1800) && $0.t < span.end.addingTimeInterval(1800) }, id: \.t) { p in
-                    RectangleMark(
-                        xStart: .value("Time", max(p.t.addingTimeInterval(-1800), span.start)),
-                        xEnd: .value("Time", min(p.t.addingTimeInterval(1800), span.end)),
-                        yStart: .value("Row", top - 0.9),
-                        yEnd: .value("Row", top - 0.1))
-                        .foregroundStyle(palette.data.cell.opacity(0.08 + 0.87 * badness(row, p.v!)))
-                }
+            ForEach(f.points.filter { $0.t > span.start.addingTimeInterval(-1800) && $0.t < span.end.addingTimeInterval(1800) }, id: \.t) { p in
+                RectangleMark(
+                    xStart: .value("Time", max(p.t.addingTimeInterval(-1800), span.start)),
+                    xEnd: .value("Time", min(p.t.addingTimeInterval(1800), span.end)),
+                    yStart: .value("Row", 0.1), yEnd: .value("Row", 0.9))
+                    .foregroundStyle(palette.data.cell.opacity(0.08 + 0.87 * f.badness(p.v)))
             }
             if now >= span.start && now <= span.end {
                 RuleMark(x: .value("Now", now)).foregroundStyle(palette.primary.opacity(0.7))
             }
         }
         .chartXScale(domain: span.start...span.end)
-        .chartYScale(domain: 0...Double(max(rows.count, 1)))
+        .chartYScale(domain: 0...1)
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
         .chartXAxis { DSChart.hourAxis(palette) }
+        .chartXAxis(axis ? .automatic : .hidden)
         .chartPlotStyle { $0.background(palette.data.twilight.opacity(0.35)).clipped() }
         .environment(\.timeZone, timeZone)
-        .overlay {
-            if loading && rows.allSatisfy({ $0.points.isEmpty }) {
-                Text("Checking conditions…").font(.caption).foregroundStyle(palette.secondary)
-            }
-        }
     }
 
-    /// 0 is harmless, 1 is as bad as the scale shows.
-    private func badness(_ row: StripRow, _ v: Double) -> Double {
-        let x: Double = switch row.kind {
-        case .cloudLow, .cloudMid, .cloudHigh: v / 100
-        case .aerosol: v / 0.3
-        case .transparency: (v - 1) / 7
-        case .wind: v / 50
-        case .dewSpread: 1 - v / 8
-        }
-        return min(max(x, 0), 1)
+    private func modelLine(_ r: StripRow) -> String {
+        guard r.unavailableReason == nil else { return "\(r.title): \(Voice.unavailable)" }
+        let vs = r.points.compactMap(\.v)
+        guard let lo = vs.min(), let hi = vs.max() else { return "\(r.title): \(Voice.unavailable)" }
+        return "\(r.title) \(Format.value(lo, unit: r.unit)) to \(Format.value(hi, unit: r.unit))"
     }
 
     /// One chip per source: its models and the oldest input's age.
@@ -234,11 +251,66 @@ struct ConditionsStripChart: View {
     }
 
     private var summary: String {
-        rows.map { row in
-            guard row.unavailableReason == nil else { return "\(row.title): unavailable" }
-            let vs = row.points.compactMap(\.v)
-            guard let lo = vs.min(), let hi = vs.max() else { return "\(row.title): unavailable" }
-            return "\(row.title) \(Format.value(lo, unit: row.unit)) to \(Format.value(hi, unit: row.unit))"
+        factors.map { f in
+            f.points.isEmpty ? "\(f.kind.rawValue): unavailable" : "\(f.kind.rawValue): \(worstText(f))"
         }.joined(separator: "; ")
+    }
+}
+
+/// One factor's hourly worst value across models (and, for cloud, layers).
+struct FactorStrip: Identifiable {
+    enum Kind: String, CaseIterable {
+        case cloud = "Cloud", haze = "Haze (AOD)", wind = "Wind gust", dew = "Dew spread"
+    }
+
+    struct Point {
+        let t: Date
+        let v: Double
+        let model: String?
+    }
+
+    let kind: Kind
+    let unit: String
+    let points: [Point]
+    var id: String { kind.rawValue }
+
+    /// 0 is harmless, 1 is as bad as the scale shows.
+    func badness(_ v: Double) -> Double {
+        let x: Double = switch kind {
+        case .cloud: v / 100
+        case .haze: v / 0.3
+        case .wind: v / 50
+        case .dew: 1 - v / 8
+        }
+        return min(max(x, 0), 1)
+    }
+
+    /// The worst hour inside `window`.
+    func worst(within window: TimeWindow) -> Point? {
+        let inside = points.filter { $0.t >= window.start && $0.t <= window.end }
+        return kind == .dew ? inside.min { $0.v < $1.v } : inside.max { $0.v < $1.v }
+    }
+
+    /// Always four rows, in this order, whatever arrived.
+    static func rows(from strip: [StripRow]) -> [FactorStrip] {
+        Kind.allCases.map { kind in
+            let members = strip.filter { r in
+                switch (kind, r.kind) {
+                case (.cloud, .cloudLow), (.cloud, .cloudMid), (.cloud, .cloudHigh): true
+                case (.haze, .aerosol), (.wind, .wind), (.dew, .dewSpread): true
+                default: false
+                }
+            }.filter { $0.unavailableReason == nil }
+            var byTime: [Date: Point] = [:]
+            for r in members {
+                for p in r.points {
+                    guard let v = p.v else { continue }
+                    if let old = byTime[p.t], kind == .dew ? old.v <= v : old.v >= v { continue }
+                    byTime[p.t] = Point(t: p.t, v: v, model: r.model)
+                }
+            }
+            let unit = members.first?.unit ?? (kind == .cloud ? "%" : "")
+            return FactorStrip(kind: kind, unit: unit, points: byTime.values.sorted { $0.t < $1.t })
+        }
     }
 }

@@ -136,8 +136,13 @@ public enum ShotText {
     /// "Core clears the ridge 23:40, 1 h 55 min moon-free"; the astronomy half
     /// of the headline, true offline.
     public static func astronomy(_ shot: ShotWindow, clock: (Date) -> String) -> String {
+        astronomy(shot, window: nil, clock: clock)
+    }
+
+    /// The same for one window (nil: the longest).
+    public static func astronomy(_ shot: ShotWindow, window index: Int?, clock: (Date) -> String) -> String {
         let who = shot.target.shortName
-        guard let best = shot.best else {
+        guard let i = index ?? shot.bestIndex, shot.windows.indices.contains(i) else {
             switch shot.shortfall {
             case .noDarkness: return "No astronomical darkness this night"
             case .neverClears: return "\(who) never \(clearsPhrase(shot)) in darkness"
@@ -145,6 +150,7 @@ public enum ShotText {
             case nil: return "\(who): no usable window"
             }
         }
+        let best = shot.windows[i]
         let opening: String = switch best.opensBy {
         case .targetClears: "\(who) \(clearsPhrase(shot)) \(clock(best.start))"
         case .dusk: "\(who) up at dusk \(clock(best.start))"
@@ -184,9 +190,11 @@ public enum ShotText {
         return text
     }
 
-    /// The whole answer-first line.
-    public static func headline(_ shot: ShotWindow, readout: ShotReadout?, clock: (Date) -> String) -> String {
-        let sky = astronomy(shot, clock: clock)
+    /// The whole answer-first line, for one window (nil: the longest).
+    public static func headline(
+        _ shot: ShotWindow, readout: ShotReadout?, window index: Int? = nil, clock: (Date) -> String
+    ) -> String {
+        let sky = astronomy(shot, window: index, clock: clock)
         guard shot.best != nil else { return sky }
         return "\(sky), \(clouds(readout?.clouds))"
     }
@@ -212,11 +220,12 @@ public enum ShotText {
         }
     }
 
-    /// Nil for one window; otherwise the verdict's scope, which is every
-    /// window (see `ShotWindow.nightForVerdict`), not only the one shown.
+    /// Nil for one window; otherwise the verdict's scope, which is the
+    /// selected window only (see `ShotWindow.nightForVerdict(window:)`).
     public static func verdictScope(_ shot: ShotWindow) -> String? {
         guard shot.windows.count > 1 else { return nil }
-        return "Verdict covers all \(shot.windows.count) windows (\(duration(minutes: shot.totalMinutes))), not only the longest"
+        let others = shot.windows.count - 1
+        return "Verdict for this window only; \(others) other window\(others == 1 ? "" : "s") below"
     }
 
     /// "HRRR 12 % (run 20Z, 40 min old)" per model of the limiting factor.

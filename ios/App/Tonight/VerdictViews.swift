@@ -7,13 +7,17 @@ struct VerdictBlock: View {
     let verdict: Verdict?
     let now: Date
     let workerConfigured: Bool
+    /// The night's moon-free minutes (nil without astronomical darkness): a
+    /// night with none is "Moon up", as on Week and Spots (product review §2).
+    var moonFreeMinutes: Int?
     @Environment(\.palette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {
             if let verdict {
+                let level = StatusLevel(verdict.level, moonFreeMinutes: moonFreeMinutes)
                 HStack(spacing: DS.Space.s) {
-                    StatusBadge(level: StatusLevel(verdict.level), qualifier: qualifier(verdict), large: true)
+                    StatusBadge(level: level, qualifier: level == .moonUp ? nil : qualifier(verdict), large: true)
                     if verdict.flags.contains(.auroraPossible) {
                         Label("Aurora possible", systemImage: "sparkles")
                             .font(.dsFootnote.weight(.semibold))
@@ -24,6 +28,7 @@ struct VerdictBlock: View {
                     .font(.dsBody)
                     .foregroundStyle(palette.primary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .reservingLines(2, font: .dsBody)
                 ProvenanceChip(info: FactorText.source(verdict.limiting), now: now)
             } else {
                 StatusBadge(level: .unavailable, large: true)
@@ -50,6 +55,8 @@ struct FactorsSheet: View {
     let verdict: Verdict
     let now: Date
     let workerConfigured: Bool
+    var moonFreeMinutes: Int?
+    @AppStorage(ShotPlan.storageKey) private var plan = ShotPlan()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.palette) private var palette
 
@@ -60,8 +67,8 @@ struct FactorsSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Space.cardGap) {
-                    StatusBadge(level: StatusLevel(verdict.level), large: true)
-                    Text(verdict.headline.map { "\($0). Conditions don't matter tonight." }
+                    StatusBadge(level: StatusLevel(verdict.level, moonFreeMinutes: moonFreeMinutes), large: true)
+                    Text(verdict.headline.map { "\($0). \(ShotActivity.weatherNote(plan.target))" }
                         ?? "The worst factor that gates the verdict, over the moon-free dark window. Advisories are shown but never decide it.")
                         .font(.dsFootnote)
                         .foregroundStyle(palette.secondary)
