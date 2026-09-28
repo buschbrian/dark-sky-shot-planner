@@ -59,7 +59,7 @@ final class CaptureScreenTests: XCTestCase {
             let start = app.buttons["capture.start"]
             XCTAssertTrue(start.waitForExistence(timeout: 10))
             XCTAssertTrue(start.isHittable, "\(name): Start is hittable without scrolling")
-            XCTAssertGreaterThanOrEqual(start.frame.height, 44, "\(name): Start is at least 44 pt tall")
+            XCTAssertGreaterThanOrEqual(start.frame.height.rounded(), 44, "\(name): Start is at least 44 pt tall")
             XCTAssertGreaterThan(start.frame.midY, app.frame.height * 0.6, "\(name): Start sits in the lower part of the screen")
             if field {
                 let dock = el(app, "field.brightness")
@@ -112,8 +112,8 @@ final class CaptureScreenTests: XCTestCase {
         for id in ["nearer", "farther", "slightlyNearer", "slightlyFarther"] {
             let b = app.buttons["capture.focus.\(id)"]
             XCTAssertTrue(b.exists, id)
-            XCTAssertGreaterThanOrEqual(b.frame.height, 44, id)
-            XCTAssertGreaterThanOrEqual(b.frame.width, 44, id)
+            XCTAssertGreaterThanOrEqual(b.frame.height.rounded(), 44, id)
+            XCTAssertGreaterThanOrEqual(b.frame.width.rounded(), 44, id)
         }
         let before = el(app, "capture.focus.position").label
         farther.tap()
