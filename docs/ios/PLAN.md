@@ -526,6 +526,25 @@ source's terms for distribution first).
 Record milestone completions, owner field checks, and verdict-vs-reality
 nights here, newest first.
 
+- 2026-09-27: **Capture UX (product review §6–§7)**, merged at 6df5573.
+  A fixed bottom bar holds Start, "Stop and stack" and Cancel (frames are
+  always kept), with progress and heat; settings turn read-only during a
+  run. The exposure label gives the chosen value and the maximum ("longest"
+  only at the maximum). Explicit 12/48 MP choice with storage estimates.
+  Named 44 pt focus steps. "How to shoot" guide: an Apple Camera path
+  (Night mode Max, flash and Live Photos off, Apple links) and a Dark Sky
+  path (this phone's detected ceiling, four separate times, recommended
+  preset). Results view with counts, an unaligned notice, "Save image"
+  first and originals separate. Star trails read the Sky design. No AI
+  denoise yet: iOS has no on-device model, and one would need a licensed
+  model plus night validation. Checks: 7 `CaptureScreenTests` on
+  `-CaptureDemo` states (field scans 0 non-red pixels), 9 SkyCore
+  `CaptureGuidanceTests`. **Not run on the phone.** Owner checks: the bar
+  and guide at night, one-handed Start/Stop, Save image to Photos,
+  `-CaptureSelfTest YES -CaptureSelfTestNoPhotos YES`. Known shell issue:
+  the field dock overlaps the bottom of screens pushed from Tools; Capture
+  pads itself, others (NPF calculator) still need it.
+
 - 2026-09-27: **M12 capture, built and checked on the owner's iPhone 18 Pro
   Max** (branch `local/ios-capture`; indoors, no night-sky test yet).
   - **Probe** (`-CameraProbe YES`, `docs/ios/iphone18promax-camera-probe.json`,
