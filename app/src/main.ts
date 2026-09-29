@@ -8,7 +8,8 @@ import {
 } from "./weather/openmeteo";
 import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
 import { dataNoticeText } from "./datanotice";
-import { initMap, setLayerVisible, getMap } from "./map/mapview";
+// Type-only: erased at build, so maplibre stays out of the entry chunk.
+import type * as MapViewModule from "./map/mapview";
 import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
@@ -39,6 +40,16 @@ const LAYER_CHECKBOX_IDS = ["layer-lp", "layer-land", "layer-places"] as const;
 const LAYER_VALUES = ["lp", "land", "places"] as const;
 
 let appData: AppData | null = null;
+
+/**
+ * The map (maplibre-gl + pmtiles, most of the JS) is secondary (AGENTS.md
+ * invariant 5), so it is a separate chunk loaded on demand by ensureMap():
+ * when #map nears the viewport, a layer is toggled, or a location is set.
+ * Null until that chunk has loaded; every map-touching path tolerates null.
+ */
+type MapModule = typeof MapViewModule;
+let mapModule: MapModule | null = null;
+let mapLoading: Promise<MapModule | null> | null = null;
 
 /**
  * Sky events depend only on place, date and the reader's timezone (the evening
@@ -195,6 +206,10 @@ async function computeAndRender(): Promise<void> {
     cloudAttribution: null,
   });
 
+  // A location is set: the land-manager lookup needs the map, so load it now
+  // (after the answer above is on screen; it never waits for the map).
+  void ensureMap();
+
   $("location-status").textContent = `Planning ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)} on ${dateIso}.`;
 
   // Weather is fetched on demand and updates the answer when it arrives.
@@ -287,7 +302,7 @@ function lookupLandManager(
   lat: number,
   lon: number,
 ): { label: string; agencyUrl: string | null } | null {
-  const map = getMap();
+  const map = mapModule?.getMap() ?? null;
   if (!map || !map.getLayer("land-fill") || !appData?.config) return null;
   // Sample PAD-US polygons are not a land manager; never name one from them.
   if (isFixture(appData.dataStatus, "land_ownership")) return null;
@@ -312,7 +327,56 @@ function agencyUrl(key: string): string | null {
 }
 
 function syncLayers(layers: string[]): void {
-  for (const id of LAYER_VALUES) setLayerVisible(id, layers.includes(id));
+  if (!mapModule) return; // applied on the map's load event instead
+  for (const id of LAYER_VALUES) mapModule.setLayerVisible(id, layers.includes(id));
+}
+
+/**
+ * Load and initialise the map once. Safe to call repeatedly; resolves to null
+ * if the map chunk cannot be loaded, which costs the user nothing but the map.
+ */
+function ensureMap(): Promise<MapModule | null> {
+  mapLoading ??= import("./map/mapview")
+    .then((mod) => {
+      const map = mod.initMap($("map"), {
+        lp: dataUrl("light_pollution/light-pollution.pmtiles"),
+        land: dataUrl("padus/padus.pmtiles"),
+        places: dataUrl("darksky_places/darksky-places.geojson"),
+      });
+      map.on("click", (e) => {
+        input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+        void computeAndRender();
+      });
+      // Registered after initMap's own load handler, so the layers exist.
+      map.once("load", () => syncLayers(currentState().layers));
+      mapModule = mod;
+      return mod;
+    })
+    .catch((err: unknown) => {
+      // Chunk failed to load, or no WebGL: lose the map, keep the answer.
+      console.error("map unavailable; everything above it still works", err);
+      mapLoading = null; // allow a later trigger to retry
+      return null;
+    });
+  return mapLoading;
+}
+
+/** Start loading the map shortly before #map scrolls into view. */
+function loadMapWhenNear(container: HTMLElement): void {
+  if (!("IntersectionObserver" in window)) {
+    void ensureMap();
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        observer.disconnect();
+        void ensureMap();
+      }
+    },
+    { rootMargin: "200px" },
+  );
+  observer.observe(container);
 }
 
 function renderProvenance(): void {
@@ -414,18 +478,14 @@ async function boot(): Promise<void> {
   $("coord-apply").addEventListener("click", computeAndRender);
   $("coord-input").addEventListener("change", computeAndRender);
   $("date-input").addEventListener("change", computeAndRender);
-  for (const id of LAYER_CHECKBOX_IDS) check(id).addEventListener("change", computeAndRender);
+  for (const id of LAYER_CHECKBOX_IDS) {
+    check(id).addEventListener("change", () => {
+      void ensureMap();
+      void computeAndRender();
+    });
+  }
 
-  const mapContainer = $("map");
-  initMap(mapContainer, {
-    lp: dataUrl("light_pollution/light-pollution.pmtiles"),
-    land: dataUrl("padus/padus.pmtiles"),
-    places: dataUrl("darksky_places/darksky-places.geojson"),
-  });
-  getMap()?.on("click", (e) => {
-    input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
-    void computeAndRender();
-  });
+  loadMapWhenNear($("map"));
 
   window.addEventListener("hashchange", () => {
     applyState(parseUrlState(location.hash));

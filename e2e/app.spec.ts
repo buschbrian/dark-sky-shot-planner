@@ -68,6 +68,17 @@ test.describe("text-first flows", () => {
     expect(reachedSourceLink).toBe(true);
   });
 
+  test("map loads only when scrolled near, then renders", async ({ page }) => {
+    // A phone-sized viewport keeps #map well below the fold at load.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await expect(page.locator("#answer")).toContainText(/Enter a location/i);
+    await expect(page.locator("#map canvas")).toHaveCount(0);
+
+    await page.locator("#map").scrollIntoViewIfNeeded();
+    await expect(page.locator("#map canvas")).toBeVisible({ timeout: 15_000 });
+  });
+
   test("theme toggle applies field mode without reload", async ({ page }) => {
     await page.goto("/");
     await page.selectOption("#theme-select", "field");
