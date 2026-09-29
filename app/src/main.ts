@@ -7,6 +7,7 @@ import {
   type CloudForecast,
 } from "./weather/openmeteo";
 import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
+import { dataNoticeText } from "./datanotice";
 import { initMap, setLayerVisible, getMap } from "./map/mapview";
 import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
@@ -65,14 +66,21 @@ async function loadData(): Promise<AppData> {
   // Every artifact is optional at load time. The astronomy — the headline
   // number — is computed in the browser and must keep working even when the
   // published data layers are missing, stale, or half-deployed.
-  const config = await fetchJson<AppConfigJson>(dataUrl("config.json"));
+  // The five small artifacts are independent, so fetch them in parallel.
+  const manifestDirs = ["light_pollution", "padus", "darksky_places"] as const;
+  const [config, dataStatus, manifestList] = await Promise.all([
+    fetchJson<AppConfigJson>(dataUrl("config.json")),
+    fetchJson<DataStatusJson>(dataUrl("data-status.json")),
+    Promise.all(
+      manifestDirs.map((dir) => fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`))),
+    ),
+  ]);
   const manifests: Record<string, ManifestJson> = {};
-  for (const dir of ["light_pollution", "padus", "darksky_places"]) {
-    const manifest = await fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`));
+  for (const [i, dir] of manifestDirs.entries()) {
+    const manifest = manifestList[i];
     // manifest missing: the provenance panel will say so
     if (manifest) manifests[dir] = manifest;
   }
-  const dataStatus = await fetchJson<DataStatusJson>(dataUrl("data-status.json"));
   // brightness row simply won't render when this is absent — and it must not
   // render from a fixture either: a synthetic grid is not a sky-brightness
   // reading, so a fixture build withholds the number rather than fake one.
@@ -366,18 +374,15 @@ function renderProvenance(): void {
  * layers. Say so where the user will see it, not only in a collapsed panel.
  */
 function renderDataNotice(): void {
+  // The build bakes this same text into index.html (vite.config.ts), so in a
+  // normal deploy this is a no-op and the notice never shifts the page.
   const el = $("data-notice");
-  const fixtures = Object.entries(appData?.dataStatus?.layers ?? {})
-    .filter(([, origin]) => origin === "fixture")
-    .map(([layerId]) => layerId.replace("_", " "));
-  if (fixtures.length === 0) {
+  const text = dataNoticeText(appData?.dataStatus);
+  if (text === null) {
     el.hidden = true;
     return;
   }
-  el.textContent =
-    `Sample data: the ${fixtures.join(" and ")} map layer${fixtures.length > 1 ? "s are" : " is"} ` +
-    "an offline fixture, not real coverage. Darkness, moon, and Galactic Center times are computed " +
-    "in your browser and are unaffected. See docs/credentials-setup.md to enable the real layers.";
+  if (el.textContent !== text) el.textContent = text;
   el.hidden = false;
 }
 
