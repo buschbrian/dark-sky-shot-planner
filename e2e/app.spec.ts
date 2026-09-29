@@ -131,7 +131,7 @@ test.describe("accessibility (axe-core)", () => {
   });
 
   test("layer toggles work via keyboard", async ({ page }) => {
-    await page.goto("/?layers=");
+    await page.goto("/#layers=");
     await page.focus("#layer-land");
     await page.keyboard.press("Space");
     await expect(page.locator("#layer-land")).toBeChecked();

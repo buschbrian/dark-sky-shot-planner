@@ -2,7 +2,11 @@
  * Shareable URL state. Location, date, and active layers all live in the
  * hash so a pasted link reopens exactly the same view and answer.
  *
- * Format: #lat=38.53&lon=-109.90&date=2026-08-22&layers=lp,land,places
+ * Format: #lat=38.53&lon=-109.90&date=2026-08-22&layers=lp,land
+ *
+ * No `layers` key means every layer (the default view); `layers=` with no
+ * value means none. The default set is left out of the hash, so a plain link
+ * stays short and still opens with the layers on.
  */
 
 export interface UrlState {
@@ -13,18 +17,18 @@ export interface UrlState {
   layers: string[];
 }
 
-const LAYER_IDS = new Set(["lp", "land", "places"]);
+/** Every layer, in display order: also the default when the hash names none. */
+export const DEFAULT_LAYERS: readonly string[] = ["lp", "land", "places"];
 
 export function parseUrlState(hash: string): UrlState {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
   const lat = numOrNull(params.get("lat"), -90, 90);
   const lon = numOrNull(params.get("lon"), -180, 180);
   const date = isoDateOrNull(params.get("date"));
-  const layersRaw = params.get("layers") ?? "";
-  const layers = layersRaw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => LAYER_IDS.has(s));
+  const layersRaw = params.get("layers");
+  const named = new Set((layersRaw ?? "").split(",").map((s) => s.trim()));
+  // Canonical order, so the same set always serializes the same way.
+  const layers = layersRaw === null ? [...DEFAULT_LAYERS] : DEFAULT_LAYERS.filter((id) => named.has(id));
   return { lat, lon, date, layers };
 }
 
@@ -48,7 +52,8 @@ export function serializeUrlState(state: UrlState): string {
     params.set("lon", String(state.lon));
   }
   if (state.date) params.set("date", state.date);
-  if (state.layers.length) params.set("layers", [...new Set(state.layers)].join(","));
+  const layers = DEFAULT_LAYERS.filter((id) => state.layers.includes(id));
+  if (layers.length !== DEFAULT_LAYERS.length) params.set("layers", layers.join(","));
   const s = params.toString();
   return s ? `#${s}` : "#";
 }
