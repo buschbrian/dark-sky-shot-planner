@@ -10,6 +10,8 @@ describe("url state round-trip", () => {
     "#lat=-33.86882&lon=151.2&date=2024-01-01",
     "#lat=40&lon=-111&layers=lp",
     "#layers=land",
+    "#layers=",
+    "#layers=places,lp",
     "#date=2026-12-31",
   ];
 
@@ -35,6 +37,19 @@ describe("url state round-trip", () => {
 
   it("drops unknown layer ids", () => {
     expect(parseUrlState("#layers=lp,bogus,land").layers).toEqual(["lp", "land"]);
+  });
+
+  it("shows every layer when the hash names none, and no layer for an empty list", () => {
+    expect(parseUrlState("").layers).toEqual(["lp", "land", "places"]);
+    expect(parseUrlState("#lat=40&lon=-111").layers).toEqual(["lp", "land", "places"]);
+    expect(parseUrlState("#layers=").layers).toEqual([]);
+  });
+
+  it("leaves the default layers out of the hash and writes an empty list", () => {
+    const base = { lat: null, lon: null, date: null };
+    expect(serializeUrlState({ ...base, layers: ["places", "lp", "land"] })).toBe("#");
+    expect(serializeUrlState({ ...base, layers: [] })).toBe("#layers=");
+    expect(serializeUrlState({ ...base, layers: ["places", "lp"] })).toBe("#layers=lp%2Cplaces");
   });
 
   it("serializes deterministically", () => {

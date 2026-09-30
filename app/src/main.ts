@@ -7,7 +7,9 @@ import {
   type CloudForecast,
 } from "./weather/openmeteo";
 import { freshnessOf, FRESHNESS_LABEL, type Freshness } from "./freshness";
-import { initMap, setLayerVisible, getMap } from "./map/mapview";
+import { dataNoticeText } from "./datanotice";
+// Type-only: erased at build, so maplibre stays out of the entry chunk.
+import type * as MapViewModule from "./map/mapview";
 import { dataUrl } from "./paths";
 import { classifyRadiance, sampleRadiance, type LowResGrid } from "./radiance";
 import { parseUrlState, updateUrlState, type UrlState } from "./state/urlstate";
@@ -40,6 +42,16 @@ const LAYER_VALUES = ["lp", "land", "places"] as const;
 let appData: AppData | null = null;
 
 /**
+ * The map (maplibre-gl + pmtiles, most of the JS) is secondary (AGENTS.md
+ * invariant 5), so it is a separate chunk loaded on demand by ensureMap():
+ * when #map nears the viewport, a layer is toggled, or a location is set.
+ * Null until that chunk has loaded; every map-touching path tolerates null.
+ */
+type MapModule = typeof MapViewModule;
+let mapModule: MapModule | null = null;
+let mapLoading: Promise<MapModule | null> | null = null;
+
+/**
  * Sky events depend only on place, date and the reader's timezone (the evening
  * instant and every printed clock time do). Layer toggles and hash round-trips
  * re-run computeAndRender with the same inputs, so the sweep is memoised.
@@ -65,14 +77,21 @@ async function loadData(): Promise<AppData> {
   // Every artifact is optional at load time. The astronomy — the headline
   // number — is computed in the browser and must keep working even when the
   // published data layers are missing, stale, or half-deployed.
-  const config = await fetchJson<AppConfigJson>(dataUrl("config.json"));
+  // The five small artifacts are independent, so fetch them in parallel.
+  const manifestDirs = ["light_pollution", "padus", "darksky_places"] as const;
+  const [config, dataStatus, manifestList] = await Promise.all([
+    fetchJson<AppConfigJson>(dataUrl("config.json")),
+    fetchJson<DataStatusJson>(dataUrl("data-status.json")),
+    Promise.all(
+      manifestDirs.map((dir) => fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`))),
+    ),
+  ]);
   const manifests: Record<string, ManifestJson> = {};
-  for (const dir of ["light_pollution", "padus", "darksky_places"]) {
-    const manifest = await fetchJson<ManifestJson>(dataUrl(`${dir}/manifest.json`));
+  for (const [i, dir] of manifestDirs.entries()) {
+    const manifest = manifestList[i];
     // manifest missing: the provenance panel will say so
     if (manifest) manifests[dir] = manifest;
   }
-  const dataStatus = await fetchJson<DataStatusJson>(dataUrl("data-status.json"));
   // brightness row simply won't render when this is absent — and it must not
   // render from a fixture either: a synthetic grid is not a sky-brightness
   // reading, so a fixture build withholds the number rather than fake one.
@@ -187,6 +206,10 @@ async function computeAndRender(): Promise<void> {
     cloudAttribution: null,
   });
 
+  // A location is set: the land-manager lookup needs the map, so load it now
+  // (after the answer above is on screen; it never waits for the map).
+  void ensureMap();
+
   $("location-status").textContent = `Planning ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)} on ${dateIso}.`;
 
   // Weather is fetched on demand and updates the answer when it arrives.
@@ -279,7 +302,7 @@ function lookupLandManager(
   lat: number,
   lon: number,
 ): { label: string; agencyUrl: string | null } | null {
-  const map = getMap();
+  const map = mapModule?.getMap() ?? null;
   if (!map || !map.getLayer("land-fill") || !appData?.config) return null;
   // Sample PAD-US polygons are not a land manager; never name one from them.
   if (isFixture(appData.dataStatus, "land_ownership")) return null;
@@ -304,7 +327,56 @@ function agencyUrl(key: string): string | null {
 }
 
 function syncLayers(layers: string[]): void {
-  for (const id of LAYER_VALUES) setLayerVisible(id, layers.includes(id));
+  if (!mapModule) return; // applied on the map's load event instead
+  for (const id of LAYER_VALUES) mapModule.setLayerVisible(id, layers.includes(id));
+}
+
+/**
+ * Load and initialise the map once. Safe to call repeatedly; resolves to null
+ * if the map chunk cannot be loaded, which costs the user nothing but the map.
+ */
+function ensureMap(): Promise<MapModule | null> {
+  mapLoading ??= import("./map/mapview")
+    .then((mod) => {
+      const map = mod.initMap($("map"), {
+        lp: dataUrl("light_pollution/light-pollution.pmtiles"),
+        land: dataUrl("padus/padus.pmtiles"),
+        places: dataUrl("darksky_places/darksky-places.geojson"),
+      });
+      map.on("click", (e) => {
+        input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+        void computeAndRender();
+      });
+      // Registered after initMap's own load handler, so the layers exist.
+      map.once("load", () => syncLayers(currentState().layers));
+      mapModule = mod;
+      return mod;
+    })
+    .catch((err: unknown) => {
+      // Chunk failed to load, or no WebGL: lose the map, keep the answer.
+      console.error("map unavailable; everything above it still works", err);
+      mapLoading = null; // allow a later trigger to retry
+      return null;
+    });
+  return mapLoading;
+}
+
+/** Start loading the map shortly before #map scrolls into view. */
+function loadMapWhenNear(container: HTMLElement): void {
+  if (!("IntersectionObserver" in window)) {
+    void ensureMap();
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        observer.disconnect();
+        void ensureMap();
+      }
+    },
+    { rootMargin: "200px" },
+  );
+  observer.observe(container);
 }
 
 function renderProvenance(): void {
@@ -366,18 +438,15 @@ function renderProvenance(): void {
  * layers. Say so where the user will see it, not only in a collapsed panel.
  */
 function renderDataNotice(): void {
+  // The build bakes this same text into index.html (vite.config.ts), so in a
+  // normal deploy this is a no-op and the notice never shifts the page.
   const el = $("data-notice");
-  const fixtures = Object.entries(appData?.dataStatus?.layers ?? {})
-    .filter(([, origin]) => origin === "fixture")
-    .map(([layerId]) => layerId.replace("_", " "));
-  if (fixtures.length === 0) {
+  const text = dataNoticeText(appData?.dataStatus);
+  if (text === null) {
     el.hidden = true;
     return;
   }
-  el.textContent =
-    `Sample data: the ${fixtures.join(" and ")} map layer${fixtures.length > 1 ? "s are" : " is"} ` +
-    "an offline fixture, not real coverage. Darkness, moon, and Galactic Center times are computed " +
-    "in your browser and are unaffected. See docs/credentials-setup.md to enable the real layers.";
+  if (el.textContent !== text) el.textContent = text;
   el.hidden = false;
 }
 
@@ -409,18 +478,14 @@ async function boot(): Promise<void> {
   $("coord-apply").addEventListener("click", computeAndRender);
   $("coord-input").addEventListener("change", computeAndRender);
   $("date-input").addEventListener("change", computeAndRender);
-  for (const id of LAYER_CHECKBOX_IDS) check(id).addEventListener("change", computeAndRender);
+  for (const id of LAYER_CHECKBOX_IDS) {
+    check(id).addEventListener("change", () => {
+      void ensureMap();
+      void computeAndRender();
+    });
+  }
 
-  const mapContainer = $("map");
-  initMap(mapContainer, {
-    lp: dataUrl("light_pollution/light-pollution.pmtiles"),
-    land: dataUrl("padus/padus.pmtiles"),
-    places: dataUrl("darksky_places/darksky-places.geojson"),
-  });
-  getMap()?.on("click", (e) => {
-    input("coord-input").value = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
-    void computeAndRender();
-  });
+  loadMapWhenNear($("map"));
 
   window.addEventListener("hashchange", () => {
     applyState(parseUrlState(location.hash));
