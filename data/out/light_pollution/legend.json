@@ -1,0 +1,32 @@
+[
+  {
+    "radiance": 0.0,
+    "color": "#000005",
+    "label": "Pristine dark sky"
+  },
+  {
+    "radiance": 0.25,
+    "color": "#0d1338",
+    "label": "Dark"
+  },
+  {
+    "radiance": 1.0,
+    "color": "#28306e",
+    "label": "Low glow"
+  },
+  {
+    "radiance": 5.0,
+    "color": "#4f6cb0",
+    "label": "Bright fringe"
+  },
+  {
+    "radiance": 20.0,
+    "color": "#9fc0dd",
+    "label": "Suburban"
+  },
+  {
+    "radiance": 60.0,
+    "color": "#ffffff",
+    "label": "Urban core"
+  }
+]

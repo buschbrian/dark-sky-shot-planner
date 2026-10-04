@@ -1,0 +1,25 @@
+{
+  "layer_id": "darksky_places",
+  "source_name": "International Dark Sky Places (hand-curated)",
+  "source_url": "https://darksky.org/places/",
+  "license": "Factual list; curated by hand with per-row sources",
+  "license_url": "https://darksky.org/places/",
+  "retrieval_utc": "2026-10-04T13:13:23.957834Z",
+  "publication_date": null,
+  "checksum": "8cd0669585e1b704e00847aeea777b676c70f89779e81615b735dbda2940dbba",
+  "artifacts": [
+    {
+      "path": "darksky-places.geojson",
+      "sha256": "088e5b4a599afa3d31dc2637fc99d4355ba23e96832ace6732adbac463b58376",
+      "bytes": 6254
+    },
+    {
+      "path": "darksky-places.source.csv",
+      "sha256": "96ba7300637e9ff52dc63d0382e83e4c1ea55b08ab588ab9c0b2dede36d85219",
+      "bytes": 3016
+    }
+  ],
+  "counts": {
+    "places": 21
+  }
+}

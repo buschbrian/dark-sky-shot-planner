@@ -1,0 +1,31 @@
+{
+  "layer_id": "light_pollution",
+  "source_name": "VIIRS VNP46A4 Black Marble annual composite",
+  "source_url": "https://ladsweb.modaps.eosdis.nasa.gov/",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "retrieval_utc": "2026-10-04T13:13:23.605795Z",
+  "publication_date": "2025-12-01",
+  "checksum": "5ec129d75b50517ce2bec3c307b0ace448dc2df9465fcdbb479ff1d24ee219e5",
+  "artifacts": [
+    {
+      "path": "light-pollution.pmtiles",
+      "sha256": "482a69c3d99ddd7693f72196bf11be604d14b86ecc40f66915e7ccce7209f42d",
+      "bytes": 3167943
+    },
+    {
+      "path": "legend.json",
+      "sha256": "c777b890ef309409c94a1b6df8690cb6a0e40a2952f7755bdb523d6485c5ddba",
+      "bytes": 485
+    },
+    {
+      "path": "radiance-grid-lowres.json",
+      "sha256": "cf2f67dc28c73819ad9055dc0cbfc873305fefe094e9523ca7423be25297647f",
+      "bytes": 27710
+    }
+  ],
+  "counts": {
+    "tiles": 354,
+    "breakpoints": 6
+  }
+}
