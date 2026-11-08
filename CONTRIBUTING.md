@@ -25,6 +25,26 @@ For e2e, use a Chromium you already have rather than running
 `npx playwright install` locally (standing rule in [AGENTS.md](AGENTS.md));
 CI installs its own.
 
+On the G3, select the installed browser before running the suite:
+
+```bash
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+npm run test:e2e
+```
+
+The map-runtime tests also accept `PLAYWRIGHT_BASE_URL` for an already-running
+production preview. Build with `BASE_PATH=/dark-sky-shot-planner/`, start
+`BASE_PATH=/dark-sky-shot-planner/ npm run preview -- --host 127.0.0.1 --port 5201`,
+then run:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5201/dark-sky-shot-planner/ npm run test:e2e -- --grep 'MapLibre runtime'
+```
+
+This checks the emitted worker and PMTiles requests under the Pages path,
+plus the text answer when WebGL is unavailable. A visible canvas alone is not
+evidence that the worker loaded.
+
 The dev server reads pipeline artifacts from `data/out/`. That directory is
 gitignored for local builds (only `data-refresh.yml` commits real artifacts
 there), so build it before `npm run dev` or `npm run test:e2e`, or the client

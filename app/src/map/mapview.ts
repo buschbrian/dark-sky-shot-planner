@@ -1,5 +1,6 @@
 import { Protocol } from "pmtiles";
-import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap, addProtocol, setWorkerUrl } from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 
 /**
  * The map is an enhancement, never the interface. It initializes lazily and
@@ -16,9 +17,10 @@ export function initMap(
 ): MapLibreMap {
   if (initialized && map) return map;
   const protocol = new Protocol();
-  maplibregl.addProtocol("pmtiles", protocol.tile);
+  addProtocol("pmtiles", protocol.tile);
+  setWorkerUrl(workerUrl);
 
-  map = new maplibregl.Map({
+  map = new MapLibreMap({
     container,
     style: {
       version: 8,
