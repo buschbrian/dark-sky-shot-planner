@@ -7,8 +7,8 @@ This file ROUTES; rules live in scoped files. Keep it under 80 lines.
 the Mountain West (scope: ADR-0009, amending `autonomous-build-brief.md`).
 Python pipelines publish PMTiles/JSON to `data/out/`; a Vite + TypeScript +
 MapLibre static site (no framework, ADR-0001) computes astronomy client-side;
-a native SwiftUI app lives in `ios/`; one stateless Worker in `worker/` serves
-live conditions (ADR-0010). Live status: `README.md`.
+a native SwiftUI app lives in `ios/`; one stateless Worker (planned, `worker/`)
+will serve live conditions (ADR-0010). Live status: `README.md`.
 
 ## Working on X → read Y
 
