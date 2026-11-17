@@ -3,9 +3,10 @@
 Two paths:
 - ``build``: offline. Reads a staged radiance grid (JSON, rows north->south)
   and emits PMTiles + legend + manifest. Golden tests use this path.
-- ``fetch-and-build``: online. Downloads VNP46A4 via blackmarblepy (requires
-  NASA Earthdata credentials in the environment), stages a grid JSON, then
-  delegates to ``build``. Never used by CI.
+- ``fetch-and-build``: online. Downloads the newest available annual composite
+  (VNP46A4, falling back to VJ146A4 and to the previous year; requires NASA
+  Earthdata credentials in the environment) and stages a grid JSON that records
+  the product and year used. Never used by CI.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import click
 from pmtiles.tile import TileType
@@ -24,6 +26,11 @@ from pipelines.shared.config import load_config
 from pipelines.shared.manifest import Artifact, build_manifest, sha256_file
 from pipelines.shared.tiles import Bounds, write_pmtiles
 
+SOURCE_NAMES = {
+    "VNP46A4": "VIIRS VNP46A4 Black Marble annual composite",
+    "VJ146A4": "VIIRS VJ146A4 Black Marble annual composite (NOAA-20)",
+}
+
 
 @click.command()
 @click.option(
@@ -33,19 +40,31 @@ from pipelines.shared.tiles import Bounds, write_pmtiles
     required=True,
     help="Staged radiance grid JSON (see fetch-and-build).",
 )
-@click.option("--publication-date", type=click.DateTime(["%Y-%m-%d"]), required=True)
+@click.option(
+    "--publication-date",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="Defaults to Dec 1 of the staged grid's year; required if the grid has none.",
+)
 @click.option("--min-zoom", default=5, show_default=True)
 @click.option("--max-zoom", default=8, show_default=True)
 @click.option("--out", "out_dir", type=click.Path(path_type=Path), required=True)
 def build(
     grid_path: Path,
-    publication_date: dt.datetime,
+    publication_date: dt.datetime | None,
     min_zoom: int,
     max_zoom: int,
     out_dir: Path,
 ) -> None:
     app_config = load_config()
-    grid: Grid = json.loads(grid_path.read_text())
+    staged: dict[str, Any] = json.loads(grid_path.read_text())
+    grid = cast(Grid, staged)
+    product = str(staged.get("product", "VNP46A4"))
+    year = int(staged.get("year", app_config.radiance_mapping.source_year))
+    if publication_date is None:
+        if "year" not in staged:
+            raise click.UsageError("--publication-date is required for a grid without 'year'")
+        publication_date = dt.datetime(year, 12, 1)
     bbox = Bounds(west=grid["west"], south=grid["south"], east=grid["east"], north=grid["north"])
 
     tiles = {
@@ -57,8 +76,8 @@ def build(
         pmtiles_path,
         tile_type=TileType.PNG,
         bounds=bbox,
-        attribution=f"VIIRS VNP46A4 ({app_config.radiance_mapping.source_year})",
-        extra_metadata={"source_year": app_config.radiance_mapping.source_year},
+        attribution=f"VIIRS {product} ({year})",
+        extra_metadata={"source_year": year, "source_product": product},
     )
 
     legend = [
@@ -77,7 +96,7 @@ def build(
 
     manifest = build_manifest(
         layer_id="light_pollution",
-        source_name="VIIRS VNP46A4 Black Marble annual composite",
+        source_name=SOURCE_NAMES.get(product, f"VIIRS {product} Black Marble annual composite"),
         source_url="https://ladsweb.modaps.eosdis.nasa.gov/",
         license="CC0 1.0",
         license_url="https://creativecommons.org/publicdomain/zero/1.0/",
@@ -107,7 +126,9 @@ def build(
 
 
 @click.command()
-@click.option("--year", type=int, required=True, help="Composite year, e.g. 2024.")
+@click.option(
+    "--year", type=int, required=True, help="Newest composite year to try; falls back one year."
+)
 @click.option("--out", "stage_dir", type=click.Path(path_type=Path), required=True)
 def fetch_and_build(year: int, stage_dir: Path) -> None:
     try:

@@ -47,9 +47,10 @@ work complete; label pre-existing failures as pre-existing.
 
 ## Data refresh (what it publishes)
 
-`data-refresh.yml` (monthly + manual) fetches VNP46A4 via `blackmarblepy` (the
-`BLACKMARBLE_TOKEN` Actions secret), rebuilds places/config, force-commits
-`data/out/`, opens an issue on failure, then retriggers `deploy-pages.yml`.
+`data-refresh.yml` (monthly + manual) fetches VNP46A4 via `blackmarblepy`, else
+VJ146A4 or the prior year (ADR-0012; `BLACKMARBLE_TOKEN` Actions secret),
+rebuilds places/config, force-commits `data/out/`, opens an issue on failure,
+then retriggers `deploy-pages.yml`.
 Until it runs, light pollution and land ownership are fixtures (ADR-0007).
 
 ## Invariants (from tests/ and ADRs)

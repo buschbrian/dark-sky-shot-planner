@@ -23,7 +23,7 @@ jobs:
       - name: Install fetch extras (heavy geo deps)
         run: uv sync --extra fetch
 
-      # NOTE: VNP46A4 requires a NASA Earthdata personal access token stored
+      # NOTE: VNP46A4/VJ146A4 require a NASA Earthdata personal access token stored
       # as the BLACKMARBLE_TOKEN Actions secret. This is the ONLY credential
       # in the project, and only as an Actions secret — never in the repo.
       - name: Fetch and build light pollution
@@ -34,9 +34,11 @@ jobs:
         run: |
           uv run python -m pipelines.light_pollution.cli fetch-and-build \
             --year $(date -d "last year" +%Y) --out /tmp/stage/lp
+          # Publication date and source label come from the staged grid, which
+          # records the product/year actually used (VNP46A4, else VJ146A4, else
+          # the previous year).
           uv run python -m pipelines.light_pollution.cli build \
             --grid /tmp/stage/lp/staged-grid.json \
-            --publication-date "$(date -d "last year" +%Y)-12-01" \
             --out data/out/light_pollution
 
       - name: Build dark-sky places (offline)
