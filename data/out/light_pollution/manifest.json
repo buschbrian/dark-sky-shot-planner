@@ -4,13 +4,13 @@
   "source_url": "https://ladsweb.modaps.eosdis.nasa.gov/",
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-  "retrieval_utc": "2026-11-04T15:27:34.648749Z",
+  "retrieval_utc": "2026-11-17T21:48:04.549266Z",
   "publication_date": "2025-12-01",
-  "checksum": "66bd66df93aee99f58f8dd8c13f22750ecab196a4ae814c58e5ae1902c40dc88",
+  "checksum": "c0818a25542bfa003e4a2839549067a7d2b5f3f69715d787efd64e06706f1a7f",
   "artifacts": [
     {
       "path": "light-pollution.pmtiles",
-      "sha256": "491cf17ce5b01add1f913ac65e250b6ce6c3d28b173aca658eb05a1c8e2a1a5b",
+      "sha256": "1cda7597a384218a747f289ae26f1e28eaf908a58f0fae6d326fcdc0fcb1a835",
       "bytes": 3167943
     },
     {
