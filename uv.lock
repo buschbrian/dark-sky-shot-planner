@@ -645,6 +645,7 @@ dependencies = [
 fetch = [
     { name = "blackmarblepy" },
     { name = "geopandas" },
+    { name = "h5py" },
     { name = "mapbox-vector-tile" },
     { name = "mercantile" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -670,6 +671,7 @@ requires-dist = [
     { name = "blackmarblepy", marker = "extra == 'fetch'", specifier = ">=2025" },
     { name = "click", specifier = ">=8.1" },
     { name = "geopandas", marker = "extra == 'fetch'", specifier = ">=1.0" },
+    { name = "h5py", marker = "extra == 'fetch'", specifier = ">=3.10" },
     { name = "mapbox-vector-tile", marker = "extra == 'fetch'", specifier = ">=2.0" },
     { name = "mercantile", marker = "extra == 'fetch'", specifier = ">=1.2" },
     { name = "numpy", marker = "extra == 'fetch'", specifier = ">=1.26" },
